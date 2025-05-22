@@ -10,6 +10,20 @@ import { getUserById } from '@/data/user';
 import { getAccountByUserId } from './data/account';
 import { getTwoFactorConfirmationByUserId } from '@/data/two-factor-confirmation';
 
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      role: UserRole;
+      isTwoFactorEnabled: boolean;
+      isOAuth: boolean;
+      isBlocked: boolean;
+    }
+  }
+}
+
 export const authOptions: any = {
   pages: {
     signIn: '/auth/login',
@@ -36,6 +50,9 @@ export const authOptions: any = {
 
       // Prevent sign in without email verification
       if (!existingUser?.emailVerified) return false;
+      
+      // Prevent sign in if user is blocked
+      if (existingUser.isBlocked) return false;
 
       if (existingUser.isTwoFactorEnabled) {
         const twoFactorConfirmation = await getTwoFactorConfirmationByUserId(
@@ -66,6 +83,7 @@ export const authOptions: any = {
         session.user.name = token.name;
         session.user.email = token.email;
         session.user.isOAuth = token.isOAuth as boolean;
+        session.user.isBlocked = token.isBlocked as boolean;
       }
 
       return session;
@@ -84,6 +102,7 @@ export const authOptions: any = {
       token.email = existingUser.email;
       token.role = existingUser.role;
       token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled;
+      token.isBlocked = existingUser.isBlocked;
 
       return token;
     },

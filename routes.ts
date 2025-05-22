@@ -37,7 +37,10 @@ export const adminRoutes = [
   "/admin",
   "/admin/users",
   "/admin/tickets",
-  "/admin/winners"
+  "/admin/winners",
+  "/admin/stats",
+  "/admin/draws",
+  "/admin/settings"
 ];
 
 /**

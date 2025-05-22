@@ -16,7 +16,7 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
     return { error: "Invalid fields!" };
   }
 
-  const { email, password, name } = validatedFields.data;
+  const { email, password, name, referralCode } = validatedFields.data;
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const existingUser = await getUserByEmail(email);
@@ -25,13 +25,43 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
     return { error: "Email already in use!" };
   }
 
-  await db.user.create({
+  // Check for referral code
+  let referredBy = null;
+  if (referralCode) {
+    const referrer = await db.user.findUnique({
+      where: {
+        referralCode: referralCode,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (referrer) {
+      referredBy = referrer.id;
+    }
+  }
+
+  // Create the user
+  const newUser = await db.user.create({
     data: {
       name,
       email,
       password: hashedPassword,
+      referredBy,
     },
   });
+
+  // If this was a referral, create a ticket for the referrer
+  if (referredBy) {
+    await db.ticket.create({
+      data: {
+        userId: referredBy,
+        source: "REFERRAL",
+        isUsed: false,
+      },
+    });
+  }
 
   const verificationToken = await generateVerificationToken(email);
   await sendVerificationEmail(

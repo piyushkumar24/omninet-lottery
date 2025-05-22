@@ -20,13 +20,34 @@ export default auth((req) => {
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
-  const isAdminRoute = adminRoutes.some(route => nextUrl.pathname.startsWith(route));
-  const isDashboardRoute = dashboardRoutes.some(route => nextUrl.pathname.startsWith(route));
+  
+  // Use startsWith for better route matching
+  const isAdminRoute = adminRoutes.some(route => 
+    nextUrl.pathname === route || nextUrl.pathname.startsWith(`${route}/`)
+  );
+  
+  const isDashboardRoute = dashboardRoutes.some(route => 
+    nextUrl.pathname === route || nextUrl.pathname.startsWith(`${route}/`)
+  );
+
+  // Handle API auth routes
+  if (isApiAuthRoute) {
+    return;
+  }
+
+  // Handle auth routes
+  if (isAuthRoute) {
+    if (isLoggedIn) {
+      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
+    }
+    return;
+  }
 
   // Check for admin routes
   if (isAdminRoute) {
     if (!isLoggedIn) {
-      return Response.redirect(new URL('/auth/login', nextUrl));
+      const callbackUrl = encodeURIComponent(nextUrl.pathname);
+      return Response.redirect(new URL(`/auth/login?callbackUrl=${callbackUrl}`, nextUrl));
     }
     
     const userRole = req.auth?.user?.role;
@@ -41,13 +62,8 @@ export default auth((req) => {
   // Check for dashboard routes
   if (isDashboardRoute) {
     if (!isLoggedIn) {
-      let callbackUrl = nextUrl.pathname;
-      if (nextUrl.search) {
-        callbackUrl += nextUrl.search;
-      }
-
-      const encodedCallbackUrl = encodeURIComponent(callbackUrl);
-      return Response.redirect(new URL(`/auth/login?callbackUrl=${encodedCallbackUrl}`, nextUrl));
+      const callbackUrl = encodeURIComponent(nextUrl.pathname);
+      return Response.redirect(new URL(`/auth/login?callbackUrl=${callbackUrl}`, nextUrl));
     }
     
     // Check if user is blocked
@@ -58,35 +74,17 @@ export default auth((req) => {
     return;
   }
 
-  if (isApiAuthRoute) {
-    // Do nothing for API auth routes
+  // Handle public routes
+  if (isPublicRoute) {
     return;
   }
 
-  if (isAuthRoute) {
-    if (isLoggedIn) {
-      // Redirect logged-in users away from auth routes
-      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
-    }
-    // Allow unauthenticated users to access auth routes
-    return;
+  // Default: require authentication for any other route
+  if (!isLoggedIn) {
+    const callbackUrl = encodeURIComponent(nextUrl.pathname);
+    return Response.redirect(new URL(`/auth/login?callbackUrl=${callbackUrl}`, nextUrl));
   }
 
-  if (!isLoggedIn && !isPublicRoute) {
-    // Redirect unauthenticated users to the login page
-    let callbackUrl = nextUrl.pathname;
-    if (nextUrl.search) {
-      callbackUrl += nextUrl.search;
-    }
-
-    const encodedCallbackUrl = encodeURIComponent(callbackUrl);
-
-    return Response.redirect(
-      new URL(`/auth/login?callbackUrl=${encodedCallbackUrl}`, nextUrl)
-    );
-  }
-
-  // Allow access to public routes or logged-in users
   return;
 });
 
