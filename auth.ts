@@ -13,6 +13,7 @@ import { getTwoFactorConfirmationByUserId } from '@/data/two-factor-confirmation
 declare module "next-auth" {
   interface Session {
     user: {
+      image: any;
       id: string;
       name?: string | null;
       email?: string | null;

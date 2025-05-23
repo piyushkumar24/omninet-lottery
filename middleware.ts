@@ -6,7 +6,6 @@ import {
   apiAuthPrefix,
   authRoutes,
   publicRoutes,
-  adminRoutes,
   dashboardRoutes,
 } from '@/routes';
 import { UserRole } from '@prisma/client';
@@ -19,12 +18,8 @@ export default auth((req) => {
   
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
-  const isAuthRoute = authRoutes.includes(nextUrl.pathname);
+  const isAuthRoute = authRoutes.includes(nextUrl.pathname);  
   
-  // Use startsWith for better route matching
-  const isAdminRoute = adminRoutes.some(route => 
-    nextUrl.pathname === route || nextUrl.pathname.startsWith(`${route}/`)
-  );
   
   const isDashboardRoute = dashboardRoutes.some(route => 
     nextUrl.pathname === route || nextUrl.pathname.startsWith(`${route}/`)
@@ -40,22 +35,6 @@ export default auth((req) => {
     if (isLoggedIn) {
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
     }
-    return;
-  }
-
-  // Check for admin routes
-  if (isAdminRoute) {
-    if (!isLoggedIn) {
-      const callbackUrl = encodeURIComponent(nextUrl.pathname);
-      return Response.redirect(new URL(`/auth/login?callbackUrl=${callbackUrl}`, nextUrl));
-    }
-    
-    const userRole = req.auth?.user?.role;
-    
-    if (userRole !== UserRole.ADMIN) {
-      return Response.redirect(new URL('/dashboard', nextUrl));
-    }
-    
     return;
   }
 

@@ -7,9 +7,12 @@ import {
   Ticket,
   Gift,
   Users,
-  Settings
+  Settings,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCurrentRole } from "@/hooks/use-current-role";
+import { UserRole } from "@prisma/client";
 
 const routes = [
   {
@@ -41,6 +44,8 @@ const routes = [
 
 export const Sidebar = () => {
   const pathname = usePathname();
+  const role = useCurrentRole();
+  const isAdmin = role === UserRole.ADMIN;
 
   return (
     <div className="h-full border-r flex flex-col overflow-y-auto bg-white shadow-sm">
@@ -65,6 +70,19 @@ export const Sidebar = () => {
             {route.label}
           </Link>
         ))}
+        
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className={cn(
+              "flex items-center gap-x-2 text-slate-500 text-sm font-medium px-3 py-4 hover:text-indigo-600 hover:bg-slate-100/50 transition-all mt-2 border-t pt-2",
+              pathname === "/admin" && "text-indigo-600 bg-slate-100"
+            )}
+          >
+            <Shield className="h-5 w-5" />
+            Admin Panel
+          </Link>
+        )}
       </div>
     </div>
   );

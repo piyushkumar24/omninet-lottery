@@ -8,7 +8,6 @@ import {
   Users, 
   BarChart2, 
   Gift,
-  Settings,
   Ticket,
   Home
 } from "lucide-react";
@@ -61,7 +60,7 @@ const SidebarItem = ({ icon, label, href, badge, isBadgeAlert = false }: Sidebar
   );
 };
 
-export const AdminSidebar = () => {
+export const AdminPanelSidebar = () => {
   const [counts, setCounts] = useState({
     users: 0,
     activeTickets: 0,
@@ -152,18 +151,6 @@ export const AdminSidebar = () => {
           href="/admin/draws"
           badge={counts.unclaimedWinners}
           isBadgeAlert={counts.unclaimedWinners > 0}
-        />
-      </div>
-      
-      <div className="px-3 mt-6 mb-2">
-        <p className="text-xs font-medium text-slate-400 px-3 mb-1 uppercase tracking-wider">System</p>
-      </div>
-      
-      <div className="flex flex-col w-full space-y-1 px-3">
-        <SidebarItem
-          icon={<Settings className="h-5 w-5" />}
-          label="Settings"
-          href="/admin/settings"
         />
       </div>
       

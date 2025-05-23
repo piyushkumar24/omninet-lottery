@@ -30,20 +30,6 @@ export const authRoutes = [
 export const apiAuthPrefix = "/api/auth";
 
 /**
- * Routes that only admins can access
- * @type {string[]}
- */
-export const adminRoutes = [
-  "/admin",
-  "/admin/users",
-  "/admin/tickets",
-  "/admin/winners",
-  "/admin/stats",
-  "/admin/draws",
-  "/admin/settings"
-];
-
-/**
  * Routes that require authentication (dashboard routes)
  * @type {string[]}
  */

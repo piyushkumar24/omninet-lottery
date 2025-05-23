@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, LayoutDashboard, Settings } from "lucide-react";
 import Image from "next/image";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
@@ -14,6 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
 export const UserButton = () => {
@@ -40,7 +42,7 @@ export const UserButton = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="focus:outline-none">
-        <Avatar>
+        <Avatar className="h-8 w-8 border border-slate-200">
           {session.user.image ? (
             <div className="relative aspect-square h-full w-full">
               <Image
@@ -57,35 +59,43 @@ export const UserButton = () => {
           )}
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-60" align="end">
-        <div className="flex items-center justify-start gap-2 p-2">
-          <div className="flex flex-col space-y-0.5">
-            <p className="text-sm font-medium">{session.user.name || "User"}</p>
-            <p className="text-xs text-slate-500">{session.user.email || ""}</p>
+      <DropdownMenuContent className="w-56" align="end">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{session.user.name || "User"}</p>
+            <p className="text-xs leading-none text-slate-500">{session.user.email || ""}</p>
             {session.user.role === "ADMIN" && (
-              <p className="text-xs text-indigo-600 font-medium">Administrator</p>
+              <p className="text-xs text-indigo-600 font-medium mt-1">Administrator</p>
             )}
           </div>
-        </div>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {session.user.role === "ADMIN" && (
-          <>
+        <DropdownMenuGroup>
+          <DropdownMenuItem 
+            onClick={() => router.push("/settings")}
+            className="cursor-pointer"
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </DropdownMenuItem>
+          {session.user.role === "ADMIN" && (
             <DropdownMenuItem 
               onClick={() => router.push("/admin")}
-              className="cursor-pointer"
+              className="cursor-pointer text-indigo-600 focus:text-indigo-600 focus:bg-indigo-50"
             >
-              Admin Dashboard
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              <span>Admin Panel</span>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
+          )}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuItem 
           onClick={onLogout}
           disabled={isLoading}
-          className="cursor-pointer text-red-600 focus:text-red-600"
+          className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
         >
-          <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Sign Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

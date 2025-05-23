@@ -3,6 +3,8 @@ import { AdminNavbar } from "@/components/admin/navbar";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { isAdmin, getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { UserRole } from "@prisma/client";
 
 export default async function AdminLayout({
   children
@@ -10,11 +12,11 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   // Check if the current user is an admin
-  const user = await getCurrentUser();
-  const isAdminUser = await isAdmin();
-  
-  if (!user || !isAdminUser) {
-    return redirect("/auth/login");
+  const session = await auth();
+  const isAdmin = session?.user.role === UserRole.ADMIN;
+
+  if(!isAdmin){
+    redirect(`/?error="NotAllowed"`)
   }
   
   return (
