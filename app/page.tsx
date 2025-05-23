@@ -149,7 +149,7 @@ export default function Home() {
     
     const initializeApp = async () => {
       await checkSession();
-      await fetchStats();
+        await fetchStats();
     };
     
     initializeApp();
@@ -198,20 +198,20 @@ export default function Home() {
             <div className="flex items-center gap-4">
               {!isAuthenticated ? (
                 <>
-                  <Link href="/auth/login">
-                    <Button 
-                      variant="ghost" 
-                      className="text-white hover:bg-white/20 border-2 border-white/30 hover:border-white/50 backdrop-blur-md transition-all duration-300 hover:scale-105 font-semibold"
-                    >
-                      Log In
-                    </Button>
-                  </Link>
-                  <Link href="/auth/register">
+              <Link href="/auth/login">
+                <Button 
+                  variant="ghost" 
+                  className="text-white hover:bg-white/20 border-2 border-white/30 hover:border-white/50 backdrop-blur-md transition-all duration-300 hover:scale-105 font-semibold"
+                >
+                  Log In
+                </Button>
+              </Link>
+              <Link href="/auth/register">
                     <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold">
-                      <span>Sign Up</span>
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <span>Sign Up</span>
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
                 </>
               ) : (
                 <Link href="/dashboard">
@@ -257,24 +257,24 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-6 mb-8">
             {!isAuthenticated ? (
               <>
-                <Link href="/auth/register">
-                  <Button 
-                    size="lg" 
-                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 text-lg px-10 py-6 h-auto font-semibold hover:scale-105 group"
-                  >
-                    <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                    Join the Lottery Now
-                  </Button>
-                </Link>
+            <Link href="/auth/register">
+              <Button 
+                size="lg" 
+                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 text-lg px-10 py-6 h-auto font-semibold hover:scale-105 group"
+              >
+                <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                Join the Lottery Now
+              </Button>
+            </Link>
                 <Link href="/auth/login">
-                  <Button 
-                    size="lg" 
-                    variant="outline" 
-                    className="bg-white/10 text-white border-2 border-white/30 hover:bg-white/20 hover:border-white/50 backdrop-blur-md text-lg px-10 py-6 h-auto font-semibold transition-all duration-300 hover:scale-105"
-                  >
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="bg-white/10 text-white border-2 border-white/30 hover:bg-white/20 hover:border-white/50 backdrop-blur-md text-lg px-10 py-6 h-auto font-semibold transition-all duration-300 hover:scale-105"
+              >
                     Log In
-                  </Button>
-                </Link>
+              </Button>
+            </Link>
               </>
             ) : (
               <Link href="/dashboard">
@@ -504,9 +504,9 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-    {/* Enhanced How It Works Section */}
-    <div className="bg-white py-24 md:py-32">
+      
+      {/* Enhanced How It Works Section */}
+      <div className="bg-white py-24 md:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-20">
             <div className="inline-flex items-center px-4 py-2 bg-blue-100 rounded-full text-blue-700 text-sm font-medium mb-6">
@@ -578,7 +578,7 @@ export default function Home() {
           </div>
         </div>
       </div>
-
+      
       {/* FAQ SECTION */}
       <div className="bg-gradient-to-br from-slate-50 to-white py-24 md:py-32">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
@@ -597,8 +597,8 @@ export default function Home() {
             <p className="text-xl text-slate-600 max-w-3xl mx-auto">
               Find answers to the most common questions about our platform, rewards, and how to get started.
             </p>
-          </div>
-
+              </div>
+              
           {/* FAQ Accordion */}
           <div className="space-y-4 mb-16">
             {[
@@ -681,12 +681,12 @@ export default function Home() {
               <MessageCircle className="w-4 h-4 mr-2" />
               Support Center
             </div>
-            <h2 className={cn(
+              <h2 className={cn(
               "text-4xl md:text-5xl font-bold mb-6 text-white leading-tight",
-              font.className,
-            )}>
+                font.className,
+              )}>
               Need Help? Contact Our Team
-            </h2>
+              </h2>
             <p className="text-xl text-white/90 max-w-3xl mx-auto">
               Our dedicated support team is ready to assist you with any questions about the platform, 
               lottery system, or technical issues.
@@ -919,10 +919,10 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
+                </div>
               </div>
             </div>
-          </div>
-
+            
           {/* Impact Showcase */}
           <div className="bg-gradient-to-r from-blue-600 to-emerald-600 rounded-3xl p-12 text-white relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-emerald-600/90"></div>
@@ -1004,14 +1004,14 @@ export default function Home() {
                       <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
                         <h4 className="font-bold text-sm mb-1">{item.title}</h4>
                         <p className="text-xs text-white/80">{item.description}</p>
-                      </div>
+                    </div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-
+              </div>
+              
           {/* Call to Action */}
           <div className="text-center mt-20">
             <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-100 to-emerald-100 rounded-full text-blue-700 text-sm font-medium mb-8">

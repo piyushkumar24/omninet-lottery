@@ -20,13 +20,14 @@ import {
 import { CardWrapper } from "@/components/auth/card-wrapper"
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/form-error";
-import { FormSuccess } from "@/components/form-success";
 import { register } from "@/actions/register";
 import { Shield, Mail, Lock, User, CheckCircle, AlertCircle } from "lucide-react";
+import { SuccessPopup } from "@/components/auth/success-popup";
 
 export const RegisterForm = () => {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -97,18 +98,24 @@ export const RegisterForm = () => {
       register(values)
         .then((data) => {
           setError(data.error);
-          setSuccess(data.success);
           
-          // Clear referral code from localStorage after successful registration
-          try {
-            if (data.success && typeof window !== 'undefined') {
-              localStorage.removeItem('referralCode');
+          if (data.success) {
+            setShowSuccessPopup(true);
+            // Clear referral code from localStorage after successful registration
+            try {
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('referralCode');
+              }
+            } catch (error) {
+              console.error("Error clearing localStorage:", error);
             }
-          } catch (error) {
-            console.error("Error clearing localStorage:", error);
           }
         });
     });
+  };
+
+  const handleClosePopup = () => {
+    setShowSuccessPopup(false);
   };
 
   return (
@@ -117,7 +124,7 @@ export const RegisterForm = () => {
         headerLabel="Create your account"
         backButtonLabel="Already have an account?"
         backButtonHref="/auth/login"
-        showSocial
+        showSocial={false}
       >
         <Form {...form}>
           <form 
@@ -361,7 +368,6 @@ export const RegisterForm = () => {
             </div>
 
             <FormError message={error} />
-            <FormSuccess message={success} />
             
             <Button
               disabled={isPending || !captchaToken}
@@ -374,12 +380,18 @@ export const RegisterForm = () => {
                   Creating account...
                 </div>
               ) : (
-                "Create Account"
+                "Sign Up & Confirm Your Email"
               )}
             </Button>
           </form>
         </Form>
       </CardWrapper>
+      {showSuccessPopup && (
+        <SuccessPopup
+          isOpen={showSuccessPopup}
+          onClose={handleClosePopup}
+        />
+      )}
     </div>
   );
 };
