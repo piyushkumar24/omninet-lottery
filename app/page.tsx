@@ -218,7 +218,7 @@ export default function Home() {
           </div>
           
           <h1 className={cn(
-            "text-4xl md:text-6xl lg:text-7xl font-bold mb-8 text-white max-w-5xl leading-tight",
+            "text-4xl md:text-5xl lg:text-6xl font-bold mb-8 text-white max-w-5xl leading-tight",
             font.className,
           )}>
             Support the Future.
@@ -227,13 +227,13 @@ export default function Home() {
             </span>
           </h1>
           
-          <p className="text-xl md:text-2xl mb-12 max-w-3xl text-white/90 leading-relaxed">
+          <p className="text-md md:text-xl mb-12 max-w-2xl text-white/90 leading-relaxed">
             Join our mission to democratize internet access worldwide. Complete surveys, 
             earn tickets, and help bring connectivity to underserved communities.
           </p>
           
           {/* Enhanced Countdown Timer */}
-          <div className="w-full max-w-4xl mb-12">
+          <div className="w-full max-w-xl mb-12">
             <CountdownTimer targetDate={nextDrawDate} theme="dark" />
           </div>
           

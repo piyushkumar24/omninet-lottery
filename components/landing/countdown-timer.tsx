@@ -90,8 +90,8 @@ export const CountdownTimer = ({ targetDate, theme = "light" }: CountdownTimerPr
               {/* Number display */}
               <div className={`
                 bg-gradient-to-br ${unit.color} 
-                text-white rounded-2xl w-full 
-                py-4 md:py-6 text-center 
+                text-white rounded-2xl w-20 
+                py-2 md:py-4 text-center 
                 shadow-lg shadow-black/10
                 transition-all duration-300 
                 group-hover:scale-105 group-hover:shadow-xl
