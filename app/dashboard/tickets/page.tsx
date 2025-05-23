@@ -18,6 +18,11 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getUserDrawParticipations } from "@/data/draw";
+import { 
+  getUserAvailableTickets, 
+  getUserUsedTickets, 
+  getUserTotalTickets 
+} from "@/lib/ticket-utils";
 
 export const metadata: Metadata = {
   title: "My Tickets | Social Lottery",
@@ -61,7 +66,12 @@ export default async function TicketsPage() {
     return redirect("/auth/blocked");
   }
 
-  // Fetch user's tickets with details
+  // Get accurate ticket counts using utility functions
+  const activeTickets = await getUserAvailableTickets(user.id);
+  const usedTickets = await getUserUsedTickets(user.id);
+  const totalTickets = await getUserTotalTickets(user.id);
+
+  // Fetch user's tickets with details for history
   const tickets = await db.ticket.findMany({
     where: {
       userId: user.id,
@@ -83,11 +93,6 @@ export default async function TicketsPage() {
     return acc;
   }, {} as Record<TicketSource, typeof tickets>);
 
-  // Calculate stats
-  const activeTickets = tickets.filter(ticket => !ticket.isUsed).length;
-  const usedTickets = tickets.filter(ticket => ticket.isUsed).length;
-  const totalTickets = tickets.length;
-
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -103,10 +108,10 @@ export default async function TicketsPage() {
               <div className="bg-green-100 p-2 rounded-full mr-3">
                 <Ticket className="h-5 w-5 text-green-600" />
               </div>
-              <h3 className="text-lg font-semibold text-green-800">Active Tickets</h3>
+              <h3 className="text-lg font-semibold text-green-800">Available Tickets</h3>
             </div>
             <p className="text-3xl font-bold mt-2 text-green-900">{activeTickets}</p>
-            <p className="text-sm text-green-700 mt-1">Available for lottery</p>
+            <p className="text-sm text-green-700 mt-1">Ready for lottery participation</p>
           </CardContent>
         </Card>
         

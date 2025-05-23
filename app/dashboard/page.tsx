@@ -8,6 +8,7 @@ import { EarnTickets } from "@/components/dashboard/earn-tickets";
 import { RecentWinners } from "@/components/dashboard/recent-winners";
 import { LotteryParticipationWrapper } from "@/components/lottery/lottery-participation-wrapper";
 import { createOrGetNextDraw, getUserParticipationInDraw } from "@/data/draw";
+import { getUserAvailableTickets } from "@/lib/ticket-utils";
 
 export const metadata: Metadata = {
   title: "Dashboard | Social Lottery",
@@ -25,24 +26,19 @@ export default async function DashboardPage() {
     return redirect("/auth/blocked");
   }
 
-  // Fetch user's tickets
-  const tickets = await db.ticket.count({
-    where: {
-      userId: user.id,
-      isUsed: false,
-    },
-  });
+  // Get user's available tickets using utility function
+  const tickets = await getUserAvailableTickets(user.id);
 
-  // Fetch total tickets for this draw
-  const totalTickets = await db.ticket.count({
+  // Fetch total available tickets for winning chance calculation
+  const totalAvailableTickets = await db.ticket.count({
     where: {
       isUsed: false,
     },
   });
 
   // Calculate winning chance
-  const winningChance = tickets > 0 && totalTickets > 0
-    ? ((tickets / totalTickets) * 100).toFixed(2)
+  const winningChance = tickets > 0 && totalAvailableTickets > 0
+    ? ((tickets / totalAvailableTickets) * 100).toFixed(2)
     : "0";
   
   // Get next Thursday draw date

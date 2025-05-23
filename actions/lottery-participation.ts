@@ -9,6 +9,7 @@ import {
   getUserParticipationInDraw, 
   createOrGetNextDraw 
 } from "@/data/draw";
+import { verifyUserTicketAvailability } from "@/lib/ticket-utils";
 
 export const participateInLottery = async (
   values: z.infer<typeof LotteryParticipationSchema>
@@ -32,6 +33,13 @@ export const participateInLottery = async (
   const { ticketsToUse, drawId } = validatedFields.data;
 
   try {
+    // Pre-validate ticket availability
+    const ticketValidation = await verifyUserTicketAvailability(user.id, ticketsToUse);
+    
+    if (!ticketValidation.canParticipate) {
+      return { error: ticketValidation.error };
+    }
+
     // Use database transaction to ensure atomicity
     const result = await db.$transaction(async (tx) => {
       // Check if draw exists and is active
@@ -64,7 +72,7 @@ export const participateInLottery = async (
         throw new Error("This draw has already ended!");
       }
 
-      // Get user's available tickets
+      // Double-check user's available tickets within transaction
       const availableTickets = await tx.ticket.count({
         where: {
           userId: user.id,
@@ -86,7 +94,7 @@ export const participateInLottery = async (
         },
       });
 
-      // Get the exact tickets to update (oldest first)
+      // Get the exact tickets to update (oldest first for fairness)
       const ticketsToUpdate = await tx.ticket.findMany({
         where: {
           userId: user.id,
@@ -115,7 +123,7 @@ export const participateInLottery = async (
           },
         });
 
-        // Mark exact tickets as used
+        // Mark exact tickets as used for this specific draw
         await tx.ticket.updateMany({
           where: {
             id: {
@@ -153,7 +161,7 @@ export const participateInLottery = async (
           },
         });
 
-        // Mark exact tickets as used
+        // Mark exact tickets as used for this specific draw
         await tx.ticket.updateMany({
           where: {
             id: {
