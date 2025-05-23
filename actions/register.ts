@@ -16,7 +16,60 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
     return { error: "Invalid fields!" };
   }
 
-  const { email, password, name, referralCode } = validatedFields.data;
+  const { 
+    email, 
+    password, 
+    name, 
+    referralCode, 
+    agreeToUpdates, 
+    subscribeNewsletter, 
+    captchaToken 
+  } = validatedFields.data;
+
+  // Verify reCAPTCHA
+  if (!captchaToken || captchaToken.trim() === '') {
+    return { error: "Please complete the reCAPTCHA verification." };
+  }
+
+  try {
+    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+    
+    if (!secretKey) {
+      console.error("RECAPTCHA_SECRET_KEY is not configured");
+      return { error: "Server configuration error. Please try again." };
+    }
+
+    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify`;
+    
+    const verifyData = new URLSearchParams({
+      secret: secretKey,
+      response: captchaToken,
+    });
+
+    const captchaResponse = await fetch(verifyUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: verifyData,
+    });
+
+    if (!captchaResponse.ok) {
+      console.error("Google reCAPTCHA API response not OK:", captchaResponse.status);
+      return { error: "reCAPTCHA verification failed. Please try again." };
+    }
+
+    const captchaResult = await captchaResponse.json();
+
+    if (!captchaResult.success) {
+      console.error("Captcha verification failed:", captchaResult["error-codes"] || "Unknown error");
+      return { error: "reCAPTCHA verification failed. Please try again." };
+    }
+  } catch (error) {
+    console.error("Error verifying captcha:", error);
+    return { error: "Error verifying reCAPTCHA. Please try again." };
+  }
+
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const existingUser = await getUserByEmail(email);
@@ -49,6 +102,8 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
       email,
       password: hashedPassword,
       referredBy,
+      // Store newsletter subscription preference
+      // Note: You might want to add a newsletter field to your user schema
     },
   });
 

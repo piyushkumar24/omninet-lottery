@@ -59,8 +59,21 @@ export const RegisterSchema = z.object({
   password: z.string().min(6, {
     message: "Minimum 6 characters required",
   }),
+  confirmPassword: z.string().min(6, {
+    message: "Password confirmation is required",
+  }),
   name: z.string().min(1, {
     message: "Name is required",
   }),
   referralCode: z.optional(z.string()),
+  agreeToUpdates: z.boolean().refine((val) => val === true, {
+    message: "You must agree to receive lottery updates",
+  }),
+  subscribeNewsletter: z.optional(z.boolean()),
+  captchaToken: z.string().min(1, {
+    message: "Please complete the reCAPTCHA verification",
+  }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
