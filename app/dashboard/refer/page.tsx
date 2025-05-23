@@ -24,7 +24,7 @@ export default function ReferPage() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const referralLink = `${baseUrl}/?ref=${referralCode}`;
+  const referralLink = referralCode ? `${baseUrl}/?ref=${referralCode}` : 'Loading...';
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -39,16 +39,21 @@ export default function ReferPage() {
     try {
       setIsLoading(true);
       const response = await fetch('/api/referrals/code');
+      
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setReferralCode(data.referralCode);
       } else {
-        toast.error("Failed to get referral code");
+        toast.error(data.message || "Failed to get referral code");
       }
     } catch (error) {
       console.error("Error fetching referral code:", error);
-      toast.error("Something went wrong");
+      toast.error("Failed to load referral code. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -57,27 +62,44 @@ export default function ReferPage() {
   const fetchReferrals = async () => {
     try {
       const response = await fetch('/api/referrals');
+      
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setReferrals(data.referrals);
+      } else {
+        console.error("API Error:", data.message);
       }
     } catch (error) {
       console.error("Error fetching referrals:", error);
+      toast.error("Failed to load referrals. Please refresh the page.");
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(referralLink);
-    setIsCopied(true);
-    toast.success("Referral link copied to clipboard!");
+  const copyToClipboard = async () => {
+    if (!referralCode) return;
     
-    setTimeout(() => {
-      setIsCopied(false);
-    }, 3000);
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      setIsCopied(true);
+      toast.success("Referral link copied to clipboard!");
+      
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      toast.error("Failed to copy to clipboard.");
+    }
   };
 
   const shareViaEmail = () => {
+    if (!referralCode) return;
+    
     const subject = encodeURIComponent("Join me in the Social Lottery");
     const body = encodeURIComponent(`Hey, I thought you might be interested in this social lottery platform. You can win Amazon gift cards by completing surveys and other social activities. Use my referral link to sign up: ${referralLink}`);
     window.open(`mailto:?subject=${subject}&body=${body}`);

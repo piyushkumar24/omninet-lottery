@@ -37,9 +37,16 @@ export default function Home() {
     const checkSession = async () => {
       try {
         const response = await fetch('/api/auth/session');
+        
+        if (!response.ok) {
+          console.error("Session API returned an error:", response.status);
+          return;
+        }
+        
         const data = await response.json();
         
-        if (data.user) {
+        // Check if data and data.user exist before accessing
+        if (data && data.user) {
           router.push('/dashboard');
         }
       } catch (error) {
@@ -53,6 +60,12 @@ export default function Home() {
     const fetchStats = async () => {
       try {
         const response = await fetch('/api/stats');
+        
+        if (!response.ok) {
+          console.error("Stats API returned an error:", response.status);
+          return;
+        }
+        
         const data = await response.json();
         
         if (data.success) {
@@ -68,9 +81,16 @@ export default function Home() {
       }
     };
     
-    checkSession();
-    fetchStats();
-  }, [router, searchParams]);
+    // Run these functions in sequence to avoid race conditions
+    const initializeApp = async () => {
+      await checkSession();
+      if (!isLoading) {
+        await fetchStats();
+      }
+    };
+    
+    initializeApp();
+  }, [router, searchParams, isLoading]);
   
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;

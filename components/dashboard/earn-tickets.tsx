@@ -24,6 +24,12 @@ export const EarnTickets = ({ userId, hasSurveyTicket }: EarnTicketsProps) => {
     const fetchReferralCode = async () => {
       try {
         const response = await fetch('/api/referrals/code');
+        
+        if (!response.ok) {
+          console.error("API error:", response.status, response.statusText);
+          return;
+        }
+        
         const data = await response.json();
         
         if (data.success) {
@@ -51,6 +57,12 @@ export const EarnTickets = ({ userId, hasSurveyTicket }: EarnTicketsProps) => {
         }),
       });
       
+      if (!response.ok) {
+        console.error("API error:", response.status, response.statusText);
+        toast.error(`Failed to earn ticket: ${response.statusText}`);
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.success) {
@@ -60,7 +72,7 @@ export const EarnTickets = ({ userId, hasSurveyTicket }: EarnTicketsProps) => {
         }
         router.refresh();
       } else {
-        toast.error(data.message);
+        toast.error(data.message || "Failed to earn ticket");
       }
     } catch (error) {
       toast.error("Something went wrong");
@@ -89,12 +101,21 @@ export const EarnTickets = ({ userId, hasSurveyTicket }: EarnTicketsProps) => {
       // If we don't have the referral code yet, fetch it
       if (!referralCode) {
         const response = await fetch('/api/referrals/code');
+        
+        if (!response.ok) {
+          console.error("API error:", response.status, response.statusText);
+          toast.error("Failed to get referral code");
+          setIsLoadingReferral(false);
+          return;
+        }
+        
         const data = await response.json();
         
         if (data.success) {
           setReferralCode(data.referralCode);
         } else {
           toast.error("Failed to get referral code");
+          setIsLoadingReferral(false);
           return;
         }
       }
@@ -104,9 +125,13 @@ export const EarnTickets = ({ userId, hasSurveyTicket }: EarnTicketsProps) => {
       const referralLink = `${baseUrl}/?ref=${referralCode}`;
       
       // Copy to clipboard
-      await navigator.clipboard.writeText(referralLink);
-      toast.success("Referral link copied to clipboard!");
-      
+      try {
+        await navigator.clipboard.writeText(referralLink);
+        toast.success("Referral link copied to clipboard!");
+      } catch (clipboardError) {
+        console.error("Clipboard error:", clipboardError);
+        toast.error("Failed to copy to clipboard");
+      }
     } catch (error) {
       console.error("Error copying referral link:", error);
       toast.error("Failed to copy referral link");

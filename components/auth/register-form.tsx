@@ -29,11 +29,15 @@ export const RegisterForm = () => {
 
   useEffect(() => {
     // Get referral code from localStorage if available
-    if (typeof window !== 'undefined') {
-      const storedReferralCode = localStorage.getItem('referralCode');
-      if (storedReferralCode) {
-        setReferralCode(storedReferralCode);
+    try {
+      if (typeof window !== 'undefined') {
+        const storedReferralCode = localStorage.getItem('referralCode');
+        if (storedReferralCode) {
+          setReferralCode(storedReferralCode);
+        }
       }
+    } catch (error) {
+      console.error("Error accessing localStorage:", error);
     }
   }, []);
 
@@ -65,8 +69,12 @@ export const RegisterForm = () => {
           setSuccess(data.success);
           
           // Clear referral code from localStorage after successful registration
-          if (data.success && typeof window !== 'undefined') {
-            localStorage.removeItem('referralCode');
+          try {
+            if (data.success && typeof window !== 'undefined') {
+              localStorage.removeItem('referralCode');
+            }
+          } catch (error) {
+            console.error("Error clearing localStorage:", error);
           }
         });
     });

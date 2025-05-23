@@ -8,11 +8,11 @@ export async function GET() {
     const user = await getCurrentUser();
     
     if (!user || !user.id) {
-      return new NextResponse(
-        JSON.stringify({
+      return NextResponse.json(
+        {
           success: false,
           message: "Unauthorized",
-        }),
+        },
         { status: 401 }
       );
     }
@@ -50,11 +50,11 @@ export async function GET() {
   } catch (error) {
     console.error("Error generating referral code:", error);
     
-    return new NextResponse(
-      JSON.stringify({
+    return NextResponse.json(
+      {
         success: false,
-        message: "Internal error",
-      }),
+        message: "Internal server error",
+      },
       { status: 500 }
     );
   }

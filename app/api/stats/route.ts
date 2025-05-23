@@ -28,17 +28,17 @@ export async function GET() {
       success: true,
       totalUsers,
       totalTickets,
-      latestWinner: latestWinner?.user.name || null,
+      latestWinner: latestWinner?.user?.name || null,
       nextDrawDate,
     });
   } catch (error) {
     console.error("Error fetching stats:", error);
     
-    return new NextResponse(
-      JSON.stringify({
+    return NextResponse.json(
+      {
         success: false,
-        message: "Internal error",
-      }),
+        message: "Internal server error",
+      },
       { status: 500 }
     );
   }
