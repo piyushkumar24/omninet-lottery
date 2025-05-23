@@ -9,7 +9,8 @@ import {
   Users,
   Settings,
   Shield,
-  User
+  User,
+  Home
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentRole } from "@/hooks/use-current-role";
@@ -62,7 +63,7 @@ export const Sidebar = () => {
           </h1>
         </Link>
       </div>
-      <div className="flex flex-col w-full">
+      <div className="flex flex-col w-full flex-1">
         {routes.map((route) => (
           <Link
             key={route.href}
@@ -89,6 +90,16 @@ export const Sidebar = () => {
             Admin Panel
           </Link>
         )}
+      </div>
+      
+      {/* Back to Landing Button */}
+      <div className="p-4 mt-auto border-t">
+        <Link href="/">
+          <div className="flex items-center gap-x-2 text-slate-600 text-sm font-medium px-3 py-3 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
+            <Home className="h-5 w-5" />
+            <span>Back to Landing</span>
+          </div>
+        </Link>
       </div>
     </div>
   );

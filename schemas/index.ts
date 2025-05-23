@@ -77,3 +77,14 @@ export const RegisterSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
+
+export const LotteryParticipationSchema = z.object({
+  ticketsToUse: z.number().min(1, {
+    message: "You must use at least 1 ticket",
+  }).max(1000, {
+    message: "Maximum 1000 tickets allowed per participation",
+  }),
+  drawId: z.string().min(1, {
+    message: "Draw ID is required",
+  }),
+});

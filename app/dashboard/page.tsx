@@ -6,6 +6,8 @@ import { TicketStats } from "@/components/dashboard/ticket-stats";
 import { NextDraw } from "@/components/dashboard/next-draw";
 import { EarnTickets } from "@/components/dashboard/earn-tickets";
 import { RecentWinners } from "@/components/dashboard/recent-winners";
+import { LotteryParticipationWrapper } from "@/components/lottery/lottery-participation-wrapper";
+import { createOrGetNextDraw, getUserParticipationInDraw } from "@/data/draw";
 
 export const metadata: Metadata = {
   title: "Dashboard | Social Lottery",
@@ -62,10 +64,37 @@ export default async function DashboardPage() {
     },
   });
 
+  // Get or create next lottery draw
+  const draw = await createOrGetNextDraw();
+  
+  // Get user's participation in the current draw
+  const userParticipation = await getUserParticipationInDraw(user.id, draw.id);
+
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Welcome, {user.name || "User"}!</h1>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Welcome, {user.name || "User"}!
+        </h1>
+      </div>
+
+      {/* Lottery Participation Section */}
+      <div className="mb-8">
+        <LotteryParticipationWrapper
+          availableTickets={tickets}
+          draw={{
+            id: draw.id,
+            drawDate: draw.drawDate.toISOString(),
+            prizeAmount: draw.prizeAmount,
+            totalTickets: draw.totalTickets,
+            participants: draw.participants,
+          }}
+          userParticipation={userParticipation}
+        />
+      </div>
       
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <TicketStats tickets={tickets} winningChance={winningChance} />
         <NextDraw nextDraw={nextDraw} tickets={tickets} />
@@ -75,6 +104,7 @@ export default async function DashboardPage() {
         </div>
       </div>
       
+      {/* Earn Tickets Section */}
       <div className="mt-6">
         <EarnTickets userId={user.id} hasSurveyTicket={tickets > 0} />
       </div>
