@@ -17,6 +17,8 @@ export async function GET() {
         user: {
           select: {
             name: true,
+            username: true,
+            profileImage: true,
           },
         },
       },
@@ -30,6 +32,11 @@ export async function GET() {
       totalUsers,
       totalTickets,
       latestWinner: latestWinner?.user?.name || null,
+      latestWinnerProfile: latestWinner?.user ? {
+        name: latestWinner.user.name,
+        username: latestWinner.user.username,
+        profileImage: latestWinner.user.profileImage,
+      } : null,
       nextDrawDate: nextDrawDate.toISOString(),
       prizeName: "$50 Amazon Gift Card",
     });
@@ -43,6 +50,7 @@ export async function GET() {
         totalUsers: 0,
         totalTickets: 0,
         latestWinner: null,
+        latestWinnerProfile: null,
         nextDrawDate: getNextThursday().toISOString(),
         prizeName: "$50 Amazon Gift Card",
       },

@@ -1,12 +1,20 @@
 import { Card } from "@/components/ui/card";
 import { Gift, Ticket, Users } from "lucide-react";
 import { TrophyIcon } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+interface WinnerProfile {
+  name: string;
+  username: string;
+  profileImage?: string;
+}
 
 interface LotteryStatsProps {
   totalUsers: number;
   totalTickets: number;
   prizeAmount: number;
   latestWinner: string;
+  latestWinnerProfile?: WinnerProfile | null;
   theme?: "light" | "dark";
 }
 
@@ -15,6 +23,7 @@ export const LotteryStats = ({
   totalTickets,
   prizeAmount,
   latestWinner,
+  latestWinnerProfile,
   theme = "light"
 }: LotteryStatsProps) => {
   // Determine styling based on theme
@@ -24,6 +33,18 @@ export const LotteryStats = ({
   const borderColorClass = theme === "dark" ? "border-indigo-700" : "border-gray-100";
   const iconBgClass = theme === "dark" ? "bg-indigo-700" : "bg-indigo-100";
   const iconColorClass = theme === "dark" ? "text-white" : "text-indigo-600";
+
+  // Default profile images for random selection
+  const defaultImages = [
+    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+    "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
+  ];
+
+  const getRandomProfileImage = () => {
+    return defaultImages[Math.floor(Math.random() * defaultImages.length)];
+  };
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -65,12 +86,33 @@ export const LotteryStats = ({
       
       <Card className={`${bgColorClass} ${borderColorClass} border shadow-sm p-4`}>
         <div className="flex items-center space-x-4">
-          <div className={`${iconBgClass} p-3 rounded-full`}>
-            <TrophyIcon className={`h-6 w-6 ${iconColorClass}`} />
-          </div>
-          <div>
+          {latestWinnerProfile ? (
+            <Avatar className="h-12 w-12">
+              <AvatarImage 
+                src={latestWinnerProfile.profileImage || getRandomProfileImage()} 
+                alt={latestWinnerProfile.name} 
+              />
+              <AvatarFallback>{latestWinnerProfile.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className={`${iconBgClass} p-3 rounded-full`}>
+              <TrophyIcon className={`h-6 w-6 ${iconColorClass}`} />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
             <p className={`text-sm font-medium ${secondaryTextColorClass}`}>Last Winner</p>
-            <p className={`text-xl font-semibold ${textColorClass}`}>{latestWinner}</p>
+            {latestWinnerProfile ? (
+              <div>
+                <p className={`text-lg font-semibold ${textColorClass} truncate`}>
+                  {latestWinnerProfile.name}
+                </p>
+                <p className={`text-sm ${secondaryTextColorClass} truncate`}>
+                  @{latestWinnerProfile.username}
+                </p>
+              </div>
+            ) : (
+              <p className={`text-xl font-semibold ${textColorClass}`}>{latestWinner}</p>
+            )}
           </div>
         </div>
       </Card>

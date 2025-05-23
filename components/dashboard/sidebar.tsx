@@ -8,7 +8,8 @@ import {
   Gift,
   Users,
   Settings,
-  Shield
+  Shield,
+  User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentRole } from "@/hooks/use-current-role";
@@ -19,6 +20,11 @@ const routes = [
     label: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
+  },
+  {
+    label: "My Profile",
+    icon: User,
+    href: "/dashboard/profile",
   },
   {
     label: "My Tickets",

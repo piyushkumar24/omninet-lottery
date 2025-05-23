@@ -25,7 +25,8 @@ export default function Home() {
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalTickets: 0,
-    latestWinner: "No winner yet"
+    latestWinner: "No winner yet",
+    latestWinnerProfile: null as { name: string; username: string; profileImage?: string } | null
   });
   const [nextDrawDate, setNextDrawDate] = useState(new Date());
   
@@ -112,7 +113,8 @@ export default function Home() {
             setStats({
               totalUsers: data.totalUsers || 0,
               totalTickets: data.totalTickets || 0,
-              latestWinner: data.latestWinner || "No winner yet"
+              latestWinner: data.latestWinner || "No winner yet",
+              latestWinnerProfile: data.latestWinnerProfile || null
             });
             
             if (data.nextDrawDate) {
@@ -520,6 +522,7 @@ export default function Home() {
                   totalTickets={stats.totalTickets}
                   prizeAmount={50}
                   latestWinner={stats.latestWinner}
+                  latestWinnerProfile={stats.latestWinnerProfile}
                   theme="dark"
                 />
                 
@@ -559,7 +562,7 @@ export default function Home() {
               <Link href="/auth/register">
                 <Button size="lg" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 hover:scale-105 text-lg py-6 font-semibold">
                   <Play className="mr-2 h-5 w-5" />
-                  Join the Movement
+                  Enter Now and Win
                 </Button>
               </Link>
             </div>
