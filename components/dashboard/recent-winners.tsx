@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Gift } from "lucide-react";
 import Image from "next/image";
+import { formatDate } from "@/lib/utils";
 
 interface Winner {
   id: string;
@@ -51,7 +52,7 @@ export const RecentWinners = ({ winners }: RecentWinnersProps) => {
                 <div className="flex-1">
                   <p className="text-sm font-medium">{winner.user.name || "Anonymous"}</p>
                   <p className="text-xs text-slate-500">
-                    {new Date(winner.drawDate).toLocaleDateString()}
+                    {formatDate(new Date(winner.drawDate), 'short')}
                   </p>
                 </div>
                 <div className="text-right">

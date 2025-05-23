@@ -15,10 +15,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatDate } from "@/lib/utils";
 
 export const AdminNavbar = () => {
   const [notifications, setNotifications] = useState<number>(0);
   const [nextDrawDate, setNextDrawDate] = useState<Date | null>(null);
+  const [nextDrawFormatted, setNextDrawFormatted] = useState<{ date: string, time: string }>({
+    date: '',
+    time: ''
+  });
 
   useEffect(() => {
     // Calculate next draw date (Thursday at 18:30 IST)
@@ -32,6 +37,21 @@ export const AdminNavbar = () => {
     }
     
     setNextDrawDate(nextThursday);
+    
+    // Format the date for display
+    // Using standard US format with fixed parts to avoid hydration issues
+    setNextDrawFormatted({
+      date: new Date(nextThursday).toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        timeZone: 'UTC' 
+      }),
+      time: new Date(nextThursday).toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'UTC'
+      })
+    });
     
     // In a real app, this would fetch notifications from an API
     const fetchNotifications = async () => {
@@ -75,15 +95,7 @@ export const AdminNavbar = () => {
             <div>
               <span className="text-slate-500">Next Draw:</span>{" "}
               <span className="font-medium">
-                {nextDrawDate.toLocaleDateString(undefined, { 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
-                {" "}
-                {nextDrawDate.toLocaleTimeString(undefined, { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
+                {nextDrawFormatted.date} {nextDrawFormatted.time}
               </span>
             </div>
           </div>

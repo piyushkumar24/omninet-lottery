@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import Image from "next/image";
+import { formatDate } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -112,9 +112,13 @@ export function DrawLogsTable({ draws }: DrawLogsTableProps) {
                 </div>
               </TableCell>
               <TableCell>
-                {format(new Date(draw.drawDate), "PPP")}
+                {formatDate(new Date(draw.drawDate), 'dateOnly')}
                 <p className="text-xs text-slate-500">
-                  {format(new Date(draw.drawDate), "p")}
+                  {new Date(draw.drawDate).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'UTC'
+                  })}
                 </p>
               </TableCell>
               <TableCell>{draw.ticketCount}</TableCell>

@@ -1,11 +1,11 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { format } from "date-fns";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TicketSource } from "@prisma/client";
 import { Ticket, ClipboardCheck, Share, Users } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "My Tickets | Social Lottery",
@@ -140,7 +140,7 @@ export default async function TicketsPage() {
                         </span>
                       </div>
                       <p className="text-sm text-slate-500 mt-1">
-                        Earned on {format(new Date(ticket.createdAt), "MMMM d, yyyy 'at' h:mm a")}
+                        Earned on {formatDate(new Date(ticket.createdAt), 'full')}
                       </p>
                       <p className="text-sm mt-2">
                         Ticket ID: <span className="font-mono text-xs">{ticket.id.substring(0, 8)}...</span>

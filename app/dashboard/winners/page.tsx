@@ -67,7 +67,7 @@ export default async function WinnersPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="p-4 align-middle">{formatDate(winner.drawDate)}</td>
+                        <td className="p-4 align-middle">{formatDate(winner.drawDate, 'dateOnly')}</td>
                         <td className="p-4 align-middle">{winner.ticketCount}</td>
                         <td className="p-4 align-middle text-right">${winner.prizeAmount.toFixed(2)}</td>
                         <td className="p-4 align-middle text-center">

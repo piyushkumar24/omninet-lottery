@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
 import { UserRole } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import { formatDate } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -148,7 +148,7 @@ export const UsersTable = ({ users }: UsersTableProps) => {
                   </Badge>
                 )}
               </TableCell>
-              <TableCell>{format(new Date(user.createdAt), "MMM d, yyyy")}</TableCell>
+              <TableCell>{formatDate(new Date(user.createdAt), 'dateOnly')}</TableCell>
               <TableCell>{user.ticketCount}</TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>

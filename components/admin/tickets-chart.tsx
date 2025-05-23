@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Chart, registerables } from "chart.js";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/utils";
 
 Chart.register(...registerables);
 
@@ -31,9 +31,14 @@ export function TicketsChart({ ticketsData }: TicketsChartProps) {
     if (!ctx) return;
 
     // Process data for chart
-    const labels = ticketsData.map((entry) => 
-      format(new Date(entry.createdAt), "MMM d")
-    );
+    const labels = ticketsData.map((entry) => {
+      const date = new Date(entry.createdAt);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC'
+      });
+    });
     
     const data = ticketsData.map((entry) => entry._count.id);
 

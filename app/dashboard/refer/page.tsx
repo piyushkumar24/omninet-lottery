@@ -184,7 +184,7 @@ export default function ReferPage() {
                     <div>
                       <p className="font-medium">{referral.name || "Anonymous User"}</p>
                       <p className="text-xs text-slate-500">{referral.email}</p>
-                      <p className="text-xs text-slate-500">Joined {formatDate(new Date(referral.createdAt))}</p>
+                      <p className="text-xs text-slate-500">Joined {formatDate(new Date(referral.createdAt), 'short')}</p>
                     </div>
                     <div className="ml-auto bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
                       +1 Ticket
