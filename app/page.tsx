@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/landing/countdown-timer";
 import { LotteryStats } from "@/components/landing/lottery-stats";
 import { cn } from "@/lib/utils";
-import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play } from "lucide-react";
+import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play, User, Trophy } from "lucide-react";
 
 const font = Poppins({
   subsets: ["latin"],
@@ -20,6 +20,7 @@ export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -32,13 +33,13 @@ export default function Home() {
   const showcaseImages = [
     {
       title: "Global Connectivity",
-      image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&ixlib=rb-4.0.3",
+      image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&auto=format&fit=crop&ixlib=rb-4.0.3",
       description: "Connecting people worldwide through technology"
     },
     {
-      title: "Community Impact",
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&ixlib=rb-4.0.3",
-      description: "Building stronger communities together"
+      title: "World Map Network",
+      image: "https://images.unsplash.com/photo-1526378722484-bd91ca387e72?w=800&auto=format&fit=crop&ixlib=rb-4.0.3",
+      description: "Building global internet infrastructure"
     },
     {
       title: "Digital Infrastructure",
@@ -46,9 +47,9 @@ export default function Home() {
       description: "Advancing global internet infrastructure"
     },
     {
-      title: "Reward System",
+      title: "Amazon Gift Cards",
       image: "https://images.unsplash.com/photo-1607734834519-d8576ae60ea4?w=800&auto=format&fit=crop&ixlib=rb-4.0.3",
-      description: "Win Amazon gift cards while making a difference"
+      description: "Win $50 Amazon gift cards weekly"
     },
   ];
   
@@ -66,16 +67,20 @@ export default function Home() {
         
         if (!response.ok) {
           console.error("Session API returned an error:", response.status);
+          setIsAuthenticated(false);
           return;
         }
         
         const data = await response.json();
         
         if (data && data.user) {
-          router.push('/dashboard');
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error("Error checking session:", error);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -141,13 +146,11 @@ export default function Home() {
     
     const initializeApp = async () => {
       await checkSession();
-      if (!isLoading) {
-        await fetchStats();
-      }
+      await fetchStats();
     };
     
     initializeApp();
-  }, [router, searchParams, isLoading]);
+  }, [router, searchParams]);
   
   if (isLoading) {
     return (
@@ -190,20 +193,31 @@ export default function Home() {
               <span className={cn("text-2xl font-bold text-white", font.className)}>0mninet</span>
             </div>
             <div className="flex items-center gap-4">
-              <Link href="/auth/login">
-                <Button 
-                  variant="ghost" 
-                  className="text-white hover:bg-white/20 border-2 border-white/30 hover:border-white/50 backdrop-blur-md transition-all duration-300 hover:scale-105 font-semibold"
-                >
-                  Log In
-                </Button>
-              </Link>
-              <Link href="/auth/register">
-                <Button className="bg-white text-slate-900 hover:bg-gray-100 border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold">
-                  <span>Sign Up</span>
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
+              {!isAuthenticated ? (
+                <>
+                  <Link href="/auth/login">
+                    <Button 
+                      variant="ghost" 
+                      className="text-white hover:bg-white/20 border-2 border-white/30 hover:border-white/50 backdrop-blur-md transition-all duration-300 hover:scale-105 font-semibold"
+                    >
+                      Log In
+                    </Button>
+                  </Link>
+                  <Link href="/auth/register">
+                    <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold">
+                      <span>Sign Up</span>
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <Link href="/dashboard">
+                  <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>My Account</span>
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -221,15 +235,14 @@ export default function Home() {
             "text-4xl md:text-5xl lg:text-6xl font-bold mb-8 text-white max-w-5xl leading-tight",
             font.className,
           )}>
-            Support the Future.
+            Support the Free Internet Revolution.
             <span className="block bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-              Win $50 Weekly.
+              Win a $50 Amazon Gift Card Every Week.
             </span>
           </h1>
           
           <p className="text-md md:text-xl mb-12 max-w-2xl text-white/90 leading-relaxed">
-            Join our mission to democratize internet access worldwide. Complete surveys, 
-            earn tickets, and help bring connectivity to underserved communities.
+            Join the weekly lottery, earn tickets by completing surveys, and help bring free internet to the world.
           </p>
           
           {/* Enhanced Countdown Timer */}
@@ -239,24 +252,38 @@ export default function Home() {
           
           {/* Improved Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-6 mb-8">
-            <Link href="/auth/register">
-              <Button 
-                size="lg" 
-                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 text-lg px-10 py-6 h-auto font-semibold hover:scale-105 group"
-              >
-                <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                Join the Lottery Now
-              </Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="bg-white/10 text-white border-2 border-white/30 hover:bg-white/20 hover:border-white/50 backdrop-blur-md text-lg px-10 py-6 h-auto font-semibold transition-all duration-300 hover:scale-105"
-              >
-                My Dashboard
-              </Button>
-            </Link>
+            {!isAuthenticated ? (
+              <>
+                <Link href="/auth/register">
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 text-lg px-10 py-6 h-auto font-semibold hover:scale-105 group"
+                  >
+                    <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                    Join the Lottery Now
+                  </Button>
+                </Link>
+                <Link href="/auth/login">
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="bg-white/10 text-white border-2 border-white/30 hover:bg-white/20 hover:border-white/50 backdrop-blur-md text-lg px-10 py-6 h-auto font-semibold transition-all duration-300 hover:scale-105"
+                  >
+                    Log In
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <Link href="/dashboard">
+                <Button 
+                  size="lg" 
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-none shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 text-lg px-10 py-6 h-auto font-semibold hover:scale-105 group"
+                >
+                  <User className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                  Go to Dashboard
+                </Button>
+              </Link>
+            )}
           </div>
           
           {/* Trust indicators */}
@@ -317,7 +344,7 @@ export default function Home() {
             <div>
               <div className="inline-flex items-center px-4 py-2 bg-emerald-100 rounded-full text-emerald-700 text-sm font-medium mb-6">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></div>
-                Why Choose 0mninet
+                Why Join the 0mninet Lottery?
               </div>
               
               <h2 className={cn(
@@ -329,8 +356,8 @@ export default function Home() {
               </h2>
               
               <p className="text-xl mb-10 text-slate-600 leading-relaxed">
-                Every survey you complete and every ticket you earn contributes to our mission 
-                of bringing free, accessible internet to underserved communities worldwide.
+              Every ticket you earn helps 0mninet grow. You&apos;re not just entering a draw — you&apos;re joining a
+              global mission to make internet access free and accessible for all.
               </p>
               
               <div className="space-y-8">
@@ -368,7 +395,7 @@ export default function Home() {
               <div className="mt-12">
                 <Link href="/auth/register">
                   <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-lg px-10 py-4 shadow-xl hover:shadow-emerald-500/25 transition-all duration-300 hover:scale-105 font-semibold">
-                    Start Making a Difference
+                      Be Part of the Change
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
@@ -483,7 +510,7 @@ export default function Home() {
                 "text-4xl md:text-5xl font-bold mb-8 leading-tight",
                 font.className,
               )}>
-                This Week's
+                This Week&apos;s
                 <span className="block text-emerald-400">Prize Draw</span>
               </h2>
               
@@ -578,30 +605,5 @@ export default function Home() {
         </div>
       </div>
     </main>
-  );
-}
-
-// Trophy component
-function Trophy(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-      <path d="M4 22h16" />
-      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-    </svg>
   );
 }
