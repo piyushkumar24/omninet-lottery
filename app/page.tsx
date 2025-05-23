@@ -431,72 +431,6 @@ export default function Home() {
         </div>
       </div>
       
-      {/* Enhanced How It Works Section */}
-      <div className="bg-white py-24 md:py-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-20">
-            <div className="inline-flex items-center px-4 py-2 bg-blue-100 rounded-full text-blue-700 text-sm font-medium mb-6">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-              Simple Process
-            </div>
-            <h2 className={cn(
-              "text-4xl md:text-5xl font-bold mb-6 text-slate-900",
-              font.className,
-            )}>
-              How It Works
-            </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Getting started is simple. Follow these three steps to begin earning rewards while supporting global connectivity.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16">
-            {[
-              {
-                step: "1",
-                title: "Complete Surveys",
-                description: "Answer thoughtful surveys about technology access and digital inclusion. Each response helps us understand global connectivity needs.",
-                gradient: "from-emerald-500 to-emerald-600",
-                bgGradient: "from-emerald-50 to-emerald-100"
-              },
-              {
-                step: "2", 
-                title: "Earn Tickets",
-                description: "Receive lottery tickets for each completed survey and successful friend referral. More participation means more chances to win.",
-                gradient: "from-blue-500 to-blue-600",
-                bgGradient: "from-blue-50 to-blue-100"
-              },
-              {
-                step: "3",
-                title: "Win Rewards",
-                description: "Join our weekly draws every Thursday at 18:30 IST. Winners receive $50 Amazon gift cards delivered directly to their email.",
-                gradient: "from-purple-500 to-purple-600", 
-                bgGradient: "from-purple-50 to-purple-100"
-              }
-            ].map((item, index) => (
-              <div key={index} className={`bg-gradient-to-br ${item.bgGradient} rounded-3xl p-8 text-center relative overflow-hidden group hover:shadow-2xl transition-all duration-500 hover:scale-105`}>
-                <div className="relative z-10">
-                  <div className={`bg-gradient-to-br ${item.gradient} w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300 shadow-xl`}>
-                    <span className="text-white text-3xl font-bold">{item.step}</span>
-                  </div>
-                  <h3 className="text-2xl font-bold mb-4 text-slate-900">{item.title}</h3>
-                  <p className="text-slate-600 leading-relaxed">{item.description}</p>
-                </div>
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/30 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-700"></div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-20 text-center">
-            <Link href="/auth/register">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-lg px-12 py-6 h-auto shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 font-semibold">
-                Get Started Today
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
       
       {/* Enhanced Current Draw Section */}
       <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white py-24 md:py-32">
@@ -505,7 +439,7 @@ export default function Home() {
             <div>
               <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-white/90 text-sm font-medium mb-8">
                 <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
-                Live Draw Information
+                Global Lottery Dashboard
               </div>
               
               <h2 className={cn(
@@ -566,6 +500,80 @@ export default function Home() {
                 </Button>
               </Link>
             </div>
+          </div>
+        </div>
+      </div>
+
+    {/* Enhanced How It Works Section */}
+    <div className="bg-white py-24 md:py-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center px-4 py-2 bg-blue-100 rounded-full text-blue-700 text-sm font-medium mb-6">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+              Simple Process
+            </div>
+            <h2 className={cn(
+              "text-4xl md:text-5xl font-bold mb-6 text-slate-900",
+              font.className,
+            )}>
+              How It Works
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Getting started is simple. Follow these three steps to begin earning rewards while supporting global connectivity.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
+            {[
+              {
+                step: "1",
+                title: "Create a Account",
+                description: "Sign up with just your email to join the movement. Your account unlocks access to surveys, rewards, and future digital inclusion opportunities.",
+                gradient: "from-rose-500 to-rose-600", 
+                bgGradient: "from-rose-50 to-rose-100"
+              },
+              {
+                step: "2",
+                title: "Complete Surveys",
+                description: "Answer thoughtful surveys about technology access and digital inclusion. Each response helps us understand global connectivity needs.",
+                gradient: "from-emerald-500 to-emerald-600",
+                bgGradient: "from-emerald-50 to-emerald-100"
+              },
+              {
+                step: "3", 
+                title: "Earn Tickets",
+                description: "Receive lottery tickets for each completed survey and successful friend referral. More participation means more chances to win.",
+                gradient: "from-blue-500 to-blue-600",
+                bgGradient: "from-blue-50 to-blue-100"
+              },
+              {
+                step: "4",
+                title: "Win Rewards",
+                description: "Join our weekly draws every Thursday at 18:30 IST. Winners receive $50 Amazon gift cards delivered directly to their email.",
+                gradient: "from-purple-500 to-purple-600", 
+                bgGradient: "from-purple-50 to-purple-100"
+              }
+            ].map((item, index) => (
+              <div key={index} className={`bg-gradient-to-br ${item.bgGradient} rounded-3xl p-8 text-center relative overflow-hidden group hover:shadow-2xl transition-all duration-500 hover:scale-105`}>
+                <div className="relative z-10">
+                  <div className={`bg-gradient-to-br ${item.gradient} w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform duration-300 shadow-xl`}>
+                    <span className="text-white text-3xl font-bold">{item.step}</span>
+                  </div>
+                  <h3 className="text-2xl font-bold mb-4 text-slate-900">{item.title}</h3>
+                  <p className="text-slate-600 leading-relaxed">{item.description}</p>
+                </div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/30 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-700"></div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-20 text-center">
+            <Link href="/auth/register">
+              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-lg px-12 py-6 h-auto shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 font-semibold">
+                Get Started Now
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
