@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Clock } from "lucide-react";
 
 interface CountdownTimerProps {
   targetDate: Date;
@@ -15,15 +16,10 @@ export const CountdownTimer = ({ targetDate, theme = "light" }: CountdownTimerPr
     seconds: 0,
   });
 
-  // Determine styling based on theme
-  const bgColorClass = theme === "dark" 
-    ? "bg-indigo-800/80 border border-indigo-700" 
-    : "bg-indigo-600";
-  const labelColorClass = theme === "dark" 
-    ? "text-indigo-200" 
-    : "text-slate-600";
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const interval = setInterval(() => {
       const now = new Date();
       const difference = targetDate.getTime() - now.getTime();
@@ -45,32 +41,98 @@ export const CountdownTimer = ({ targetDate, theme = "light" }: CountdownTimerPr
     return () => clearInterval(interval);
   }, [targetDate]);
 
+  if (!mounted) {
+    return (
+      <div className="w-full max-w-2xl mx-auto">
+        <div className="grid grid-cols-4 gap-3 md:gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex flex-col items-center animate-pulse">
+              <div className="bg-gray-300 rounded-2xl w-full h-20 md:h-24"></div>
+              <div className="bg-gray-300 rounded mt-3 h-4 w-12"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const timeUnits = [
+    { value: timeLeft.days, label: "Days", color: "from-emerald-500 to-emerald-600" },
+    { value: timeLeft.hours, label: "Hours", color: "from-blue-500 to-blue-600" },
+    { value: timeLeft.minutes, label: "Minutes", color: "from-purple-500 to-purple-600" },
+    { value: timeLeft.seconds, label: "Seconds", color: "from-orange-500 to-orange-600" },
+  ];
+
+  const containerBg = theme === "dark" 
+    ? "bg-white/10 backdrop-blur-lg border border-white/20" 
+    : "bg-white/95 backdrop-blur-lg border border-gray-200/50 shadow-xl";
+    
+  const textColor = theme === "dark" ? "text-white" : "text-gray-700";
+  const labelColor = theme === "dark" ? "text-white/80" : "text-gray-600";
+
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <div className="grid grid-cols-4 gap-2 md:gap-4">
-        <div className="flex flex-col items-center">
-          <div className={`${bgColorClass} text-white rounded-lg w-full py-4 md:py-6 text-center`}>
-            <span className="text-2xl md:text-4xl font-bold">{timeLeft.days}</span>
-          </div>
-          <span className={`mt-2 text-xs md:text-sm ${labelColorClass}`}>Days</span>
+      {/* Header with clock icon */}
+      <div className="flex items-center justify-center mb-6">
+        <div className={`${containerBg} rounded-2xl px-6 py-3 flex items-center gap-3`}>
+          <Clock className={`h-6 w-6 ${textColor} animate-pulse`} />
+          <span className={`text-lg font-semibold ${textColor}`}>
+            Draw Countdown
+          </span>
         </div>
-        <div className="flex flex-col items-center">
-          <div className={`${bgColorClass} text-white rounded-lg w-full py-4 md:py-6 text-center`}>
-            <span className="text-2xl md:text-4xl font-bold">{timeLeft.hours}</span>
-          </div>
-          <span className={`mt-2 text-xs md:text-sm ${labelColorClass}`}>Hours</span>
+      </div>
+
+      {/* Main countdown display */}
+      <div className={`${containerBg} rounded-3xl p-6 md:p-8`}>
+        <div className="grid grid-cols-4 gap-3 md:gap-6">
+          {timeUnits.map((unit, index) => (
+            <div key={unit.label} className="flex flex-col items-center group">
+              {/* Number display */}
+              <div className={`
+                bg-gradient-to-br ${unit.color} 
+                text-white rounded-2xl w-full 
+                py-4 md:py-6 text-center 
+                shadow-lg shadow-black/10
+                transition-all duration-300 
+                group-hover:scale-105 group-hover:shadow-xl
+                relative overflow-hidden
+              `}>
+                {/* Animated background pattern */}
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                {/* Number */}
+                <span className="text-2xl md:text-4xl lg:text-5xl font-bold relative z-10 font-mono">
+                  {unit.value.toString().padStart(2, '0')}
+                </span>
+                
+                {/* Subtle glow effect */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+              </div>
+              
+              {/* Label */}
+              <span className={`
+                mt-3 text-sm md:text-base font-medium ${labelColor}
+                transition-colors duration-300 group-hover:text-opacity-100
+              `}>
+                {unit.label}
+              </span>
+            </div>
+          ))}
         </div>
-        <div className="flex flex-col items-center">
-          <div className={`${bgColorClass} text-white rounded-lg w-full py-4 md:py-6 text-center`}>
-            <span className="text-2xl md:text-4xl font-bold">{timeLeft.minutes}</span>
+
+        {/* Additional info */}
+        <div className="mt-6 pt-6 border-t border-gray-200/20">
+          <div className="text-center">
+            <p className={`text-sm ${labelColor} font-medium`}>
+              Next draw: Thursday at 18:30 IST
+            </p>
+            <div className="flex items-center justify-center mt-2 gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className={`text-xs ${labelColor}`}>
+                Live countdown
+              </span>
+            </div>
           </div>
-          <span className={`mt-2 text-xs md:text-sm ${labelColorClass}`}>Minutes</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <div className={`${bgColorClass} text-white rounded-lg w-full py-4 md:py-6 text-center`}>
-            <span className="text-2xl md:text-4xl font-bold">{timeLeft.seconds}</span>
-          </div>
-          <span className={`mt-2 text-xs md:text-sm ${labelColorClass}`}>Seconds</span>
         </div>
       </div>
     </div>

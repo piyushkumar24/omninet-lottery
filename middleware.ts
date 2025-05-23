@@ -1,5 +1,5 @@
-import NextAuth from 'next-auth';
-
+import NextAuth from "next-auth";
+import { NextResponse } from "next/server";
 import authConfig from '@/auth.config';
 import {
   DEFAULT_LOGIN_REDIRECT,
@@ -17,13 +17,18 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
+  const isStatsRoute = nextUrl.pathname.startsWith("/api/stats");
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);  
-  
   
   const isDashboardRoute = dashboardRoutes.some(route => 
     nextUrl.pathname === route || nextUrl.pathname.startsWith(`${route}/`)
   );
+
+  // Make the stats API public
+  if (isStatsRoute) {
+    return NextResponse.next();
+  }
 
   // Handle API auth routes
   if (isApiAuthRoute) {
@@ -67,7 +72,7 @@ export default auth((req) => {
   return;
 });
 
-// Optionally, don't invoke Middleware on some paths
+// Matcher configuration to skip middleware for static files and webhooks
 export const config = {
   matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
 };
