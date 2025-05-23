@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/landing/countdown-timer";
 import { LotteryStats } from "@/components/landing/lottery-stats";
 import { cn } from "@/lib/utils";
-import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play, User, Trophy, Star, Heart, Zap, TrendingUp, MapPin, Award, Target, Activity, ChevronDown, ChevronUp, HelpCircle, Mail, Clock, MessageCircle } from "lucide-react";
+import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play, User, Trophy, Star, Heart, Zap, TrendingUp, MapPin, Award, Target, Activity, ChevronDown, ChevronUp, HelpCircle, Mail, Clock, MessageCircle, Facebook, Instagram, Youtube, ExternalLink } from "lucide-react";
 
 const font = Poppins({
   subsets: ["latin"],
@@ -1082,6 +1082,175 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Professional Footer */}
+      <footer className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-white relative overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="relative z-10">
+          {/* Main Footer Content */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-20">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+              
+              {/* Company Information */}
+              <div className="lg:col-span-2">
+                <div className="flex items-center group mb-6">
+                  <div className="bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full p-3 mr-4 group-hover:scale-110 transition-transform duration-300">
+                    <Globe className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={cn("text-3xl font-bold text-white", font.className)}>0mninet</h3>
+                    <p className="text-emerald-400 font-medium">Global Connectivity Lottery</p>
+                  </div>
+                </div>
+                <p className="text-slate-300 leading-relaxed mb-8 text-lg max-w-md">
+                  Democratizing internet access worldwide through community-driven surveys and rewards. 
+                  Join our mission to connect the unconnected while earning amazing prizes.
+                </p>
+                
+                {/* Social Media Links */}
+                <div className="flex items-center gap-4">
+                  <span className="text-slate-400 font-medium">Follow Us:</span>
+                  <div className="flex gap-4">
+                    <Link 
+                      href="https://facebook.com/0mninet" 
+                      target="_blank"
+                      className="bg-white/10 hover:bg-blue-600 p-3 rounded-full transition-all duration-300 hover:scale-110 group"
+                    >
+                      <Facebook className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+                    </Link>
+                    <Link 
+                      href="https://instagram.com/0mninet" 
+                      target="_blank"
+                      className="bg-white/10 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 p-3 rounded-full transition-all duration-300 hover:scale-110 group"
+                    >
+                      <Instagram className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+                    </Link>
+                    <Link 
+                      href="https://youtube.com/@0mninet" 
+                      target="_blank"
+                      className="bg-white/10 hover:bg-red-600 p-3 rounded-full transition-all duration-300 hover:scale-110 group"
+                    >
+                      <Youtube className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Links */}
+              <div>
+                <h4 className="text-xl font-bold mb-6 text-white">Quick Links</h4>
+                <ul className="space-y-4">
+                  {[
+                    { label: "How It Works", href: "#" },
+                    { label: "Dashboard", href: "/dashboard" },
+                    { label: "Winners Gallery", href: "/dashboard/winners" },
+                    { label: "My Tickets", href: "/dashboard/tickets" },
+                    { label: "Refer Friends", href: "/dashboard/refer" },
+                  ].map((link, index) => (
+                    <li key={index}>
+                      <Link 
+                        href={link.href}
+                        className="text-slate-300 hover:text-emerald-400 transition-colors duration-200 flex items-center group"
+                      >
+                        <span className="group-hover:translate-x-1 transition-transform duration-200">{link.label}</span>
+                        <ArrowRight className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-200" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Support & Legal */}
+              <div>
+                <h4 className="text-xl font-bold mb-6 text-white">Support & Legal</h4>
+                <ul className="space-y-4 mb-8">
+                  {[
+                    { label: "Contact Support", href: "mailto:ask@0mninet.info" },
+                    { label: "FAQ", href: "#" },
+                    { label: "Terms of Service", href: "#" },
+                    { label: "Privacy Policy", href: "#" },
+                    { label: "Cookie Policy", href: "#" },
+                  ].map((link, index) => (
+                    <li key={index}>
+                      <Link 
+                        href={link.href}
+                        className="text-slate-300 hover:text-emerald-400 transition-colors duration-200 flex items-center group"
+                      >
+                        <span className="group-hover:translate-x-1 transition-transform duration-200">{link.label}</span>
+                        {link.href.startsWith('mailto:') && (
+                          <Mail className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-200" />
+                        )}
+                        {link.href.startsWith('http') && (
+                          <ExternalLink className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-200" />
+                        )}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Contact Info */}
+                <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                  <h5 className="font-semibold mb-3 text-white flex items-center">
+                    <MessageCircle className="h-4 w-4 mr-2 text-emerald-400" />
+                    Contact Info
+                  </h5>
+                  <div className="space-y-2 text-sm">
+                    <p className="text-slate-300 flex items-center">
+                      <Mail className="h-3 w-3 mr-2 text-emerald-400" />
+                      ask@0mninet.info
+                    </p>
+                    <p className="text-slate-300 flex items-center">
+                      <Clock className="h-3 w-3 mr-2 text-blue-400" />
+                      24-48h Response
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="border-t border-white/10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <p className="text-slate-400 text-sm">
+                    © {new Date().getFullYear()} 0mninet Global Connectivity Lottery. All rights reserved.
+                  </p>
+                  <div className="flex items-center gap-4 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                      Platform Active
+                    </span>
+                    <span>•</span>
+                    <span>Secure & Verified</span>
+                    <span>•</span>
+                    <span>Global Community</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <Heart className="h-4 w-4 text-red-400" />
+                    Made with passion for global connectivity
+                  </div>
+                  <Link 
+                    href="/auth/register"
+                    className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white px-6 py-2 rounded-full text-sm font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
+                  >
+                    Join Now
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
