@@ -3,7 +3,7 @@
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 
@@ -26,6 +26,7 @@ import { Mail, Lock, Shield } from "lucide-react";
 
 export const LoginForm = () => {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl");
   const urlError = searchParams.get("error") === "OAuthAccountNotLinked"
     ? "Email already in use with different provider!"
@@ -64,8 +65,30 @@ export const LoginForm = () => {
           if (data?.twoFactor) {
             setShowTwoFactor(true);
           }
+
+          // If no data returned (successful login/redirect), refresh the page
+          if (!data) {
+            setTimeout(() => {
+              window.location.reload();
+            }, 100);
+          }
         })
-        .catch(() => setError("Something went wrong"));
+        .catch((error) => {
+          // Check if this is actually a successful login redirect
+          // NextAuth throws NEXT_REDIRECT when successful login with redirectTo
+          const errorMessage = error?.message || error?.toString() || '';
+          
+          if (errorMessage.includes('NEXT_REDIRECT') || errorMessage.includes('redirect')) {
+            // This is a successful login, refresh the page
+            setTimeout(() => {
+              window.location.reload();
+            }, 100);
+          } else {
+            // This is an actual error - could be network, validation, etc.
+            console.error('Login error:', error);
+            setError("Unable to sign in. Please check your credentials and try again.");
+          }
+        });
     });
   };
 

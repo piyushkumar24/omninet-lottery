@@ -72,7 +72,7 @@ export const UserButton = () => {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem 
-            onClick={() => router.push("/settings")}
+            onClick={() => router.push("/dashboard/settings")}
             className="cursor-pointer"
           >
             <Settings className="mr-2 h-4 w-4" />
