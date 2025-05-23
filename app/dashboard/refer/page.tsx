@@ -7,13 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Copy, Share, User, Check, Info } from "lucide-react";
+import { formatDate } from "@/lib/utils";
+
+interface Referral {
+  id: string;
+  name: string | null;
+  email: string | null;
+  createdAt: string;
+}
 
 export default function ReferPage() {
   const { data: session } = useSession();
   const [isCopied, setIsCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [referrals, setReferrals] = useState<any[]>([]);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const referralLink = `${baseUrl}/?ref=${referralCode}`;
@@ -153,7 +161,8 @@ export default function ReferPage() {
                     </div>
                     <div>
                       <p className="font-medium">{referral.name || "Anonymous User"}</p>
-                      <p className="text-sm text-slate-500">Joined {new Date(referral.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-slate-500">{referral.email}</p>
+                      <p className="text-xs text-slate-500">Joined {formatDate(new Date(referral.createdAt))}</p>
                     </div>
                     <div className="ml-auto bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
                       +1 Ticket

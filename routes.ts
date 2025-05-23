@@ -38,7 +38,7 @@ export const dashboardRoutes = [
   "/dashboard/tickets",
   "/dashboard/winners",
   "/dashboard/refer",
-  "/settings"
+  "/dashboard/settings"
 ];
 
 /**

@@ -1,47 +1,80 @@
+"use client";
+
 import { Poppins } from "next/font/google";
 import Link from "next/link";
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-
-import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/landing/countdown-timer";
 import { LotteryStats } from "@/components/landing/lottery-stats";
-import { db } from "@/lib/db";
+import { cn } from "@/lib/utils";
 
 const font = Poppins({
   subsets: ["latin"],
   weight: ["600"]
 });
 
-export default async function Home() {
-  // Check if the user is already signed in
-  const session = await auth();
+export default function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalTickets: 0,
+    latestWinner: "No winner yet"
+  });
+  const [nextDrawDate, setNextDrawDate] = useState(new Date());
   
-  // If signed in, redirect to dashboard
-  if (session?.user) {
-    return redirect("/dashboard");
+  useEffect(() => {
+    // Check for referral code in URL
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      // Store the referral code in localStorage for use during registration
+      localStorage.setItem('referralCode', refCode);
+    }
+    
+    // Check if the user is already signed in
+    const checkSession = async () => {
+      try {
+        const response = await fetch('/api/auth/session');
+        const data = await response.json();
+        
+        if (data.user) {
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    // Fetch lottery stats
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+          setStats({
+            totalUsers: data.totalUsers,
+            totalTickets: data.totalTickets,
+            latestWinner: data.latestWinner || "No winner yet"
+          });
+          setNextDrawDate(new Date(data.nextDrawDate));
+        }
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+    
+    checkSession();
+    fetchStats();
+  }, [router, searchParams]);
+  
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
-
-  // Get next Thursday at 18:30 IST
-  const nextDrawDate = getNextThursday();
-  
-  // Get lottery stats
-  const totalUsers = await db.user.count();
-  const totalTickets = await db.ticket.count({ 
-    where: { isUsed: false }
-  });
-  
-  const latestWinner = await db.winner.findFirst({
-    orderBy: { drawDate: 'desc' },
-    include: {
-      user: {
-        select: {
-          name: true,
-        },
-      },
-    },
-  });
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
@@ -83,10 +116,10 @@ export default async function Home() {
             <div className="border-t md:border-l md:border-t-0 md:pl-8 pt-6 md:pt-0">
               <h3 className="text-xl font-bold mb-4">Current Draw</h3>
               <LotteryStats
-                totalUsers={totalUsers}
-                totalTickets={totalTickets}
+                totalUsers={stats.totalUsers}
+                totalTickets={stats.totalTickets}
                 prizeAmount={50}
-                latestWinner={latestWinner?.user.name || "No winner yet"}
+                latestWinner={stats.latestWinner}
               />
             </div>
           </div>
@@ -122,24 +155,4 @@ export default async function Home() {
       </div>
     </main>
   );
-}
-
-function getNextThursday() {
-  const now = new Date();
-  const dayOfWeek = now.getDay(); // 0 = Sunday, 4 = Thursday
-  const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-  
-  // If it's Thursday but after 18:30 IST, get next Thursday
-  if (daysUntilThursday === 0) {
-    const istHour = now.getUTCHours() + 5.5; // IST is UTC+5:30
-    if (istHour >= 18.5) {
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7, 18, 30);
-    }
-  }
-  
-  const nextThursday = new Date(now);
-  nextThursday.setDate(now.getDate() + daysUntilThursday);
-  nextThursday.setHours(18, 30, 0, 0);
-  
-  return nextThursday;
 }

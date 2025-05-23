@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,26 @@ export const EarnTickets = ({ userId, hasSurveyTicket }: EarnTicketsProps) => {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [socialCompleted, setSocialCompleted] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [isLoadingReferral, setIsLoadingReferral] = useState(false);
+
+  useEffect(() => {
+    // Fetch the referral code when component mounts
+    const fetchReferralCode = async () => {
+      try {
+        const response = await fetch('/api/referrals/code');
+        const data = await response.json();
+        
+        if (data.success) {
+          setReferralCode(data.referralCode);
+        }
+      } catch (error) {
+        console.error("Error fetching referral code:", error);
+      }
+    };
+
+    fetchReferralCode();
+  }, []);
 
   const earnTicket = async (source: string) => {
     try {
@@ -63,11 +83,36 @@ export const EarnTickets = ({ userId, hasSurveyTicket }: EarnTicketsProps) => {
     earnTicket("SOCIAL");
   };
 
-  const handleReferralClick = () => {
-    // In a real implementation, this would copy a referral link
-    // or show a referral modal
-    navigator.clipboard.writeText(`https://sociallottery.com/ref/${userId}`);
-    toast.success("Referral link copied to clipboard!");
+  const handleReferralClick = async () => {
+    setIsLoadingReferral(true);
+    try {
+      // If we don't have the referral code yet, fetch it
+      if (!referralCode) {
+        const response = await fetch('/api/referrals/code');
+        const data = await response.json();
+        
+        if (data.success) {
+          setReferralCode(data.referralCode);
+        } else {
+          toast.error("Failed to get referral code");
+          return;
+        }
+      }
+      
+      // Get the base URL and create the referral link
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const referralLink = `${baseUrl}/?ref=${referralCode}`;
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(referralLink);
+      toast.success("Referral link copied to clipboard!");
+      
+    } catch (error) {
+      console.error("Error copying referral link:", error);
+      toast.error("Failed to copy referral link");
+    } finally {
+      setIsLoadingReferral(false);
+    }
   };
 
   return (
@@ -145,7 +190,7 @@ export const EarnTickets = ({ userId, hasSurveyTicket }: EarnTicketsProps) => {
               </div>
               <Button 
                 onClick={handleReferralClick}
-                disabled={loading === "REFERRAL"}
+                disabled={loading === "REFERRAL" || isLoadingReferral}
                 className="w-full"
               >
                 Copy Referral Link

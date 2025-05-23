@@ -1,7 +1,7 @@
 "use client";
 
 import * as z from "zod";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -25,6 +25,17 @@ export const RegisterForm = () => {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isPending, startTransition] = useTransition();
+  const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    // Get referral code from localStorage if available
+    if (typeof window !== 'undefined') {
+      const storedReferralCode = localStorage.getItem('referralCode');
+      if (storedReferralCode) {
+        setReferralCode(storedReferralCode);
+      }
+    }
+  }, []);
 
   const form = useForm<z.infer<typeof RegisterSchema>>({
     resolver: zodResolver(RegisterSchema),
@@ -32,8 +43,16 @@ export const RegisterForm = () => {
       email: "",
       password: "",
       name: "",
+      referralCode: "",
     },
   });
+
+  // Update form when referral code is loaded from localStorage
+  useEffect(() => {
+    if (referralCode) {
+      form.setValue('referralCode', referralCode);
+    }
+  }, [referralCode, form]);
 
   const onSubmit = (values: z.infer<typeof RegisterSchema>) => {
     setError("");
@@ -44,6 +63,11 @@ export const RegisterForm = () => {
         .then((data) => {
           setError(data.error);
           setSuccess(data.success);
+          
+          // Clear referral code from localStorage after successful registration
+          if (data.success && typeof window !== 'undefined') {
+            localStorage.removeItem('referralCode');
+          }
         });
     });
   };
@@ -114,6 +138,25 @@ export const RegisterForm = () => {
                 </FormItem>
               )}
             />
+            {referralCode && (
+              <FormField
+                control={form.control}
+                name="referralCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Referral Code</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={true}
+                        placeholder="Referral Code"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
           </div>
           <FormError message={error} />
           <FormSuccess message={success} />
