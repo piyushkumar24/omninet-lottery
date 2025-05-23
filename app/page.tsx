@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/landing/countdown-timer";
 import { LotteryStats } from "@/components/landing/lottery-stats";
 import { cn } from "@/lib/utils";
-import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play, User, Trophy, Star, Heart, Zap, TrendingUp, MapPin, Award, Target, Activity } from "lucide-react";
+import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play, User, Trophy, Star, Heart, Zap, TrendingUp, MapPin, Award, Target, Activity, ChevronDown, ChevronUp, HelpCircle, Mail, Clock, MessageCircle } from "lucide-react";
 
 const font = Poppins({
   subsets: ["latin"],
@@ -29,6 +29,7 @@ export default function Home() {
     latestWinnerProfile: null as { name: string; username: string; profileImage?: string } | null
   });
   const [nextDrawDate, setNextDrawDate] = useState(new Date());
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   
   // Professional showcase images
   const showcaseImages = [
@@ -574,6 +575,183 @@ export default function Home() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* FAQ SECTION */}
+      <div className="bg-gradient-to-br from-slate-50 to-white py-24 md:py-32">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full text-blue-700 text-sm font-medium mb-6">
+              <HelpCircle className="w-4 h-4 mr-2" />
+              Common Questions
+            </div>
+            <h2 className={cn(
+              "text-4xl md:text-5xl font-bold mb-6 text-slate-900 leading-tight",
+              font.className,
+            )}>
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Find answers to the most common questions about our platform, rewards, and how to get started.
+            </p>
+          </div>
+
+          {/* FAQ Accordion */}
+          <div className="space-y-4 mb-16">
+            {[
+              {
+                question: "How do I earn tickets?",
+                answer: "Complete surveys and take simple actions like inviting friends or following us on social media. Each completed survey earns you lottery tickets, and successful referrals provide bonus tickets for both you and your friends."
+              },
+              {
+                question: "Is it free to join the lottery?",
+                answer: "Yes, totally free. No purchases or payments needed. Simply create an account and start participating in surveys to earn your lottery tickets. There are no hidden fees or subscription costs."
+              },
+              {
+                question: "How do I know if I won?",
+                answer: "Winners are notified by email and listed publicly here every week. We announce winners every Thursday after the 18:30 IST draw. Check your email and visit our winners page to see if you've won a $50 Amazon gift card."
+              },
+              {
+                question: "When are the lottery draws held?",
+                answer: "Lottery draws are held every Thursday at 18:30 IST (India Standard Time). The countdown timer on our homepage shows exactly when the next draw will take place. Winners are announced immediately after each draw."
+              },
+              {
+                question: "How many tickets can I earn per survey?",
+                answer: "You typically earn 1-3 tickets per completed survey, depending on the survey length and complexity. Bonus tickets are available for referring friends, social media engagement, and participating in special campaigns."
+              }
+            ].map((faq, index) => (
+              <div key={index} className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <button
+                  onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
+                  className="w-full px-8 py-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors duration-200"
+                >
+                  <h3 className="text-lg font-semibold text-slate-900 pr-4">{faq.question}</h3>
+                  <div className="flex-shrink-0">
+                    {openFaqIndex === index ? (
+                      <ChevronUp className="h-5 w-5 text-blue-600 transition-transform duration-200" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-gray-400 transition-transform duration-200" />
+                    )}
+                  </div>
+                </button>
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                  openFaqIndex === index ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                }`}>
+                  <div className="px-8 pb-6 pt-2">
+                    <p className="text-slate-600 leading-relaxed">{faq.answer}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* FAQ CTA */}
+          <div className="text-center">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8 border border-blue-100">
+              <MessageCircle className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold mb-4 text-slate-900">Still Have Questions?</h3>
+              <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                Can&apos;t find what you&apos;re looking for? Our support team is here to help you get started.
+              </p>
+              <Link href="mailto:ask@0mninet.info">
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
+                  Contact Us
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CUSTOMER SUPPORT / CONTACT SECTION */}
+      <div className="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 py-24 md:py-32 relative overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-white/90 text-sm font-medium mb-6">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Support Center
+            </div>
+            <h2 className={cn(
+              "text-4xl md:text-5xl font-bold mb-6 text-white leading-tight",
+              font.className,
+            )}>
+              Need Help? Contact Our Team
+            </h2>
+            <p className="text-xl text-white/90 max-w-3xl mx-auto">
+              Our dedicated support team is ready to assist you with any questions about the platform, 
+              lottery system, or technical issues.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Email Contact Card */}
+            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl hover:shadow-3xl transition-all duration-300 group">
+              <div className="text-center">
+                <div className="bg-gradient-to-r from-emerald-400 to-emerald-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-xl">
+                  <Mail className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4 text-white">Email Support</h3>
+                <p className="text-white/80 mb-6 leading-relaxed">
+                  Send us your questions and we&apos;ll get back to you as soon as possible.
+                </p>
+                <Link 
+                  href="mailto:ask@0mninet.info"
+                  className="inline-flex items-center px-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl text-white font-semibold transition-all duration-300 hover:scale-105 border border-white/30 hover:border-white/50"
+                >
+                  📩 ask@0mninet.info
+                </Link>
+              </div>
+            </div>
+
+            {/* Response Time Card */}
+            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl hover:shadow-3xl transition-all duration-300 group">
+              <div className="text-center">
+                <div className="bg-gradient-to-r from-blue-400 to-blue-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-xl">
+                  <Clock className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4 text-white">Response Time</h3>
+                <p className="text-white/80 mb-6 leading-relaxed">
+                  We prioritize quick responses to ensure you get the help you need.
+                </p>
+                <div className="inline-flex items-center px-6 py-3 bg-white/20 rounded-xl text-white font-semibold border border-white/30">
+                  ⏱ Replies within 24–48 hours
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Support Options */}
+          <div className="mt-16 text-center">
+            <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10">
+              <h3 className="text-2xl font-bold mb-6 text-white">Multiple Ways to Get Help</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex flex-col items-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors duration-300">
+                  <HelpCircle className="h-8 w-8 text-emerald-400 mb-3" />
+                  <h4 className="font-semibold text-white mb-2">FAQ Section</h4>
+                  <p className="text-white/70 text-sm text-center">Check our comprehensive FAQ above for instant answers</p>
+                </div>
+                <div className="flex flex-col items-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors duration-300">
+                  <Users className="h-8 w-8 text-blue-400 mb-3" />
+                  <h4 className="font-semibold text-white mb-2">Community</h4>
+                  <p className="text-white/70 text-sm text-center">Connect with other users and share experiences</p>
+                </div>
+                <div className="flex flex-col items-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors duration-300">
+                  <Award className="h-8 w-8 text-purple-400 mb-3" />
+                  <h4 className="font-semibold text-white mb-2">Priority Support</h4>
+                  <p className="text-white/70 text-sm text-center">Active participants receive expedited assistance</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
