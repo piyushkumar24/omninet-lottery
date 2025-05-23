@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/landing/countdown-timer";
 import { LotteryStats } from "@/components/landing/lottery-stats";
 import { cn } from "@/lib/utils";
-import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play, User, Trophy } from "lucide-react";
+import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play, User, Trophy, Star, Heart, Zap, TrendingUp, MapPin, Award, Target, Activity } from "lucide-react";
 
 const font = Poppins({
   subsets: ["latin"],
@@ -563,6 +563,295 @@ export default function Home() {
                 <Button size="lg" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 hover:scale-105 text-lg py-6 font-semibold">
                   <Play className="mr-2 h-5 w-5" />
                   Enter Now and Win
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Real Impact Stories Section */}
+      <div className="bg-gradient-to-br from-white via-gray-50 to-blue-50 py-24 md:py-32 relative overflow-hidden">
+        {/* Background Decoration */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-200/30 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+          {/* Section Header */}
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-emerald-100 rounded-full text-blue-700 text-sm font-medium mb-6">
+              <Heart className="w-4 h-4 mr-2 text-red-500" />
+              Real Impact Stories
+            </div>
+            <h2 className={cn(
+              "text-4xl md:text-6xl font-bold mb-8 text-slate-900 leading-tight",
+              font.className,
+            )}>
+              Transforming Lives Through
+              <span className="block bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent">
+                Connectivity & Rewards
+              </span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-4xl mx-auto leading-relaxed">
+              Discover how our platform creates meaningful change while rewarding participants. 
+              Every interaction drives us closer to a connected world.
+            </p>
+          </div>
+
+          {/* Achievement Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-20">
+            {[
+              {
+                icon: Activity,
+                value: "15,000+",
+                label: "Surveys Completed",
+                description: "Data points collected for global connectivity research",
+                gradient: "from-blue-500 to-blue-600",
+                bgGradient: "from-blue-50 to-blue-100"
+              },
+              {
+                icon: Award,
+                value: "$2,500+",
+                label: "Rewards Distributed",
+                description: "Amazon gift cards delivered to winners worldwide",
+                gradient: "from-emerald-500 to-emerald-600",
+                bgGradient: "from-emerald-50 to-emerald-100"
+              },
+              {
+                icon: MapPin,
+                value: "45+",
+                label: "Countries Reached",
+                description: "Global participants contributing to our mission",
+                gradient: "from-purple-500 to-purple-600",
+                bgGradient: "from-purple-50 to-purple-100"
+              },
+              {
+                icon: TrendingUp,
+                value: "98%",
+                label: "Satisfaction Rate",
+                description: "Users who would recommend our platform",
+                gradient: "from-orange-500 to-orange-600",
+                bgGradient: "from-orange-50 to-orange-100"
+              }
+            ].map((stat, index) => (
+              <div key={index} className={`bg-gradient-to-br ${stat.bgGradient} rounded-3xl p-8 text-center relative overflow-hidden group hover:shadow-2xl transition-all duration-500 hover:scale-105 border border-white/50`}>
+                <div className="relative z-10">
+                  <div className={`bg-gradient-to-br ${stat.gradient} w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-xl`}>
+                    <stat.icon className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-3xl font-bold mb-2 text-slate-900">{stat.value}</h3>
+                  <p className="text-lg font-semibold mb-3 text-slate-800">{stat.label}</p>
+                  <p className="text-sm text-slate-600 leading-relaxed">{stat.description}</p>
+                </div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/40 rounded-full -mr-12 -mt-12 group-hover:scale-125 transition-transform duration-700"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Success Stories Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-20">
+            {/* Story 1 */}
+            <div className="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 group border border-gray-100">
+              <div className="flex items-start gap-6">
+                <div className="relative">
+                  <Image
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
+                    alt="Success Story"
+                    width={80}
+                    height={80}
+                    className="rounded-full object-cover ring-4 ring-blue-100 group-hover:ring-blue-200 transition-all duration-300"
+                  />
+                  <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full p-2 shadow-lg">
+                    <Trophy className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h4 className="font-bold text-xl text-slate-900">Sarah Martinez</h4>
+                    <div className="flex gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-slate-600 mb-4 leading-relaxed">
+                    &quot;I&apos;ve won three $50 gift cards in the past two months! The surveys are actually interesting 
+                    and knowing I&apos;m helping expand internet access makes it even more rewarding.&quot;
+                  </p>
+                  <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      California, USA
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Target className="h-4 w-4" />
+                      3 Wins
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Story 2 */}
+            <div className="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 group border border-gray-100">
+              <div className="flex items-start gap-6">
+                <div className="relative">
+                  <Image
+                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
+                    alt="Success Story"
+                    width={80}
+                    height={80}
+                    className="rounded-full object-cover ring-4 ring-emerald-100 group-hover:ring-emerald-200 transition-all duration-300"
+                  />
+                  <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full p-2 shadow-lg">
+                    <Zap className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <h4 className="font-bold text-xl text-slate-900">James Chen</h4>
+                    <div className="flex gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-slate-600 mb-4 leading-relaxed">
+                    &quot;The platform is incredibly user-friendly. I love how my survey responses contribute to 
+                    real connectivity projects. The reward system is just a bonus!&quot;
+                  </p>
+                  <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      Singapore
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Target className="h-4 w-4" />
+                      85 Surveys
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Impact Showcase */}
+          <div className="bg-gradient-to-r from-blue-600 to-emerald-600 rounded-3xl p-12 text-white relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-emerald-600/90"></div>
+            <div className="absolute top-0 right-0 opacity-20">
+              <Image
+                src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop"
+                alt="Global Network"
+                width={600}
+                height={400}
+                className="object-cover"
+              />
+            </div>
+            
+            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div>
+                <h3 className="text-4xl font-bold mb-6">Global Connectivity Impact</h3>
+                <p className="text-xl mb-8 text-white/90 leading-relaxed">
+                  Your participation directly funds satellite internet infrastructure in remote areas, 
+                  connecting schools, hospitals, and communities that previously had no access.
+                </p>
+                
+                <div className="space-y-6">
+                  {[
+                    {
+                      icon: Users,
+                      text: "12,000+ people connected to the internet for the first time"
+                    },
+                    {
+                      icon: Target,
+                      text: "25 remote schools now have high-speed internet access"
+                    },
+                    {
+                      icon: Heart,
+                      text: "8 rural hospitals connected for telemedicine services"
+                    }
+                  ].map((impact, index) => (
+                    <div key={index} className="flex items-center gap-4 group">
+                      <div className="bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
+                        <impact.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <span className="text-lg">{impact.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-6">
+                {[
+                  {
+                    image: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=400&auto=format&fit=crop",
+                    title: "Rural Schools Connected",
+                    description: "Educational opportunities expanded"
+                  },
+                  {
+                    image: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&auto=format&fit=crop",
+                    title: "Healthcare Access",
+                    description: "Telemedicine services enabled"
+                  },
+                  {
+                    image: "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&auto=format&fit=crop",
+                    title: "Community Growth",
+                    description: "Economic opportunities created"
+                  },
+                  {
+                    image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&auto=format&fit=crop",
+                    title: "Digital Literacy",
+                    description: "Skills training programs launched"
+                  }
+                ].map((item, index) => (
+                  <div key={index} className="bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden group hover:scale-105 transition-all duration-300">
+                    <div className="aspect-square relative">
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                      <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                        <h4 className="font-bold text-sm mb-1">{item.title}</h4>
+                        <p className="text-xs text-white/80">{item.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Call to Action */}
+          <div className="text-center mt-20">
+            <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-100 to-emerald-100 rounded-full text-blue-700 text-sm font-medium mb-8">
+              <Zap className="w-4 h-4 mr-2" />
+              Join Our Growing Community
+            </div>
+            <h3 className={cn(
+              "text-3xl md:text-4xl font-bold mb-6 text-slate-900",
+              font.className,
+            )}>
+              Ready to Make a Difference?
+            </h3>
+            <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+              Start earning rewards while contributing to global connectivity. Every survey matters, every participant counts.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+              <Link href="/auth/register">
+                <Button size="lg" className="bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white text-lg px-12 py-6 shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 font-semibold">
+                  <Play className="mr-2 h-5 w-5" />
+                  Start Your Impact Journey
+                </Button>
+              </Link>
+              <Link href="/dashboard/winners">
+                <Button size="lg" variant="outline" className="border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 text-lg px-12 py-6 transition-all duration-300 hover:scale-105 font-semibold">
+                  <Trophy className="mr-2 h-5 w-5" />
+                  View All Winners
                 </Button>
               </Link>
             </div>
