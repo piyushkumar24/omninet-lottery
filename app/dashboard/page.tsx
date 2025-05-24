@@ -6,7 +6,7 @@ import { TicketStats } from "@/components/dashboard/ticket-stats";
 import { NextDraw } from "@/components/dashboard/next-draw";
 import { EarnTickets } from "@/components/dashboard/earn-tickets";
 import { RecentWinners } from "@/components/dashboard/recent-winners";
-import { NewsletterCTA } from "@/components/dashboard/newsletter-cta";
+import { NewsletterSection } from "@/components/dashboard/newsletter-cta";
 import { DashboardWrapper } from "@/components/dashboard/dashboard-wrapper";
 import { LotteryParticipationWrapper } from "@/components/lottery/lottery-participation-wrapper";
 import { createOrGetNextDraw, getUserParticipationInDraw } from "@/data/draw";
@@ -92,9 +92,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </h1>
         </div>
 
-        {/* Newsletter CTA */}
-        <NewsletterCTA userId={user.id} />
-
         {/* Lottery Participation Section */}
         <div className="mb-8">
           <LotteryParticipationWrapper
@@ -123,6 +120,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         {/* Earn Tickets Section */}
         <div className="mt-6">
           <EarnTickets userId={user.id} availableTickets={tickets} />
+        </div>
+
+        {/* Newsletter Section - Moved to bottom */}
+        <div className="mt-8">
+          <NewsletterSection userId={user.id} />
         </div>
       </div>
     </DashboardWrapper>

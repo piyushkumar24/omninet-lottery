@@ -75,6 +75,16 @@ export const DashboardWrapper = ({ children }: DashboardWrapperProps) => {
           fontSize: '14px',
         },
       });
+    } else if (newsletterStatus === 'unsubscribed') {
+      toast.success("✅ You've been unsubscribed from the newsletter.", {
+        duration: 4000,
+        icon: "✅",
+        style: {
+          border: '2px solid #22c55e',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
     }
 
     // Handle general errors

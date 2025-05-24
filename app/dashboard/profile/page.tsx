@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "react-hot-toast";
 import { Upload, Calendar, Trophy, Ticket, Edit2, Save, X, AlertTriangle, User } from "lucide-react";
-import { format } from "date-fns";
+import { formatDate } from "@/lib/utils";
 import { getUserAvailableTickets } from "@/lib/ticket-utils";
 
 interface DrawParticipation {
@@ -397,7 +397,7 @@ export default function ProfilePage() {
                         <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-3">
                           <Calendar className="h-4 w-4 text-slate-500 flex-shrink-0" />
                           <div className="text-lg text-slate-800 break-words">
-                            {format(new Date(profile.createdAt), "MMMM d, yyyy")}
+                            {formatDate(new Date(profile.createdAt), 'dateOnly')}
                           </div>
                         </div>
                       </div>
@@ -478,14 +478,14 @@ export default function ProfilePage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <h4 className="font-semibold text-slate-800 text-lg break-words">
-                            Draw on {format(new Date(participation.draw.drawDate), "MMMM d, yyyy")}
+                            Draw on {formatDate(new Date(participation.draw.drawDate), 'dateOnly')}
                           </h4>
                           <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-slate-600">
                             <span>Tickets Used: <span className="font-semibold">{participation.ticketsUsed}</span></span>
                             <span>Prize: <span className="font-semibold text-green-600">${participation.draw.prizeAmount}</span></span>
                           </div>
                           <p className="text-xs text-slate-500 mt-1">
-                            Participated on {format(new Date(participation.participatedAt), "MMM d, yyyy &apos;at&apos; h:mm a")}
+                            Participated on {formatDate(new Date(participation.participatedAt), 'full')}
                           </p>
                         </div>
                       </div>

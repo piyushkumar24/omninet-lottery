@@ -3,27 +3,26 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { 
   Mail, 
-  CheckCircle2, 
   X, 
   Bell,
-  Sparkles,
-  Globe,
-  Gift,
-  TrendingUp
+  BellOff,
+  Check,
+  Loader2,
+  Settings
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
-interface NewsletterCTAProps {
+interface NewsletterSectionProps {
   userId: string;
 }
 
-export const NewsletterCTA = ({ userId }: NewsletterCTAProps) => {
+export const NewsletterSection = ({ userId }: NewsletterSectionProps) => {
   const [isSubscribed, setIsSubscribed] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     fetchSubscriptionStatus();
@@ -38,6 +37,9 @@ export const NewsletterCTA = ({ userId }: NewsletterCTAProps) => {
       }
     } catch (error) {
       console.error("Error fetching newsletter status:", error);
+      setIsSubscribed(false);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -53,34 +55,19 @@ export const NewsletterCTA = ({ userId }: NewsletterCTAProps) => {
       if (data.success) {
         setIsSubscribed(true);
         toast.success(data.message, {
-          duration: 5000,
+          duration: 4000,
           icon: "📩",
-          style: {
-            border: '2px solid #22c55e',
-            padding: '16px',
-            fontSize: '14px',
-          },
         });
       } else {
         toast.error(data.message, {
           duration: 4000,
           icon: "⚠️",
-          style: {
-            border: '2px solid #f59e0b',
-            padding: '16px',
-            fontSize: '14px',
-          },
         });
       }
     } catch (error) {
       toast.error("❌ Something went wrong. Please try again later.", {
         duration: 4000,
         icon: "❌",
-        style: {
-          border: '2px solid #ef4444',
-          padding: '16px',
-          fontSize: '14px',
-        },
       });
       console.error("Error subscribing to newsletter:", error);
     } finally {
@@ -88,103 +75,177 @@ export const NewsletterCTA = ({ userId }: NewsletterCTAProps) => {
     }
   };
 
-  const handleDismiss = () => {
-    setIsVisible(false);
+  const handleUnsubscribe = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/newsletter/unsubscribe", {
+        method: "POST",
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setIsSubscribed(false);
+        toast.success(data.message, {
+          duration: 4000,
+          icon: "✅",
+        });
+      } else {
+        toast.error(data.message, {
+          duration: 4000,
+          icon: "⚠️",
+        });
+      }
+    } catch (error) {
+      toast.error("❌ Something went wrong. Please try again later.", {
+        duration: 4000,
+        icon: "❌",
+      });
+      console.error("Error unsubscribing from newsletter:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Don't show if subscribed or dismissed
-  if (isSubscribed || !isVisible) return null;
+  const handleDismiss = () => {
+    setIsDismissed(true);
+  };
+
+  // Don't render anything while loading initially
+  if (initialLoading) {
+    return (
+      <Card className="bg-white border border-slate-200">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+            <span className="ml-2 text-sm text-slate-500">Loading newsletter settings...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Don't show if dismissed and not subscribed
+  if (isDismissed && !isSubscribed) return null;
 
   return (
-    <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 shadow-xl">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-300/20 to-purple-300/20 rounded-full blur-2xl animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-300/20 to-blue-300/20 rounded-full blur-xl animate-pulse delay-1000"></div>
-      </div>
-
-      <div className="relative">
-        {/* Close button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleDismiss}
-          className="absolute top-2 right-2 text-slate-500 hover:text-slate-700 hover:bg-white/50 rounded-full p-2 h-8 w-8 z-10"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-
-        <CardContent className="pt-6 pb-6 px-6">
-          <div className="flex items-start gap-4">
+    <Card className="bg-white border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-4 flex-1">
             {/* Icon */}
             <div className="flex-shrink-0">
-              <div className="relative">
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                  <Mail className="h-7 w-7 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center animate-pulse">
-                  <Sparkles className="h-3 w-3 text-white" />
-                </div>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                isSubscribed 
+                  ? 'bg-green-100 text-green-600' 
+                  : 'bg-blue-100 text-blue-600'
+              }`}>
+                {isSubscribed ? (
+                  <Check className="h-6 w-6" />
+                ) : (
+                  <Mail className="h-6 w-6" />
+                )}
               </div>
             </div>
 
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <div className="mb-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-bold text-slate-800">📩 Newsletter CTA</h3>
-                  <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs px-2 py-1">
-                    Stay Updated
-                  </Badge>
-                </div>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Want to stay updated with news, prizes, and community milestones?
-                </p>
-              </div>
-
-              {/* Features */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <Globe className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                  <span>Global Updates</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <Gift className="h-4 w-4 text-purple-600 flex-shrink-0" />
-                  <span>Prize Alerts</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <TrendingUp className="h-4 w-4 text-green-600 flex-shrink-0" />
-                  <span>Milestones</span>
-                </div>
-              </div>
-
-              {/* CTA Button */}
-              <Button
-                onClick={handleSubscribe}
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Subscribing...
-                  </>
-                ) : (
-                  <>
-                    <Bell className="h-4 w-4 mr-2" />
-                    Subscribe to the 0mninet Newsletter
-                  </>
-                )}
-              </Button>
-
-              {/* Disclaimer */}
-              <p className="text-xs text-slate-500 mt-2 text-center">
-                🔒 We respect your privacy. Unsubscribe anytime.
+              <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                {isSubscribed ? 'Newsletter Subscription Active' : 'Newsletter Updates'}
+              </h3>
+              
+              <p className="text-sm text-slate-600 mb-4">
+                {isSubscribed 
+                  ? "You're receiving updates about news, prizes, and community milestones."
+                  : "Stay updated with news, prizes, and community milestones."
+                }
               </p>
+
+              {/* Action Button */}
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
+                  disabled={isLoading}
+                  variant={isSubscribed ? "outline" : "default"}
+                  className={`${
+                    isSubscribed 
+                      ? 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300' 
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  } transition-colors duration-200`}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {isSubscribed ? 'Unsubscribing...' : 'Subscribing...'}
+                    </>
+                  ) : (
+                    <>
+                      {isSubscribed ? (
+                        <>
+                          <BellOff className="h-4 w-4 mr-2" />
+                          Unsubscribe
+                        </>
+                      ) : (
+                        <>
+                          <Bell className="h-4 w-4 mr-2" />
+                          Subscribe
+                        </>
+                      )}
+                    </>
+                  )}
+                </Button>
+
+                {isSubscribed && (
+                  <div className="flex items-center text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                    <Check className="h-3 w-3 mr-1" />
+                    Subscribed
+                  </div>
+                )}
+              </div>
+
+              {/* Features for non-subscribed users */}
+              {!isSubscribed && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex items-center text-xs text-slate-600">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                      <span>Global Updates</span>
+                    </div>
+                    <div className="flex items-center text-xs text-slate-600">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
+                      <span>Prize Alerts</span>
+                    </div>
+                    <div className="flex items-center text-xs text-slate-600">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                      <span>Milestones</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </CardContent>
-      </div>
+
+          {/* Close button for non-subscribed users */}
+          {!isSubscribed && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDismiss}
+              className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-2 h-8 w-8 flex-shrink-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* Privacy note */}
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <p className="text-xs text-slate-500 flex items-center">
+            <Settings className="h-3 w-3 mr-1" />
+            You can change your subscription preferences anytime. We respect your privacy.
+          </p>
+        </div>
+      </CardContent>
     </Card>
   );
 }; 
