@@ -175,7 +175,7 @@ export const LotteryParticipation = ({
               </div>
               <div>
                 <CardTitle className="text-2xl font-bold">
-                  {isExistingParticipation ? "Add More Tickets to Your Entry" : "Join the Upcoming Lottery Draw"}
+                  {isExistingParticipation ? "This Week’s Lottery" : "Join the Upcoming Lottery Draw"}
                 </CardTitle>
                 <p className="text-blue-100 mt-1">
                   {isExistingParticipation 

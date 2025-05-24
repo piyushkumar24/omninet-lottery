@@ -193,7 +193,7 @@ export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
               </div>
               <h3 className="text-lg font-medium text-slate-700 mb-2">No Tickets Yet</h3>
               <p className="text-slate-500">
-                You haven't earned any tickets yet. Complete surveys, invite friends, or follow us on social media to start earning!
+                You haven&apos;t earned any tickets yet. Complete surveys, invite friends, or follow us on social media to start earning!
               </p>
             </div>
           )}

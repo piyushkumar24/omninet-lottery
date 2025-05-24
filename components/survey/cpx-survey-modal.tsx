@@ -186,8 +186,8 @@ export const CPXSurveyModal = ({
                 <ul className="text-blue-800 text-sm space-y-1">
                   <li>• Complete the survey questions honestly and thoroughly</li>
                   <li>• Survey typically takes 3-10 minutes to complete</li>
-                  <li>• You'll automatically earn 1 lottery ticket upon completion</li>
-                  <li>• You'll be redirected back to your dashboard when finished</li>
+                  <li>• You&apos;ll automatically earn 1 lottery ticket upon completion</li>
+                  <li>• You&apos;ll be redirected back to your dashboard when finished</li>
                 </ul>
               </div>
             </div>
@@ -309,7 +309,7 @@ export const CPXSurveyModal = ({
                 <p className="font-semibold text-amber-900 mb-1">⚡ Important Notice</p>
                 <p className="text-amber-800 text-sm">
                   Complete the entire survey to earn your ticket. Closing this window early will not award any tickets. 
-                  Your progress is automatically saved by CPX Research. If you don't see surveys available, try again later!
+                  Your progress is automatically saved by CPX Research. If you don&apos;t see surveys available, try again later!
                 </p>
               </div>
             </div>

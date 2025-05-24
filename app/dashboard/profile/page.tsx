@@ -461,7 +461,7 @@ export default function ProfilePage() {
                 </div>
                 <h3 className="text-lg font-medium text-slate-800 mb-2">No Lottery Participation Yet</h3>
                 <p className="text-slate-600">
-                  You haven't participated in any lottery draws yet. Start earning tickets to join the next draw!
+                  You haven&apos;t participated in any lottery draws yet. Start earning tickets to join the next draw!
                 </p>
               </div>
             ) : (
@@ -485,7 +485,7 @@ export default function ProfilePage() {
                             <span>Prize: <span className="font-semibold text-green-600">${participation.draw.prizeAmount}</span></span>
                           </div>
                           <p className="text-xs text-slate-500 mt-1">
-                            Participated: {format(new Date(participation.participatedAt), "MMM d, yyyy 'at' h:mm a")}
+                            Participated on {format(new Date(participation.participatedAt), "MMM d, yyyy &apos;at&apos; h:mm a")}
                           </p>
                         </div>
                       </div>

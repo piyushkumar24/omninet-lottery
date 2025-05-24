@@ -87,14 +87,30 @@ export default function ReferPage() {
     try {
       await navigator.clipboard.writeText(referralLink);
       setIsCopied(true);
-      toast.success("Referral link copied to clipboard!");
+      toast.success("✅ Referral link copied", {
+        duration: 3000,
+        icon: "📋",
+        style: {
+          border: '2px solid #22c55e',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
       
       setTimeout(() => {
         setIsCopied(false);
       }, 3000);
     } catch (error) {
       console.error("Failed to copy:", error);
-      toast.error("Failed to copy to clipboard.");
+      toast.error("❌ Something went wrong. Please try again later.", {
+        duration: 4000,
+        icon: "❌",
+        style: {
+          border: '2px solid #ef4444',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
     }
   };
 
@@ -172,7 +188,7 @@ export default function ReferPage() {
               Your Referral Link
             </CardTitle>
             <CardDescription className="text-blue-700">
-              Share this link with friends. When they sign up and complete their first survey, you'll both earn a ticket!
+              Share this link with friends. When they sign up and complete their first survey, you&apos;ll both earn a ticket!
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
@@ -248,7 +264,7 @@ export default function ReferPage() {
               Your Successful Referrals
             </CardTitle>
             <CardDescription className="text-green-700">
-              Track the friends you've referred and the tickets you've earned
+              Track the friends you&apos;ve referred and the tickets you&apos;ve earned
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
@@ -297,7 +313,7 @@ export default function ReferPage() {
                 </div>
                 <h3 className="text-2xl font-bold text-slate-800 mb-3">No Referrals Yet</h3>
                 <p className="text-slate-600 text-lg mb-4">
-                  You haven't referred anyone yet. Start sharing your link to earn tickets!
+                  You haven&apos;t referred anyone yet. Start sharing your link to earn tickets!
                 </p>
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 max-w-md mx-auto">
                   <p className="text-blue-800 font-medium mb-2">🚀 Get Started</p>

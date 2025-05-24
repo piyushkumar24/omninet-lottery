@@ -70,6 +70,17 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
 
   // Handler for when survey is completed (called by modal)
   const handleSurveyComplete = () => {
+    // Show success toast
+    toast.success("🎉 Ticket added to your account!", {
+      duration: 5000,
+      icon: "🎫",
+      style: {
+        border: '2px solid #22c55e',
+        padding: '16px',
+        fontSize: '14px',
+      },
+    });
+    
     // Refresh the page data to show updated ticket count
     router.refresh();
     // Refresh user status to check if this was their first survey
@@ -78,12 +89,28 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
 
   const handleReferralClick = async () => {
     if (!hasSurveyTicket) {
-      toast.error("Complete your first survey to unlock referral features!");
+      toast.error("⚠ You must complete a survey before unlocking this option.", {
+        duration: 4000,
+        icon: "⚠️",
+        style: {
+          border: '2px solid #f59e0b',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
       return;
     }
 
     if (!referralCode) {
-      toast.error("Referral code not available");
+      toast.error("❌ Something went wrong. Please try again later.", {
+        duration: 4000,
+        icon: "❌",
+        style: {
+          border: '2px solid #ef4444',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
       return;
     }
 
@@ -93,20 +120,45 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
       
       await navigator.clipboard.writeText(referralLink);
       setReferralLinkCopied(true);
-      toast.success("Referral link copied to clipboard!");
+      
+      toast.success("✅ Referral link copied", {
+        duration: 3000,
+        icon: "📋",
+        style: {
+          border: '2px solid #22c55e',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
       
       setTimeout(() => {
         setReferralLinkCopied(false);
       }, 3000);
     } catch (error) {
       console.error("Failed to copy:", error);
-      toast.error("Failed to copy to clipboard");
+      toast.error("❌ Something went wrong. Please try again later.", {
+        duration: 4000,
+        icon: "❌",
+        style: {
+          border: '2px solid #ef4444',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
     }
   };
 
   const openSocialMedia = (platform: string) => {
     if (!hasSurveyTicket) {
-      toast.error("Complete your first survey to unlock social media following!");
+      toast.error("⚠ You must complete a survey before unlocking this option.", {
+        duration: 4000,
+        icon: "⚠️",
+        style: {
+          border: '2px solid #f59e0b',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
       return;
     }
 
@@ -121,7 +173,15 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
 
   const handleSocialFollowComplete = async () => {
     if (!hasSurveyTicket) {
-      toast.error("Complete your first survey first!");
+      toast.error("⚠ You must complete a survey before unlocking this option.", {
+        duration: 4000,
+        icon: "⚠️",
+        style: {
+          border: '2px solid #f59e0b',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
       return;
     }
 
@@ -135,14 +195,51 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
       const data = await response.json();
       
       if (data.success) {
-        toast.success(data.message);
+        toast.success(data.message, {
+          duration: 5000,
+          icon: "🎉",
+          style: {
+            border: '2px solid #22c55e',
+            padding: '16px',
+            fontSize: '14px',
+          },
+        });
         setSocialMediaFollowed(true);
         router.refresh();
       } else {
-        toast.error(data.message || "Failed to earn ticket");
+        // Handle different error types with custom styling
+        if (data.message.includes("already") || data.message.includes("only earn 1")) {
+          toast.error(data.message, {
+            duration: 4000,
+            icon: "⚠️",
+            style: {
+              border: '2px solid #f59e0b',
+              padding: '16px',
+              fontSize: '14px',
+            },
+          });
+        } else {
+          toast.error(data.message || "❌ Something went wrong. Please try again later.", {
+            duration: 4000,
+            icon: "❌",
+            style: {
+              border: '2px solid #ef4444',
+              padding: '16px',
+              fontSize: '14px',
+            },
+          });
+        }
       }
     } catch (error) {
-      toast.error("Something went wrong");
+      toast.error("❌ Something went wrong. Please try again later.", {
+        duration: 4000,
+        icon: "❌",
+        style: {
+          border: '2px solid #ef4444',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
       console.error(error);
     } finally {
       setLoading(null);
@@ -166,7 +263,7 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Earn More Tickets</CardTitle>
+        <CardTitle className="text-2xl">Earn Tickets & Increase Your chance</CardTitle>
         <CardDescription>{getStatusMessage()}</CardDescription>
       </CardHeader>
       <CardContent>

@@ -27,7 +27,7 @@ export async function POST() {
     if (surveyTickets === 0) {
       return NextResponse.json({
         success: false,
-        message: "You must complete at least one survey before following on social media.",
+        message: "⚠ You must complete a survey before unlocking this option.",
       });
     }
     
@@ -40,7 +40,7 @@ export async function POST() {
     if (userRecord?.socialMediaFollowed) {
       return NextResponse.json({
         success: false,
-        message: "You have already earned a ticket for following on social media.",
+        message: "⚠ You can only earn 1 ticket from social media.",
       });
     }
 
@@ -66,7 +66,7 @@ export async function POST() {
     
     return NextResponse.json({
       success: true,
-      message: "Thank you for following us! You've earned a ticket.",
+      message: "🎉 Thanks for following us! Your reward has been added.",
       ticket: result,
     });
   } catch (error) {
@@ -75,7 +75,7 @@ export async function POST() {
     return new NextResponse(
       JSON.stringify({
         success: false,
-        message: "Internal error",
+        message: "❌ Something went wrong. Please try again later.",
       }),
       { status: 500 }
     );

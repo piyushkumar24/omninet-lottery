@@ -6,6 +6,8 @@ import { TicketStats } from "@/components/dashboard/ticket-stats";
 import { NextDraw } from "@/components/dashboard/next-draw";
 import { EarnTickets } from "@/components/dashboard/earn-tickets";
 import { RecentWinners } from "@/components/dashboard/recent-winners";
+import { NewsletterCTA } from "@/components/dashboard/newsletter-cta";
+import { DashboardWrapper } from "@/components/dashboard/dashboard-wrapper";
 import { LotteryParticipationWrapper } from "@/components/lottery/lottery-participation-wrapper";
 import { createOrGetNextDraw, getUserParticipationInDraw } from "@/data/draw";
 import { getUserAvailableTickets } from "@/lib/ticket-utils";
@@ -78,47 +80,52 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const userParticipation = await getUserParticipationInDraw(user.id, draw.id);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Survey Completion Alert */}
-      {surveyCompleted && <SurveyCompletionAlert />}
+    <DashboardWrapper>
+      <div className="p-6 space-y-6">
+        {/* Survey Completion Alert */}
+        {surveyCompleted && <SurveyCompletionAlert />}
 
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Welcome, {user.name || "User"}!
-        </h1>
-      </div>
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome, {user.name || "User"}!
+          </h1>
+        </div>
 
-      {/* Lottery Participation Section */}
-      <div className="mb-8">
-        <LotteryParticipationWrapper
-          availableTickets={tickets}
-          draw={{
-            id: draw.id,
-            drawDate: draw.drawDate.toISOString(),
-            prizeAmount: draw.prizeAmount,
-            totalTickets: draw.totalTickets,
-            participants: draw.participants,
-          }}
-          userParticipation={userParticipation}
-        />
-      </div>
-      
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <TicketStats tickets={tickets} winningChance={winningChance} />
-        <NextDraw nextDraw={nextDraw} tickets={tickets} />
+        {/* Newsletter CTA */}
+        <NewsletterCTA userId={user.id} />
+
+        {/* Lottery Participation Section */}
+        <div className="mb-8">
+          <LotteryParticipationWrapper
+            availableTickets={tickets}
+            draw={{
+              id: draw.id,
+              drawDate: draw.drawDate.toISOString(),
+              prizeAmount: draw.prizeAmount,
+              totalTickets: draw.totalTickets,
+              participants: draw.participants,
+            }}
+            userParticipation={userParticipation}
+          />
+        </div>
         
-        <div className="lg:col-span-1 md:col-span-2 lg:row-span-2">
-          <RecentWinners winners={recentWinners} />
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <TicketStats tickets={tickets} winningChance={winningChance} />
+          <NextDraw nextDraw={nextDraw} tickets={tickets} />
+          
+          <div className="lg:col-span-1 md:col-span-2 lg:row-span-2">
+            <RecentWinners winners={recentWinners} />
+          </div>
+        </div>
+        
+        {/* Earn Tickets Section */}
+        <div className="mt-6">
+          <EarnTickets userId={user.id} availableTickets={tickets} />
         </div>
       </div>
-      
-      {/* Earn Tickets Section */}
-      <div className="mt-6">
-        <EarnTickets userId={user.id} availableTickets={tickets} />
-      </div>
-    </div>
+    </DashboardWrapper>
   );
 }
 

@@ -3,9 +3,9 @@ import { isAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 
-export async function PATCH(
+export async function POST(
   req: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const isAdminUser = await isAdmin();
@@ -14,13 +14,13 @@ export async function PATCH(
       return new NextResponse(
         JSON.stringify({
           success: false,
-          message: "Unauthorized. Only administrators can demote other administrators.",
+          message: "Unauthorized",
         }),
         { status: 403 }
       );
     }
 
-    const userId = params.userId;
+    const { userId } = await params;
     
     // Check if user exists
     const user = await db.user.findUnique({

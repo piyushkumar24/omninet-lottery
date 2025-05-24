@@ -26,13 +26,13 @@ export const SurveyCompletionAlert = () => {
     }, 15000);
 
     // Show multiple success notifications for clarity
-    toast.success("🎉 Survey completed successfully!", {
+    toast.success("🎉 Ticket added to your account!", {
       duration: 6000,
       icon: "🎫",
       style: {
         border: '2px solid #22c55e',
         padding: '16px',
-        fontSize: '16px',
+        fontSize: '14px',
       },
     });
 
@@ -46,6 +46,7 @@ export const SurveyCompletionAlert = () => {
           color: '#166534',
           border: '2px solid #22c55e',
           padding: '16px',
+          fontSize: '14px',
         },
       });
     }, 2000);
@@ -143,7 +144,7 @@ export const SurveyCompletionAlert = () => {
 
                 {/* Next Steps */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-4">
-                  <p className="text-blue-800 text-base font-bold mb-2">🚀 What's Next?</p>
+                  <p className="text-blue-800 text-base font-bold mb-2">🚀 What&apos;s Next?</p>
                   <div className="space-y-2">
                     <p className="text-blue-700 text-sm">
                       • <strong>Participate in Lottery:</strong> Use your tickets to enter the Thursday draw

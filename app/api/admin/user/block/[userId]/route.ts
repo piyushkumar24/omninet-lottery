@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-export async function PATCH(
+export async function POST(
   req: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const isAdminUser = await isAdmin();
@@ -19,7 +19,7 @@ export async function PATCH(
       );
     }
 
-    const { userId } = params;
+    const { userId } = await params;
     const body = await req.json();
     const { isBlocked } = body;
 
