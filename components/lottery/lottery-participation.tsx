@@ -108,16 +108,20 @@ export const LotteryParticipation = ({
       
       participateInLottery(values)
         .then((data) => {
-          if (data.error) {
+          // Handle error response
+          if ('error' in data) {
             setError(data.error);
             setShowConfirmation(false);
+            return;
           }
 
-          if (data.success) {
+          // Handle success response
+          if ('success' in data) {
             setSuccess(data.success);
             setShowConfirmation(false);
             form.reset({ ticketsToUse: 1, drawId: draw.id });
             onParticipationUpdate();
+            return;
           }
         })
         .catch(() => {
@@ -171,12 +175,12 @@ export const LotteryParticipation = ({
               </div>
               <div>
                 <CardTitle className="text-2xl font-bold">
-                  {isExistingParticipation ? "Add More Tickets" : "Participate in Next Lottery"}
+                  {isExistingParticipation ? "Add More Tickets to Your Entry" : "Join the Upcoming Lottery Draw"}
                 </CardTitle>
                 <p className="text-blue-100 mt-1">
                   {isExistingParticipation 
-                    ? `You&apos;re already participating with ${userParticipation?.ticketsUsed} tickets`
-                    : "Select tickets and join the upcoming draw"
+                    ? `Add more tickets to boost your chances! You're currently participating with ${userParticipation?.ticketsUsed} tickets in the ${drawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} draw.`
+                    : `Participate in the lottery draw on ${drawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })} and win amazing prizes! Good luck! 🍀`
                   }
                 </p>
               </div>

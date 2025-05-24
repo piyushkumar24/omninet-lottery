@@ -86,7 +86,7 @@ const SettingsPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
       {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-indigo-500/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-emerald-400/20 to-blue-500/20 rounded-full blur-3xl"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-3xl"></div>
@@ -100,26 +100,26 @@ const SettingsPage = () => {
               variant="outline"
               size="sm"
               onClick={() => router.back()}
-              className="flex items-center gap-2 bg-white/80 border-gray-200 hover:bg-white hover:border-gray-300 transition-all duration-200"
+              className="flex items-center gap-2 bg-white/80 border-2 border-slate-200 hover:bg-white hover:border-slate-300 transition-all duration-200"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-slate-800 flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-lg">
                   <SettingsIcon className="h-6 w-6" />
                 </div>
-                Account Settings
-              </h1>
-              <p className="text-slate-600 mt-1">Manage your account preferences and security</p>
+                <h1 className="text-3xl md:text-4xl font-bold text-slate-800">Account Settings</h1>
+              </div>
+              <p className="text-slate-600">Manage your account preferences and security</p>
             </div>
           </div>
           
           <Link href="/">
             <Button 
               variant="outline"
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 hover:bg-gradient-to-r hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-200 font-medium"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 text-blue-700 hover:bg-gradient-to-r hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-200 font-medium"
             >
               <Home className="h-4 w-4" />
               Back to Landing
@@ -128,7 +128,7 @@ const SettingsPage = () => {
         </div>
 
         {/* Main settings card */}
-        <Card className="bg-white/80 backdrop-blur-sm border border-white/50 shadow-xl">
+        <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
           <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg">
