@@ -102,7 +102,7 @@ export default async function DashboardPage() {
       
       {/* Earn Tickets Section */}
       <div className="mt-6">
-        <EarnTickets userId={user.id} hasSurveyTicket={tickets > 0} />
+        <EarnTickets userId={user.id} availableTickets={tickets} />
       </div>
     </div>
   );

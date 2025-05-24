@@ -38,6 +38,7 @@ model User {
   drawParticipations DrawParticipation[]
   referralCode  String?   @unique
   referredBy    String?
+  socialMediaFollowed Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }

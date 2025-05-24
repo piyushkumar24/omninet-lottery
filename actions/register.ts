@@ -107,16 +107,8 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
     },
   });
 
-  // If this was a referral, create a ticket for the referrer
-  if (referredBy) {
-    await db.ticket.create({
-      data: {
-        userId: referredBy,
-        source: "REFERRAL",
-        isUsed: false,
-      },
-    });
-  }
+  // Note: Referral tickets are now awarded when the referred user completes their first survey
+  // This is handled in the ticket earning logic
 
   const verificationToken = await generateVerificationToken(email);
   await sendVerificationEmail(

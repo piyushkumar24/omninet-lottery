@@ -9,7 +9,7 @@ import { TicketSource } from "@prisma/client";
 import { 
   Ticket, 
   ClipboardCheck, 
-  Share, 
+  Share2, 
   Users, 
   Calendar,
   Trophy,
@@ -34,7 +34,7 @@ const getSourceIcon = (source: TicketSource) => {
     case "SURVEY":
       return <ClipboardCheck className="h-5 w-5 text-indigo-600" />;
     case "SOCIAL":
-      return <Share className="h-5 w-5 text-indigo-600" />;
+      return <Share2 className="h-5 w-5 text-indigo-600" />;
     case "REFERRAL":
       return <Users className="h-5 w-5 text-indigo-600" />;
     default:
@@ -47,9 +47,9 @@ const getSourceLabel = (source: TicketSource) => {
     case "SURVEY":
       return "Survey Completion";
     case "SOCIAL":
-      return "Social Share";
+      return "Social Media Follow";
     case "REFERRAL":
-      return "Friend Referral";
+      return "Friend Invitation";
     default:
       return "Unknown Source";
   }
@@ -254,9 +254,9 @@ export default async function TicketsPage() {
                 </div>
               </div>
               <p className="text-slate-500 text-lg">You don&apos;t have any tickets yet.</p>
-              <p className="mt-2 text-slate-400">Complete surveys, refer friends, or share on social media to earn tickets!</p>
+              <p className="mt-2 text-slate-400">Complete surveys, invite friends, or follow us on social media to earn tickets!</p>
               <div className="mt-6">
-                <Link href="/dashboard/refer">
+                <Link href="/dashboard">
                   <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
                     <Users className="h-4 w-4 mr-2" />
                     Start Earning Tickets
@@ -287,10 +287,10 @@ export default async function TicketsPage() {
             
             <div className="flex items-center p-4 border rounded-md">
               <div className="bg-indigo-100 p-2 rounded-full mr-3">
-                <Share className="h-5 w-5 text-indigo-600" />
+                <Share2 className="h-5 w-5 text-indigo-600" />
               </div>
               <div>
-                <h3 className="font-semibold">Social Tickets</h3>
+                <h3 className="font-semibold">Social Media Tickets</h3>
                 <p className="text-2xl font-bold">{ticketsBySource["SOCIAL"]?.length || 0}</p>
               </div>
             </div>
