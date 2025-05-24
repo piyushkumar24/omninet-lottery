@@ -203,7 +203,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
             <div className="space-y-4">
@@ -219,7 +219,7 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center text-gray-500">Failed to load profile</div>
         </div>
       </div>
@@ -238,9 +238,9 @@ export default function ProfilePage() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="relative z-10 p-6 max-w-6xl mx-auto space-y-8">
+      <div className="relative z-10 p-6 max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-lg">
               <User className="h-8 w-8" />
@@ -253,13 +253,13 @@ export default function ProfilePage() {
           {!isEditing ? (
             <Button 
               onClick={() => setIsEditing(true)} 
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg w-full sm:w-auto"
             >
               <Edit2 className="h-4 w-4 mr-2" />
               Edit Profile
             </Button>
           ) : (
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <Button 
                 onClick={handleSave} 
                 disabled={isSaving} 
@@ -280,10 +280,10 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Profile Information Card */}
-          <div className="lg:col-span-2">
-            <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
+          <div className="xl:col-span-2">
+            <Card className="bg-white/90 backdrop-blur-sm border-2 border-white/50 shadow-xl overflow-hidden">
               <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-gray-100">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <User className="h-5 w-5 text-blue-600" />
@@ -291,58 +291,67 @@ export default function ProfilePage() {
                 </CardTitle>
                 <CardDescription>Your account details and basic information</CardDescription>
               </CardHeader>
-              <CardContent className="p-8">
-                <div className="flex flex-col md:flex-row gap-8">
+              <CardContent className="p-6 md:p-8">
+                <div className="flex flex-col lg:flex-row gap-8">
                   {/* Profile Image Section */}
-                  <div className="flex flex-col items-center space-y-4">
+                  <div className="flex flex-col items-center space-y-6 lg:min-w-0 lg:flex-shrink-0">
                     <div className="relative">
-                      <Avatar className="w-32 h-32 border-4 border-white shadow-lg">
-                        <AvatarImage src={isEditing ? editForm.profileImage : profileImageUrl} alt="Profile" />
+                      <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
+                        <AvatarImage 
+                          src={isEditing ? editForm.profileImage : profileImageUrl} 
+                          alt="Profile" 
+                          className="object-cover"
+                        />
                         <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700">
                           {profile.name?.charAt(0) || "U"}
                         </AvatarFallback>
                       </Avatar>
-                      {isDefaultImage && (
-                        <div className="absolute -bottom-2 -right-2 bg-red-500 text-white p-1 rounded-full">
+                      {isDefaultImage && !isEditing && (
+                        <div className="absolute -bottom-2 -right-2 bg-red-500 text-white p-2 rounded-full shadow-lg">
                           <AlertTriangle className="h-4 w-4" />
                         </div>
                       )}
                     </div>
                     
-                    {isDefaultImage && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center max-w-xs">
-                        <div className="flex items-center gap-2 text-red-600 text-sm font-medium mb-1">
-                          <AlertTriangle className="h-4 w-4" />
-                          Update Profile Picture
-                        </div>
-                        <p className="text-red-600 text-xs">
-                          Please update your profile picture from this default one for a personalized experience.
-                        </p>
-                      </div>
-                    )}
-                    
-                    {isEditing && (
-                      <div className="text-center">
-                        <Label htmlFor="image-upload" className="cursor-pointer">
-                          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-300">
-                            <Upload className="h-4 w-4 text-blue-600" />
-                            <span className="text-blue-700 font-medium">Upload Photo</span>
+                    {/* Upload Section - Always show when editing or when no profile picture */}
+                    {(isEditing || isDefaultImage) && (
+                      <div className="flex flex-col items-center space-y-4 w-full max-w-xs">
+                        {isDefaultImage && !isEditing && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                            <div className="flex items-center justify-center gap-2 text-red-600 text-sm font-medium mb-2">
+                              <AlertTriangle className="h-4 w-4" />
+                              Update Profile Picture
+                            </div>
+                            <p className="text-red-600 text-xs leading-relaxed">
+                              Please update your profile picture from this default one for a personalized experience.
+                            </p>
                           </div>
-                        </Label>
-                        <Input
-                          id="image-upload"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                        <p className="text-xs text-slate-500 mt-2">Max 5MB • JPG, PNG, GIF</p>
+                        )}
+                        
+                        {isEditing && (
+                          <div className="w-full">
+                            <Label htmlFor="image-upload" className="cursor-pointer block">
+                              <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-300 w-full">
+                                <Upload className="h-4 w-4 text-blue-600" />
+                                <span className="text-blue-700 font-medium">Upload Photo</span>
+                              </div>
+                            </Label>
+                            <Input
+                              id="image-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                            />
+                            <p className="text-xs text-slate-500 mt-2 text-center">Max 5MB • JPG, PNG, GIF</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
 
                   {/* Profile Details */}
-                  <div className="flex-1 space-y-6">
+                  <div className="flex-1 space-y-6 min-w-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label className="text-slate-700 font-medium">Full Name</Label>
@@ -354,9 +363,9 @@ export default function ProfilePage() {
                             className="bg-white border-2 border-slate-200 focus:border-blue-500 transition-colors"
                           />
                         ) : (
-                          <p className="text-lg font-semibold text-slate-800 bg-slate-50 rounded-lg px-3 py-2">
+                          <div className="text-lg font-semibold text-slate-800 bg-slate-50 rounded-lg px-3 py-3 break-words">
                             {profile.name}
-                          </p>
+                          </div>
                         )}
                       </div>
 
@@ -370,26 +379,26 @@ export default function ProfilePage() {
                             className="bg-white border-2 border-slate-200 focus:border-blue-500 transition-colors"
                           />
                         ) : (
-                          <p className="text-lg font-semibold text-slate-800 bg-slate-50 rounded-lg px-3 py-2">
+                          <div className="text-lg font-semibold text-slate-800 bg-slate-50 rounded-lg px-3 py-3 break-words">
                             @{profile.username}
-                          </p>
+                          </div>
                         )}
                       </div>
 
                       <div className="space-y-2">
                         <Label className="text-slate-700 font-medium">Email</Label>
-                        <p className="text-lg text-slate-800 bg-slate-50 rounded-lg px-3 py-2">
+                        <div className="text-lg text-slate-800 bg-slate-50 rounded-lg px-3 py-3 break-words">
                           {profile.email}
-                        </p>
+                        </div>
                       </div>
 
                       <div className="space-y-2">
                         <Label className="text-slate-700 font-medium">Member Since</Label>
-                        <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
-                          <Calendar className="h-4 w-4 text-slate-500" />
-                          <p className="text-lg text-slate-800">
+                        <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-3">
+                          <Calendar className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                          <div className="text-lg text-slate-800 break-words">
                             {format(new Date(profile.createdAt), "MMMM d, yyyy")}
-                          </p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -413,7 +422,7 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="p-6">
                 <div className="text-center space-y-4">
-                  <div className="bg-white rounded-xl p-6 border border-green-200">
+                  <div className="bg-white/80 rounded-xl p-6 border border-green-200">
                     <div className="text-4xl font-bold text-green-800 mb-2">{availableTickets}</div>
                     <p className="text-green-700 font-medium">Available Tickets</p>
                     <p className="text-green-600 text-sm mt-1">Ready for lottery participation</p>
@@ -432,7 +441,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Lottery Participation History */}
-        <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
+        <Card className="bg-white/90 backdrop-blur-sm border-2 border-white/50 shadow-xl overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
             <CardTitle className="flex items-center gap-2 text-yellow-800">
               <Trophy className="h-5 w-5" />
@@ -462,16 +471,16 @@ export default function ProfilePage() {
                     key={participation.id} 
                     className="group p-6 bg-gradient-to-r from-white to-yellow-50 border border-yellow-200 rounded-xl hover:shadow-md transition-all duration-300"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-yellow-100 rounded-xl group-hover:bg-yellow-200 transition-colors">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div className="p-3 bg-yellow-100 rounded-xl group-hover:bg-yellow-200 transition-colors flex-shrink-0">
                           <Trophy className="h-6 w-6 text-yellow-600" />
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-slate-800 text-lg">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-semibold text-slate-800 text-lg break-words">
                             Draw on {format(new Date(participation.draw.drawDate), "MMMM d, yyyy")}
                           </h4>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-slate-600">
+                          <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-slate-600">
                             <span>Tickets Used: <span className="font-semibold">{participation.ticketsUsed}</span></span>
                             <span>Prize: <span className="font-semibold text-green-600">${participation.draw.prizeAmount}</span></span>
                           </div>
@@ -481,7 +490,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
                       
-                      <div className="text-right">
+                      <div className="text-center sm:text-right flex-shrink-0">
                         <Badge 
                           variant={participation.isWinner ? "default" : "secondary"}
                           className={`text-sm px-3 py-1 ${

@@ -4,6 +4,17 @@
 
 This guide explains how the CPX Research survey integration works in the NextJS lottery application. Users can now earn lottery tickets by completing real surveys through CPX Research instead of just clicking a button.
 
+## 🚨 **IMPORTANT: Understanding Ticket Display**
+
+**If you're seeing decimal numbers like 0.42, 0.15** - These are NOT your ticket counts! These are your **winning chance percentages**.
+
+- **Your Ticket Count**: Always whole numbers (1, 2, 3, etc.) - shown in the main ticket display
+- **Winning Percentage**: Decimal numbers (0.42%, 0.15%) - shown as "Winning chance: X%"
+
+**Example:**
+- ✅ **Tickets: 3** (You have 3 lottery tickets)
+- ℹ️ **Winning chance: 0.42%** (You have a 0.42% chance to win)
+
 ## Features Implemented
 
 ✅ **Secure CPX Research Integration**
@@ -100,6 +111,106 @@ app/dashboard/page.tsx                     # Added survey completion detection
 - Show success alert and notification
 - Update ticket count automatically
 
+## 🛠️ **Troubleshooting Common Issues**
+
+### Issue 1: "Survey Reward Failed"
+
+**Possible Causes:**
+- Postback URL not reachable
+- Hash validation failed
+- Duplicate transaction detected
+- Network/server issues
+
+**Solutions:**
+1. **Check ngrok tunnel**: Ensure your ngrok tunnel is running and accessible
+2. **Verify postback URL**: Test manually with curl:
+   ```bash
+   curl "https://8bad-2406-7400-81-835f-cc49-26c4-69fc-3b65.ngrok-free.app/api/cpx-postback?status=1&trans_id=test123&user_id=YOUR_USER_ID&hash=GENERATED_HASH"
+   ```
+3. **Check server logs**: Look for error messages in the console
+4. **Verify hash generation**: Use the test script to validate
+
+### Issue 2: "No Surveys Available"
+
+**This is NORMAL behavior from CPX Research!**
+
+**Why this happens:**
+- Survey providers target specific demographics
+- Limited survey availability for your profile
+- Time-based restrictions
+- Geographic limitations
+
+**Solutions:**
+1. **Try again later**: Survey availability changes throughout the day
+2. **Different times**: Try morning, afternoon, and evening
+3. **Update profile**: Complete profile surveys to improve targeting
+4. **Be patient**: This is how real survey platforms work
+
+**What the modal shows:**
+- "Unfortunately we could not find a survey for your profile"
+- "Try again in a few hours"
+- This is expected and not an error!
+
+### Issue 3: Seeing Decimal Numbers (0.42, 0.15)
+
+**This is NOT a bug!** You're looking at winning percentages, not ticket counts.
+
+**Where to find your actual ticket count:**
+- Dashboard main section: Large number showing your tickets
+- "Your Lottery Tickets" card: Shows actual count (1, 2, 3, etc.)
+- Ticket history page: Lists all your earned tickets
+
+**Understanding the display:**
+```
+Your Lottery Tickets
+       5          ← Your actual ticket count (whole number)
+   Tickets Available
+
+Winning Chance
+     0.42%        ← Your percentage chance to win (decimal)
+```
+
+### Issue 4: Tickets Not Awarded After Survey
+
+**Check these steps:**
+1. **Complete the entire survey**: Partial completion doesn't count
+2. **Wait for redirection**: Don't close the window early
+3. **Check console logs**: Look for postback confirmations
+4. **Verify user session**: Ensure you're logged in properly
+5. **Test with debug endpoint**: Use the test command below
+
+**Manual test:**
+```bash
+# Replace YOUR_USER_ID with your actual user ID
+curl -X PUT "https://8bad-2406-7400-81-835f-cc49-26c4-69fc-3b65.ngrok-free.app/api/cpx-postback?test=true&user_id=YOUR_USER_ID"
+```
+
+## API Endpoints
+
+### `/api/cpx-postback` (GET/POST)
+Handles survey completion notifications from CPX Research.
+
+**Parameters:**
+- `status`: 1 (completed) or 0 (not completed)
+- `trans_id`: Unique transaction ID
+- `user_id`: Our user ID
+- `amount_usd`: Amount earned
+- `hash`: Secure hash for validation
+
+**Enhanced Logging:**
+- All postbacks are logged with emojis for easy identification
+- Success: ✅ Survey completion processed successfully
+- Warning: ⚠️ Recent survey ticket found (duplicate)
+- Error: ❌ Invalid hash / User not found
+
+### `/api/cpx-postback` (PUT - Test Endpoint)
+Create test tickets for debugging.
+
+**Usage:**
+```bash
+curl -X PUT "https://your-domain.com/api/cpx-postback?test=true&user_id=USER_ID"
+```
+
 ## Security Features
 
 ### Hash Validation
@@ -114,7 +225,7 @@ if (!validateCPXPostbackHash(userId, receivedHash)) {
 ```
 
 ### Duplicate Prevention
-- Check for recent survey tickets within 1 minute
+- Check for recent survey tickets within 5 minutes
 - Prevent multiple awards for same transaction
 - Transaction logging for audit trail
 
@@ -123,58 +234,52 @@ if (!validateCPXPostbackHash(userId, receivedHash)) {
 - Secure iframe with proper sandbox attributes
 - Hash-based authentication only
 
-## API Endpoints
+## Testing & Debugging
 
-### `/api/cpx-postback` (GET/POST)
-Handles survey completion notifications from CPX Research.
-
-**Parameters:**
-- `status`: 1 (completed) or 0 (not completed)
-- `trans_id`: Unique transaction ID
-- `user_id`: Our user ID
-- `amount_usd`: Amount earned
-- `hash`: Secure hash for validation
-
-### `/api/survey/complete` (GET/POST)
-Verification endpoint for survey completion status.
-
-## Testing
-
-### 1. Local Development
-1. Use ngrok to expose local server
-2. Update CPX postback URL in their dashboard
-3. Test survey completion flow
-
-### 2. Production Deployment
-1. Update postback URL to production domain
-2. Verify SSL certificate is valid
-3. Test end-to-end flow
-
-## Troubleshooting
-
-### Common Issues
-
-**Survey not loading:**
-- Check iframe sandbox permissions
-- Verify user data is properly encoded
-- Ensure secure hash is generated correctly
-
-**Tickets not awarded:**
-- Check console logs for postback errors
-- Verify hash validation is working
-- Ensure CPX postback URL is correct
-
-**Duplicate tickets:**
-- Check duplicate prevention logic
-- Verify transaction ID tracking
-- Review timing windows for recent tickets
-
-### Debug Mode
-
-Enable debug mode in CPX script configuration:
-```typescript
-debug: true  // Set to false in production
+### 1. Run Test Script
+```bash
+node scripts/test-cpx-integration.js
 ```
+
+### 2. Check Logs
+Look for these log patterns:
+- 🔔 CPX Postback received
+- ✅ Hash validation passed
+- 🎫 Survey ticket created
+- ✅ Survey completion processed successfully
+
+### 3. Manual Testing
+```bash
+# Test postback endpoint
+curl "https://your-domain.com/api/cpx-postback?status=1&trans_id=test123&user_id=YOUR_USER_ID&hash=VALID_HASH"
+
+# Create test ticket
+curl -X PUT "https://your-domain.com/api/cpx-postback?test=true&user_id=YOUR_USER_ID"
+```
+
+## Common Misconceptions
+
+❌ **"I'm not getting whole ticket numbers"**
+→ You're looking at winning percentages, not ticket counts
+
+❌ **"Survey rewards are failing"**
+→ Check if ngrok tunnel is running and postback URL is correct
+
+❌ **"No surveys are available"**
+→ This is normal CPX Research behavior, try again later
+
+❌ **"System is broken"**
+→ Usually configuration or timing issues, not code problems
+
+## Production Checklist
+
+- [ ] Update all URLs from ngrok to production domain
+- [ ] Set `debug: false` in CPX configuration
+- [ ] Test postback endpoint accessibility from external networks
+- [ ] Verify SSL certificate is valid
+- [ ] Monitor postback logs for errors
+- [ ] Test complete user flow end-to-end
+- [ ] Confirm CPX Research dashboard settings
 
 ## Support
 
@@ -182,19 +287,17 @@ For issues with:
 - **CPX Research**: Contact their support team
 - **Integration Code**: Check console logs and API responses
 - **Postback Issues**: Verify URLs and hash validation
+- **"No surveys available"**: Normal behavior, try again later
+- **Decimal numbers**: You're seeing percentages, not ticket counts
 
-## Production Checklist
+## Success Indicators
 
-- [ ] Update all URLs from ngrok to production domain
-- [ ] Set `debug: false` in CPX configuration
-- [ ] Test postback endpoint accessibility
-- [ ] Verify SSL certificate is valid
-- [ ] Monitor postback logs for errors
-- [ ] Test complete user flow end-to-end
+✅ **Working Correctly When:**
+- Survey modal opens and loads iframe
+- "No surveys available" message appears (this is normal!)
+- Successful survey completion redirects to dashboard
+- Success alert appears with celebration animation
+- Ticket count increases by whole numbers (1, 2, 3)
+- Console shows: "✅ Survey completion processed successfully"
 
-## Next Steps
-
-1. **Enhanced Analytics**: Track survey completion rates
-2. **Multiple Providers**: Add other survey providers
-3. **Survey Categories**: Different ticket values for different surveys
-4. **User Preferences**: Let users choose survey types 
+🎯 **Remember:** Real survey platforms have limited availability. The system is working even when no surveys are available! 

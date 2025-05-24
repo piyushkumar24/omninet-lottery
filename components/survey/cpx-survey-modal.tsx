@@ -20,7 +20,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
-  Monitor
+  Monitor,
+  RefreshCw,
+  Info
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -44,14 +46,17 @@ export const CPXSurveyModal = ({
   const [isOpen, setIsOpen] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
   const [surveyUrl, setSurveyUrl] = useState<string>("");
+  const [surveyError, setSurveyError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (isOpen && user) {
       const url = generateCPXSurveyURL(user);
       setSurveyUrl(url);
       setIframeLoading(true);
+      setSurveyError(null);
     }
-  }, [isOpen, user]);
+  }, [isOpen, user, retryCount]);
 
   const handleOpenInNewTab = () => {
     if (surveyUrl) {
@@ -60,9 +65,21 @@ export const CPXSurveyModal = ({
     }
   };
 
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setSurveyError(null);
+    setIframeLoading(true);
+    toast("Refreshing survey...", {
+      icon: "🔄",
+      duration: 2000,
+    });
+  };
+
   const handleClose = () => {
     setIsOpen(false);
     setIframeLoading(true);
+    setSurveyError(null);
+    setRetryCount(0);
     if (onSurveyComplete) {
       onSurveyComplete();
     }
@@ -70,6 +87,31 @@ export const CPXSurveyModal = ({
 
   const handleIframeLoad = () => {
     setIframeLoading(false);
+    
+    // Check if the iframe content indicates no surveys available
+    setTimeout(() => {
+      try {
+        const iframe = document.querySelector('iframe[title="CPX Research Survey"]') as HTMLIFrameElement;
+        if (iframe && iframe.contentDocument) {
+          const iframeContent = iframe.contentDocument.body.innerText.toLowerCase();
+          if (iframeContent.includes('unfortunately we could not find a survey') || 
+              iframeContent.includes('no survey available') ||
+              iframeContent.includes('try again in a few hours')) {
+            setSurveyError("no_surveys");
+          }
+        }
+      } catch (e) {
+        // Cross-origin restrictions prevent this check, but that's okay
+        // The error handling will rely on user feedback instead
+        console.log('Cannot check iframe content due to cross-origin restrictions');
+      }
+    }, 2000);
+  };
+
+  const handleIframeError = () => {
+    setIframeLoading(false);
+    setSurveyError("loading_failed");
+    toast.error("Failed to load survey. Please try again.");
   };
 
   return (
@@ -110,15 +152,27 @@ export const CPXSurveyModal = ({
               </div>
             </div>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenInNewTab}
-              className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Open in New Tab
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRetry}
+                className="flex items-center gap-2 bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Retry
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenInNewTab}
+                className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300"
+              >
+                <ExternalLink className="h-4 w-4" />
+                New Tab
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -155,14 +209,64 @@ export const CPXSurveyModal = ({
                 </div>
               </div>
             )}
+
+            {/* Error States */}
+            {surveyError === "no_surveys" && (
+              <div className="absolute inset-0 bg-amber-50 z-10 flex flex-col items-center justify-center p-6">
+                <div className="text-center max-w-md">
+                  <Info className="h-12 w-12 text-amber-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-amber-800 mb-2">No Surveys Available Right Now</h3>
+                  <p className="text-amber-700 mb-4">
+                    Unfortunately, there are no surveys available for your profile at the moment. 
+                    This happens when survey providers are looking for specific demographics.
+                  </p>
+                  <div className="space-y-3">
+                    <Button onClick={handleRetry} className="w-full bg-amber-600 hover:bg-amber-700 text-white">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Try Again
+                    </Button>
+                    <p className="text-xs text-amber-600">
+                      💡 Tip: Try again in a few hours or tomorrow for new survey opportunities!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {surveyError === "loading_failed" && (
+              <div className="absolute inset-0 bg-red-50 z-10 flex flex-col items-center justify-center p-6">
+                <div className="text-center max-w-md">
+                  <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">Survey Failed to Load</h3>
+                  <p className="text-red-700 mb-4">
+                    There was a problem loading the survey. This could be due to a temporary network issue.
+                  </p>
+                  <div className="space-y-3">
+                    <Button onClick={handleRetry} className="w-full bg-red-600 hover:bg-red-700 text-white">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry Loading
+                    </Button>
+                    <Button 
+                      onClick={handleOpenInNewTab} 
+                      variant="outline"
+                      className="w-full border-red-300 text-red-700 hover:bg-red-50"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Try in New Tab
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             
-            {surveyUrl && (
+            {surveyUrl && !surveyError && (
               <iframe
                 src={surveyUrl}
                 width="100%"
                 height="600px"
                 frameBorder="0"
                 onLoad={handleIframeLoad}
+                onError={handleIframeError}
                 className="rounded-lg"
                 title="CPX Research Survey"
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
@@ -205,7 +309,7 @@ export const CPXSurveyModal = ({
                 <p className="font-semibold text-amber-900 mb-1">⚡ Important Notice</p>
                 <p className="text-amber-800 text-sm">
                   Complete the entire survey to earn your ticket. Closing this window early will not award any tickets. 
-                  Your progress is automatically saved by CPX Research.
+                  Your progress is automatically saved by CPX Research. If you don't see surveys available, try again later!
                 </p>
               </div>
             </div>
@@ -214,10 +318,19 @@ export const CPXSurveyModal = ({
 
         <div className="border-t border-slate-200 pt-4 flex justify-between items-center">
           <p className="text-sm text-slate-600">
-            Having issues? Try opening the survey in a new tab.
+            Having issues? Try refreshing or opening the survey in a new tab.
           </p>
           
           <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={handleRetry}
+              className="border-slate-300 hover:bg-slate-50"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            
             <Button
               variant="outline"
               onClick={handleOpenInNewTab}

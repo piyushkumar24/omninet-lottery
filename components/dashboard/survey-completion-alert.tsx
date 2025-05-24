@@ -9,7 +9,9 @@ import {
   Ticket, 
   Sparkles,
   Trophy,
-  Clock
+  Clock,
+  PartyPopper,
+  Coins
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -18,16 +20,35 @@ export const SurveyCompletionAlert = () => {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    // Auto-hide after 10 seconds
+    // Auto-hide after 15 seconds (extended for better visibility)
     const timer = setTimeout(() => {
       handleClose();
-    }, 10000);
+    }, 15000);
 
-    // Show success toast
-    toast.success("🎉 Survey completed successfully! Your ticket has been added.", {
-      duration: 5000,
+    // Show multiple success notifications for clarity
+    toast.success("🎉 Survey completed successfully!", {
+      duration: 6000,
       icon: "🎫",
+      style: {
+        border: '2px solid #22c55e',
+        padding: '16px',
+        fontSize: '16px',
+      },
     });
+
+    // Secondary confirmation toast
+    setTimeout(() => {
+      toast("✅ 1 lottery ticket has been added to your account!", {
+        duration: 8000,
+        icon: "🎟️",
+        style: {
+          backgroundColor: '#dcfce7',
+          color: '#166534',
+          border: '2px solid #22c55e',
+          padding: '16px',
+        },
+      });
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -47,68 +68,93 @@ export const SurveyCompletionAlert = () => {
         fadeOut ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
       }`}
     >
-      <Card className="relative overflow-hidden bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 border-2 border-green-200 shadow-xl">
+      <Card className="relative overflow-hidden bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 border-4 border-green-300 shadow-2xl">
         {/* Animated background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-green-300/20 to-transparent animate-pulse"></div>
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-green-300/30 to-transparent animate-pulse"></div>
+          <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-l from-transparent via-emerald-300/30 to-transparent animate-pulse delay-1000"></div>
         </div>
         
-        <div className="relative p-6">
+        <div className="relative p-8">
           <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-6">
               {/* Success Icon */}
               <div className="flex-shrink-0">
                 <div className="relative">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg animate-bounce">
-                    <CheckCircle2 className="h-7 w-7 text-white" />
+                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-xl animate-bounce">
+                    <CheckCircle2 className="h-9 w-9 text-white" />
                   </div>
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
-                    <Sparkles className="h-3 w-3 text-yellow-800" />
+                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center animate-pulse">
+                    <PartyPopper className="h-4 w-4 text-yellow-800" />
+                  </div>
+                  <div className="absolute -bottom-1 -left-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center animate-ping">
+                    <Sparkles className="h-3 w-3 text-white" />
                   </div>
                 </div>
               </div>
 
               {/* Content */}
               <div className="flex-1">
-                <h3 className="text-xl font-bold text-green-800 mb-2 flex items-center gap-2">
-                  🎉 Survey Completed Successfully!
-                  <Ticket className="h-5 w-5 text-green-600 animate-pulse" />
+                <h3 className="text-3xl font-bold text-green-800 mb-3 flex items-center gap-3">
+                  🎉 Congratulations! Survey Completed!
+                  <Ticket className="h-7 w-7 text-green-600 animate-pulse" />
                 </h3>
                 
-                <p className="text-green-700 mb-4 text-base leading-relaxed">
-                  Congratulations! You&apos;ve successfully completed the survey and earned <span className="font-bold">1 lottery ticket</span>. 
-                  Your ticket has been automatically added to your account and is ready for the next lottery draw.
-                </p>
+                <div className="bg-white/80 rounded-xl p-4 mb-4 border-2 border-green-200">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Coins className="h-6 w-6 text-green-600" />
+                    <p className="text-xl font-bold text-green-800">
+                      ✅ 1 Lottery Ticket Earned Successfully!
+                    </p>
+                  </div>
+                  <p className="text-green-700 text-base leading-relaxed">
+                    Your survey has been completed and verified by CPX Research. Your lottery ticket has been 
+                    <span className="font-bold text-green-800"> automatically added to your account</span> and is 
+                    ready for the next lottery draw.
+                  </p>
+                </div>
 
                 {/* Status Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-green-200">
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-green-600" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-gradient-to-r from-green-100 to-emerald-100 backdrop-blur-sm rounded-xl p-4 border-2 border-green-300 shadow-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                        <Trophy className="h-5 w-5 text-white" />
+                      </div>
                       <div>
-                        <p className="text-green-800 font-semibold text-sm">Ticket Earned</p>
-                        <p className="text-green-700 text-xs">Added to your account</p>
+                        <p className="text-green-800 font-bold text-base">Ticket Status</p>
+                        <p className="text-green-700 font-semibold">✅ Successfully Added</p>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-green-200">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-blue-600" />
+                  <div className="bg-gradient-to-r from-blue-100 to-indigo-100 backdrop-blur-sm rounded-xl p-4 border-2 border-blue-300 shadow-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-white" />
+                      </div>
                       <div>
-                        <p className="text-blue-800 font-semibold text-sm">Ready for Draw</p>
-                        <p className="text-blue-700 text-xs">Next draw: Thursday</p>
+                        <p className="text-blue-800 font-bold text-base">Draw Status</p>
+                        <p className="text-blue-700 font-semibold">Ready for Thursday Draw</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Next Steps */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-blue-800 text-sm font-medium mb-1">🚀 What&apos;s Next?</p>
-                  <p className="text-blue-700 text-xs">
-                    Complete more surveys to earn additional tickets, or participate in the lottery draw with your current tickets to increase your chances of winning!
-                  </p>
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-4">
+                  <p className="text-blue-800 text-base font-bold mb-2">🚀 What's Next?</p>
+                  <div className="space-y-2">
+                    <p className="text-blue-700 text-sm">
+                      • <strong>Participate in Lottery:</strong> Use your tickets to enter the Thursday draw
+                    </p>
+                    <p className="text-blue-700 text-sm">
+                      • <strong>Earn More Tickets:</strong> Complete additional surveys to increase your chances
+                    </p>
+                    <p className="text-blue-700 text-sm">
+                      • <strong>Invite Friends:</strong> Share your referral link to earn bonus tickets
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -118,16 +164,16 @@ export const SurveyCompletionAlert = () => {
               variant="ghost"
               size="sm"
               onClick={handleClose}
-              className="flex-shrink-0 text-green-600 hover:text-green-800 hover:bg-green-100 rounded-full p-1 h-8 w-8"
+              className="flex-shrink-0 text-green-600 hover:text-green-800 hover:bg-green-100 rounded-full p-2 h-10 w-10"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
         {/* Progress indicator (auto-hide timer) */}
-        <div className="absolute bottom-0 left-0 h-1 bg-green-500 animate-pulse" style={{
-          animation: 'shrink 10s linear forwards'
+        <div className="absolute bottom-0 left-0 h-2 bg-green-600 animate-pulse" style={{
+          animation: 'shrink 15s linear forwards'
         }}>
         </div>
       </Card>

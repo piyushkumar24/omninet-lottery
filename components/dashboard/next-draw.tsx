@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock } from "lucide-react";
+import { Clock, Calendar, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 
@@ -40,33 +40,53 @@ export const NextDraw = ({ nextDraw, tickets }: NextDrawProps) => {
   }, [nextDraw]);
   
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-        <h3 className="text-sm font-medium">Next Draw</h3>
-        <Clock className="w-4 h-4 text-indigo-600" />
+    <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300">
+      <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
+        <h3 className="text-lg font-semibold text-purple-800">Next Lottery Draw</h3>
+        <div className="p-2 bg-purple-100 rounded-lg">
+          <Clock className="w-5 h-5 text-purple-600" />
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="flex justify-between items-center mb-2">
-          <div className="text-center">
-            <div className="text-2xl font-bold">{timeLeft.days}</div>
-            <p className="text-xs text-slate-500">Days</p>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold">{timeLeft.hours}</div>
-            <p className="text-xs text-slate-500">Hours</p>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold">{timeLeft.minutes}</div>
-            <p className="text-xs text-slate-500">Minutes</p>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold">{timeLeft.seconds}</div>
-            <p className="text-xs text-slate-500">Seconds</p>
+      <CardContent className="space-y-4">
+        {/* Countdown Timer - Main Display */}
+        <div className="bg-white/70 rounded-xl p-4 border border-purple-200">
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+              <div className="text-2xl font-bold text-purple-900">{timeLeft.days}</div>
+              <p className="text-xs font-medium text-purple-700">Days</p>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+              <div className="text-2xl font-bold text-purple-900">{timeLeft.hours}</div>
+              <p className="text-xs font-medium text-purple-700">Hours</p>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+              <div className="text-2xl font-bold text-purple-900">{timeLeft.minutes}</div>
+              <p className="text-xs font-medium text-purple-700">Min</p>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+              <div className="text-2xl font-bold text-purple-900">{timeLeft.seconds}</div>
+              <p className="text-xs font-medium text-purple-700">Sec</p>
+            </div>
           </div>
         </div>
-        <p className="text-xs text-slate-500">
-          You have {tickets} tickets for the next draw
-        </p>
+        
+        {/* Draw Info - Secondary Display */}
+        <div className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
+          <Calendar className="w-4 h-4 text-orange-600" />
+          <div className="text-center">
+            <p className="text-sm font-medium text-orange-800">Your Participation</p>
+            <p className="text-lg font-bold text-orange-900">{tickets} tickets</p>
+          </div>
+        </div>
+        
+        {/* Helpful Context */}
+        <div className="text-xs text-purple-600 text-center">
+          {tickets === 0 
+            ? "⚡ Get tickets to join the next draw!" 
+            : tickets === 1
+            ? "🎯 You're entered! Get more tickets for better odds!"
+            : `🚀 Great odds with ${tickets} tickets!`}
+        </div>
       </CardContent>
     </Card>
   );

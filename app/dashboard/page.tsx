@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 interface DashboardPageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -31,8 +31,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return redirect("/auth/blocked");
   }
 
+  // Await searchParams to fix NextJS 15 error
+  const resolvedSearchParams = await searchParams;
+
   // Check if user just completed a survey
-  const surveyCompleted = searchParams?.survey === 'completed';
+  const surveyCompleted = resolvedSearchParams?.survey === 'completed';
 
   // Get user's available tickets using utility function
   const tickets = await getUserAvailableTickets(user.id);
