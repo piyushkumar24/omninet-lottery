@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -19,6 +20,7 @@ import {
   Copy,
   Check
 } from "lucide-react";
+import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
 
 interface EarnTicketsProps {
   userId: string;
@@ -27,6 +29,7 @@ interface EarnTicketsProps {
 
 export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
   const router = useRouter();
+  const { data: session } = useSession();
   const [loading, setLoading] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [socialMediaFollowed, setSocialMediaFollowed] = useState(false);
@@ -65,35 +68,12 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
     }
   };
 
-  const handleSurveyClick = async () => {
-    try {
-      setLoading("SURVEY");
-      
-      const response = await fetch("/api/tickets/earn", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ source: "SURVEY" }),
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        toast.success(data.message);
-        if (data.firstSurvey) {
-          setHasSurveyTicket(true);
-        }
-        router.refresh();
-      } else {
-        toast.error(data.message || "Failed to earn ticket");
-      }
-    } catch (error) {
-      toast.error("Something went wrong");
-      console.error(error);
-    } finally {
-      setLoading(null);
-    }
+  // Handler for when survey is completed (called by modal)
+  const handleSurveyComplete = () => {
+    // Refresh the page data to show updated ticket count
+    router.refresh();
+    // Refresh user status to check if this was their first survey
+    checkUserStatus();
   };
 
   const handleReferralClick = async () => {
@@ -176,6 +156,13 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
     return "Great! Keep going — every new ticket increases your chance to win!";
   };
 
+  // Get user data for CPX Survey Modal
+  const userData = session?.user ? {
+    id: session.user.id as string,
+    name: session.user.name,
+    email: session.user.email,
+  } : null;
+
   return (
     <Card>
       <CardHeader>
@@ -185,7 +172,7 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Method 1: Complete Survey */}
+          {/* Method 1: Complete Survey - Now with CPX Integration */}
           <Card className="relative overflow-hidden border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
             <CardContent className="pt-6">
               <div className="flex items-center mb-4">
@@ -204,13 +191,20 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
                 </Badge>
               </div>
               
-              <Button 
-                onClick={handleSurveyClick}
-                disabled={loading === "SURVEY"}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
-              >
-                {loading === "SURVEY" ? "Processing..." : "Go to Survey"}
-              </Button>
+              {userData ? (
+                <CPXSurveyModal 
+                  user={userData}
+                  onSurveyComplete={handleSurveyComplete}
+                  isLoading={loading === "SURVEY"}
+                />
+              ) : (
+                <Button 
+                  disabled
+                  className="w-full bg-gray-300 text-gray-500 cursor-not-allowed font-semibold"
+                >
+                  Login Required
+                </Button>
+              )}
             </CardContent>
           </Card>
 

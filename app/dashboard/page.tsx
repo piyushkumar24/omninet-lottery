@@ -9,13 +9,18 @@ import { RecentWinners } from "@/components/dashboard/recent-winners";
 import { LotteryParticipationWrapper } from "@/components/lottery/lottery-participation-wrapper";
 import { createOrGetNextDraw, getUserParticipationInDraw } from "@/data/draw";
 import { getUserAvailableTickets } from "@/lib/ticket-utils";
+import { SurveyCompletionAlert } from "@/components/dashboard/survey-completion-alert";
 
 export const metadata: Metadata = {
   title: "Dashboard | Social Lottery",
   description: "Your lottery dashboard",
 };
 
-export default async function DashboardPage() {
+interface DashboardPageProps {
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const user = await getCurrentUser();
   
   if (!user) {
@@ -25,6 +30,9 @@ export default async function DashboardPage() {
   if (user.isBlocked) {
     return redirect("/auth/blocked");
   }
+
+  // Check if user just completed a survey
+  const surveyCompleted = searchParams?.survey === 'completed';
 
   // Get user's available tickets using utility function
   const tickets = await getUserAvailableTickets(user.id);
@@ -68,6 +76,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Survey Completion Alert */}
+      {surveyCompleted && <SurveyCompletionAlert />}
+
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">
