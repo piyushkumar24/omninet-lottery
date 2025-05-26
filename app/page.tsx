@@ -343,19 +343,22 @@ export default function Home() {
       {/* Professional Showcase Section */}
       <div className="bg-gradient-to-br from-white to-slate-50 py-24 md:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          {/* Centered Badge */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full text-white text-lg font-semibold shadow-lg hover:shadow-blue-500/25 transition-all duration-300">
+              <div className="w-3 h-3 bg-white rounded-full mr-3 animate-pulse"></div>
+              Why Join the 0mninet Lottery?
+            </div>
+          </div>
+          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="inline-flex items-center px-4 py-2 bg-emerald-100 rounded-full text-emerald-700 text-sm font-medium mb-6">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></div>
-                Why Join the 0mninet Lottery?
-              </div>
-              
               <h2 className={cn(
                 "text-4xl md:text-5xl font-bold mb-8 text-slate-900 leading-tight",
                 font.className,
               )}>
                 Making Internet Access a
-                <span className="block text-emerald-600">Global Reality</span>
+                <span className="block bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">Global Reality</span>
               </h2>
               
               <p className="text-xl mb-10 text-slate-600 leading-relaxed">
@@ -397,7 +400,7 @@ export default function Home() {
               
               <div className="mt-12">
                 <Link href="/auth/register">
-                  <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-lg px-10 py-4 shadow-xl hover:shadow-emerald-500/25 transition-all duration-300 hover:scale-105 font-semibold">
+                  <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-lg px-10 py-4 shadow-xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 font-semibold">
                       Be Part of the Change
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
