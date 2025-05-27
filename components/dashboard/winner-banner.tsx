@@ -44,7 +44,7 @@ export function WinnerBanner({ prizeAmount, drawDate, couponCode }: WinnerBanner
               <PartyPopper className="h-5 w-5 text-amber-600" />
             </div>
             <p className="text-amber-700">
-              You've won the 0mninet lottery draw that took place on {formatDate(drawDate, 'full')}!
+              You&apos;ve won the 0mninet lottery draw that took place on {formatDate(drawDate, 'full')}!
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 mt-3">

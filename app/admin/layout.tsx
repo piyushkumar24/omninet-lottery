@@ -6,6 +6,9 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { UserRole } from "@prisma/client";
 
+// Mark as dynamically rendered to fix headers() usage warning
+export const dynamic = 'force-dynamic';
+
 export default async function AdminLayout({
   children
 }: {

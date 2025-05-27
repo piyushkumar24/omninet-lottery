@@ -10,6 +10,8 @@ const nextConfig = {
       },
     ],
   },
+  // Fix for dynamic server usage in admin routes
+  output: 'standalone', // Use standalone output for better deployment performance
 }
 
 module.exports = nextConfig

@@ -386,7 +386,7 @@ export default async function TicketsPage() {
                 {ticketCounts["REFERRAL"] > 0 ? (
                   <div className="mt-3 text-xs bg-green-100 p-2 rounded border border-green-200">
                     <p className="text-green-700 font-medium">
-                      You've earned {ticketCounts["REFERRAL"]} ticket{ticketCounts["REFERRAL"] !== 1 ? 's' : ''} from friends who completed surveys.
+                      You&apos;ve earned {ticketCounts["REFERRAL"]} ticket{ticketCounts["REFERRAL"] !== 1 ? 's' : ''} from friends who completed surveys.
                     </p>
                     <Link href="/dashboard/refer" className="flex items-center mt-1 text-green-800 hover:underline">
                       <p>View your referrals</p>
@@ -395,7 +395,7 @@ export default async function TicketsPage() {
                   </div>
                 ) : (
                   <div className="mt-3 text-xs bg-amber-100 p-2 rounded border border-amber-200">
-                    <p className="text-amber-700">You haven't earned any referral tickets yet.</p>
+                    <p className="text-amber-700">You haven&apos;t earned any referral tickets yet.</p>
                     <Link href="/dashboard/refer" className="flex items-center mt-1 text-amber-800 hover:underline">
                       <p>Invite friends to earn tickets</p>
                       <ArrowRight className="h-3 w-3 ml-1" />

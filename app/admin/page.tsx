@@ -18,6 +18,9 @@ import {
 import Image from "next/image";
 import { initializeDefaultSettings } from "@/lib/settings";
 
+// Mark this page as dynamically rendered to avoid the headers() warning
+export const dynamic = 'force-dynamic';
+
 /**
  * Admin Dashboard page with comprehensive overview
  */
