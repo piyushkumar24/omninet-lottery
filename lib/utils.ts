@@ -60,3 +60,17 @@ export function formatDate(date: Date, formatType: DateFormatType = 'full'): str
       });
   }
 }
+
+/**
+ * Clear all dismissed winners from localStorage
+ * Useful for testing or debugging
+ */
+export function clearDismissedWinners() {
+  try {
+    localStorage.removeItem('dismissedWinners');
+    return true;
+  } catch (error) {
+    console.error('Error clearing dismissed winners:', error);
+    return false;
+  }
+}

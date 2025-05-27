@@ -1,19 +1,109 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 import { PartyPopper, Trophy, X, Ticket, ExternalLink } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { updateWinnerStatus } from "@/actions/user-status";
+import { useRouter } from "next/navigation";
 
 interface WinnerBannerProps {
   prizeAmount: number;
   drawDate: Date;
   couponCode: string | null;
+  winnerId: string;
 }
 
-export function WinnerBanner({ prizeAmount, drawDate, couponCode }: WinnerBannerProps) {
+export function WinnerBanner({ prizeAmount, drawDate, couponCode, winnerId }: WinnerBannerProps) {
   const [dismissed, setDismissed] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const router = useRouter();
+
+  // Memoize the dismiss handler to prevent unnecessary re-renders
+  const handleDismiss = useCallback(async () => {
+    if (isProcessing) return; // Prevent multiple clicks
+    
+    try {
+      console.log("Dismissing winner banner...");
+      setIsProcessing(true);
+      
+      // Force immediate UI update first
+      setDismissed(true);
+      
+      // Handle localStorage
+      const storageKey = 'dismissedWinners';
+      const storedData = localStorage.getItem(storageKey);
+      const dismissedWinners = storedData ? JSON.parse(storedData) : {};
+      
+      // Update the dismissedWinners object
+      dismissedWinners[winnerId] = true;
+      
+      // Store back to localStorage
+      localStorage.setItem(storageKey, JSON.stringify(dismissedWinners));
+      
+      // Update the user's hasWon status on the server
+      const result = await updateWinnerStatus(true);
+      
+      if (result.error) {
+        console.error("Error updating winner status:", result.error);
+      }
+      
+      // Dispatch event to update other components
+      window.dispatchEvent(new CustomEvent('winnerBannerDismissed'));
+      
+      // Refresh the page to update the UI
+      router.refresh();
+      
+      // Show a toast confirmation
+      toast.success("Congratulations on your win! Your tickets have been reset for the next lottery.", {
+        duration: 4000,
+        position: "top-center",
+      });
+    } catch (error) {
+      console.error("Error in handleDismiss:", error);
+      // UI is already updated via setDismissed(true) at the beginning
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [winnerId, router, isProcessing]);
+
+  // Check if the banner was previously dismissed
+  useEffect(() => {
+    try {
+      const storageKey = 'dismissedWinners';
+      const storedData = localStorage.getItem(storageKey);
+      if (!storedData) return;
+      
+      const dismissedWinners = JSON.parse(storedData);
+      if (dismissedWinners && dismissedWinners[winnerId]) {
+        console.log("Banner was previously dismissed");
+        setDismissed(true);
+        
+        // Also update the server state if needed
+        updateWinnerStatus(true).catch(err => 
+          console.error("Error updating server winner status:", err)
+        );
+      }
+    } catch (error) {
+      console.error("Error checking localStorage:", error);
+    }
+  }, [winnerId]);
+
+  // Add an escape key handler
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleDismiss();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => {
+      window.removeEventListener('keydown', handleEscKey);
+    };
+  }, [handleDismiss]);
 
   if (dismissed) return null;
 
@@ -23,13 +113,29 @@ export function WinnerBanner({ prizeAmount, drawDate, couponCode }: WinnerBanner
       <div className="absolute -right-6 -top-6 w-32 h-32 bg-yellow-100 rounded-full opacity-60" />
       <div className="absolute -left-8 -bottom-8 w-36 h-36 bg-amber-100 rounded-full opacity-60" />
       
-      {/* Close button */}
+      {/* Enhanced close button with better visibility */}
       <button 
-        onClick={() => setDismissed(true)} 
-        className="absolute top-3 right-3 p-1.5 rounded-full bg-white/80 hover:bg-white text-amber-700 hover:text-amber-800 transition-colors z-10"
+        onClick={handleDismiss} 
+        className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md hover:bg-gray-100 text-amber-700 hover:text-amber-900 transition-colors z-20 focus:outline-none focus:ring-2 focus:ring-amber-500"
+        aria-label="Close winner announcement"
+        type="button"
+        disabled={isProcessing}
       >
-        <X className="h-4 w-4" />
+        <X className="h-5 w-5" />
       </button>
+      
+      {/* Additional dismiss button for mobile */}
+      <div className="w-full flex justify-end mt-2 mb-0 px-4 md:hidden">
+        <Button 
+          onClick={handleDismiss}
+          variant="outline"
+          size="sm"
+          className="text-xs bg-white border-amber-200 text-amber-700 hover:bg-amber-50"
+          disabled={isProcessing}
+        >
+          Dismiss
+        </Button>
+      </div>
       
       <div className="p-6 relative z-10">
         <div className="flex flex-col md:flex-row items-center gap-6">
@@ -79,6 +185,20 @@ export function WinnerBanner({ prizeAmount, drawDate, couponCode }: WinnerBanner
                 Your prize is being processed. The admin will email you shortly with your coupon code.
               </p>
             )}
+            
+            {/* Explicit dismiss button at the bottom */}
+            <div className="mt-6 hidden md:block">
+              <Button 
+                onClick={handleDismiss}
+                variant="outline"
+                size="sm"
+                className="bg-white border-amber-200 text-amber-700 hover:bg-amber-50"
+                disabled={isProcessing}
+              >
+                <X className="h-3.5 w-3.5 mr-1.5" />
+                Dismiss Message
+              </Button>
+            </div>
           </div>
         </div>
       </div>

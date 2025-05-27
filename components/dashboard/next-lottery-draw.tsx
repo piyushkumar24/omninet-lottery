@@ -69,13 +69,27 @@ export const NextLotteryDraw = ({
     
     return nextDraw;
   };
+
+  // Handle banner dismissal
+  useEffect(() => {
+    const handleBannerDismissed = () => {
+      // Calculate next draw date
+      setNextDrawDate(calculateNextDrawDate());
+    };
+
+    window.addEventListener('winnerBannerDismissed', handleBannerDismissed);
+    
+    return () => {
+      window.removeEventListener('winnerBannerDismissed', handleBannerDismissed);
+    };
+  }, []);
   
   useEffect(() => {
-    // If draw is already completed or expired, calculate next draw date
-    if (isDrawCompleted || isExpired) {
+    // If user is a winner or draw is completed/expired, calculate next draw date
+    if (isWinner || isDrawCompleted || isExpired) {
       setNextDrawDate(calculateNextDrawDate());
     }
-  }, [isDrawCompleted, isExpired]);
+  }, [isWinner, isDrawCompleted, isExpired]);
   
   useEffect(() => {
     const interval = setInterval(() => {
@@ -109,51 +123,15 @@ export const NextLotteryDraw = ({
     return () => clearInterval(interval);
   }, [drawDate, nextDrawDate]);
   
-  if (isWinner) {
-    return (
-      <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-200 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-        <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
-          <CardTitle className="text-lg font-semibold text-amber-800">Congratulations!</CardTitle>
-          <div className="p-2 bg-amber-100 rounded-lg">
-            <Trophy className="w-5 h-5 text-amber-600" />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center p-6 bg-white/70 rounded-xl border border-amber-200">
-            <div className="inline-flex justify-center items-center mb-4 w-16 h-16 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full">
-              <Sparkles className="h-8 w-8 text-white" />
-            </div>
-            <h2 className="text-xl font-bold text-amber-900 mb-2">You Won the Lottery!</h2>
-            <p className="text-amber-700">
-              You&apos;ve won a ${draw.prizeAmount} Amazon Gift Card!
-            </p>
-            <Badge className="mt-3 bg-amber-100 text-amber-800 border-amber-300">
-              Check your email for details
-            </Badge>
-          </div>
-          
-          <div className="bg-white/70 rounded-xl p-4 border border-amber-200">
-            <p className="text-sm text-center text-amber-700">
-              All your tickets have been reset. Start collecting new tickets for the next draw!
-            </p>
-          </div>
-          
-          <div className="text-xs text-amber-600 text-center">
-            The next lottery draw will be held next Thursday.
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-  
+  // Always show the lottery draw info, with special messaging for winners
   return (
-    <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
+    <Card className={`bg-gradient-to-br ${isWinner ? 'from-yellow-50 to-indigo-50 border-yellow-200' : 'from-purple-50 to-indigo-50 border-purple-200'} border-2 shadow-lg hover:shadow-xl transition-all duration-300 h-full`}>
       <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
-        <CardTitle className="text-lg font-semibold text-purple-800">
+        <CardTitle className={`text-lg font-semibold ${isWinner ? 'text-amber-800' : 'text-purple-800'}`}>
           {nextDrawDate ? "Next Lottery Draw" : "Current Lottery Draw"}
         </CardTitle>
-        <div className="p-2 bg-purple-100 rounded-lg">
-          <Clock className="w-5 h-5 text-purple-600" />
+        <div className={`p-2 ${isWinner ? 'bg-amber-100' : 'bg-purple-100'} rounded-lg`}>
+          <Clock className={`w-5 h-5 ${isWinner ? 'text-amber-600' : 'text-purple-600'}`} />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -220,14 +198,20 @@ export const NextLotteryDraw = ({
         </div>
         
         {/* Status Message */}
-        <div className="text-xs text-purple-600 text-center">
-          {nextDrawDate 
-            ? "A new lottery draw is scheduled. Keep earning tickets!"
-            : userTickets === 0 
-              ? "🎯 Earn tickets to join this draw!" 
-              : userTickets === 1
-                ? "🍀 You're entered! Good luck!"
-                : `🚀 Great chances with ${userTickets} tickets!`}
+        <div className="text-xs text-center">
+          {isWinner ? (
+            <div className="text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-200">
+              🎉 Congratulations on your win! Collect tickets for the next draw!
+            </div>
+          ) : nextDrawDate ? (
+            <span className="text-purple-600">A new lottery draw is scheduled. Keep earning tickets!</span>
+          ) : userTickets === 0 ? (
+            <span className="text-purple-600">🎯 Earn tickets to join this draw!</span> 
+          ) : userTickets === 1 ? (
+            <span className="text-purple-600">🍀 You&apos;re entered! Good luck!</span>
+          ) : (
+            <span className="text-purple-600">🚀 Great chances with {userTickets} tickets!</span>
+          )}
         </div>
       </CardContent>
     </Card>

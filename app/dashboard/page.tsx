@@ -88,6 +88,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             prizeAmount={userWinner.prizeAmount}
             drawDate={userWinner.drawDate}
             couponCode={userWinner.couponCode}
+            winnerId={userWinner.id}
           />
         )}
 

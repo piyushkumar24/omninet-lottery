@@ -27,19 +27,40 @@ export async function GET() {
     // Here we're just using unclaimed winners as notifications
     const notificationCount = unclaimedWinners;
     
-    // Return the notification count
+    // Get actual notification items
+    const notifications = await db.winner.findMany({
+      where: {
+        claimed: false,
+      },
+      select: {
+        id: true,
+        prizeAmount: true,
+        drawDate: true,
+        user: {
+          select: {
+            name: true,
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    // Format notifications for display
+    const formattedNotifications = notifications.map(winner => ({
+      id: winner.id,
+      type: "unclaimed_winners",
+      message: `${winner.user.name || 'A user'} won $${winner.prizeAmount}`,
+      count: 1,
+      timestamp: winner.drawDate,
+    }));
+    
+    // Return the notification count and items
     return NextResponse.json({
       success: true,
       count: notificationCount,
-      notifications: [
-        {
-          id: "1",
-          type: "unclaimed_winners",
-          message: "There are unclaimed prizes",
-          count: unclaimedWinners,
-          timestamp: new Date(),
-        },
-      ],
+      notifications: formattedNotifications,
     });
   } catch (error) {
     console.error("Error getting admin notifications:", error);
