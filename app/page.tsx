@@ -531,28 +531,28 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
             {[
               {
-                step: "1",
+                step: "✍",
                 title: "Create a Account",
                 description: "Sign up with just your email to join the movement. Your account unlocks access to surveys, rewards, and future digital inclusion opportunities.",
                 gradient: "from-rose-500 to-rose-600", 
                 bgGradient: "from-rose-50 to-rose-100"
               },
               {
-                step: "2",
+                step: "📋",
                 title: "Complete Surveys",
                 description: "Answer thoughtful surveys about technology access and digital inclusion. Each response helps us understand global connectivity needs.",
                 gradient: "from-emerald-500 to-emerald-600",
                 bgGradient: "from-emerald-50 to-emerald-100"
               },
               {
-                step: "3", 
+                step: "🎫", 
                 title: "Earn Tickets",
                 description: "Receive lottery tickets for each completed survey and successful friend referral. More participation means more chances to win.",
                 gradient: "from-blue-500 to-blue-600",
                 bgGradient: "from-blue-50 to-blue-100"
               },
               {
-                step: "4",
+                step: "🏆",
                 title: "Win Rewards",
                 description: "Join our weekly draws every Thursday at 18:30 IST. Winners receive $50 Amazon gift cards delivered directly to their email.",
                 gradient: "from-purple-500 to-purple-600", 
@@ -588,8 +588,8 @@ export default function Home() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           {/* Section Header */}
           <div className="text-center mb-16">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full text-blue-700 text-sm font-medium mb-6">
-              <HelpCircle className="w-4 h-4 mr-2" />
+            <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full text-blue-700 text-base font-semibold mb-8 shadow-md hover:shadow-lg transition-all duration-300">
+              <HelpCircle className="w-5 h-5 mr-2" />
               Common Questions
             </div>
             <h2 className={cn(
@@ -611,7 +611,7 @@ export default function Home() {
                 answer: "Complete surveys and take simple actions like inviting friends or following us on social media. Each completed survey earns you lottery tickets, and successful referrals provide bonus tickets for both you and your friends."
               },
               {
-                question: "Is it free to join the lottery?",
+                question: "Is it free to join the 0mninet lottery?",
                 answer: "Yes, totally free. No purchases or payments needed. Simply create an account and start participating in surveys to earn your lottery tickets. There are no hidden fees or subscription costs."
               },
               {
@@ -630,21 +630,21 @@ export default function Home() {
               <div key={index} className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
                 <button
                   onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
-                  className="w-full px-8 py-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors duration-200"
+                  className="w-full px-8 py-6 text-left flex items-center justify-between bg-gradient-to-r from-blue-100 to-purple-100 hover:from-blue-150 hover:to-purple-150 transition-colors duration-200"
                 >
-                  <h3 className="text-lg font-semibold text-slate-900 pr-4">{faq.question}</h3>
+                  <h3 className="text-lg font-semibold text-blue-700 pr-4">{faq.question}</h3>
                   <div className="flex-shrink-0">
                     {openFaqIndex === index ? (
                       <ChevronUp className="h-5 w-5 text-blue-600 transition-transform duration-200" />
                     ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400 transition-transform duration-200" />
+                      <ChevronDown className="h-5 w-5 text-blue-600 transition-transform duration-200" />
                     )}
                   </div>
                 </button>
                 <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
                   openFaqIndex === index ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                 }`}>
-                  <div className="px-8 pb-6 pt-2">
+                  <div className="px-8 pb-6 pt-2 bg-white">
                     <p className="text-slate-600 leading-relaxed">{faq.answer}</p>
                   </div>
                 </div>
