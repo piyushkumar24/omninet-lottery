@@ -3,15 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx scripts/server-init.ts && next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "tsx scripts/server-init.ts && next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:init": "tsx scripts/init-db.ts",
     "db:push": "prisma db push",
     "db:reset": "prisma migrate reset --force",
-    "health": "tsx scripts/health-check.ts"
+    "health": "tsx scripts/health-check.ts",
+    "db:warmup": "tsx -e \"import { warmupDatabaseConnection } from './lib/startup'; warmupDatabaseConnection();\""
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",

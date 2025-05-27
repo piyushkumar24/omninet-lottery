@@ -7,7 +7,9 @@ declare global {
 // Create Prisma client with enhanced configuration
 const createPrismaClient = () => {
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: process.env.NODE_ENV === 'development' 
+      ? ['error', 'warn'] // Only log errors and warnings in development
+      : ['error'],        // Only log errors in production
     datasources: {
       db: {
         url: process.env.DATABASE_URL,

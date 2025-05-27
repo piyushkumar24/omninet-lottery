@@ -145,10 +145,6 @@ export async function POST(req: Request) {
         totalTicketsInDraw: activeDraw.totalTickets,
       };
     });
-
-    // TODO: Send email to the winner
-    // In a real implementation, you would integrate with an email service
-    // like SendGrid, Mailgun, etc.
     
     return NextResponse.json({
       success: true,

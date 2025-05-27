@@ -18,6 +18,7 @@ export default auth((req) => {
   
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isStatsRoute = nextUrl.pathname.startsWith("/api/stats");
+  const isHealthRoute = nextUrl.pathname.startsWith("/api/health");
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);  
   
@@ -25,8 +26,8 @@ export default auth((req) => {
     nextUrl.pathname === route || nextUrl.pathname.startsWith(`${route}/`)
   );
 
-  // Make the stats API public
-  if (isStatsRoute) {
+  // Make the stats and health API endpoints public
+  if (isStatsRoute || isHealthRoute) {
     return NextResponse.next();
   }
 

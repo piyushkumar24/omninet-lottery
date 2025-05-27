@@ -1,53 +1,77 @@
 import { db } from './db';
+import logger from './logger';
 
-// Retry configuration
+// Retry configuration for database operations
 const RETRY_CONFIG = {
   maxRetries: 3,
   baseDelay: 1000, // 1 second
   maxDelay: 5000,  // 5 seconds
 };
 
-// Sleep utility
+// Sleep utility for retry delays
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Calculate exponential backoff delay
-const getRetryDelay = (attempt: number): number => {
-  const delay = RETRY_CONFIG.baseDelay * Math.pow(2, attempt);
-  return Math.min(delay, RETRY_CONFIG.maxDelay);
+// Get exponential backoff delay
+const getRetryDelay = (attempt: number) => {
+  const delay = Math.min(
+    RETRY_CONFIG.baseDelay * Math.pow(2, attempt), 
+    RETRY_CONFIG.maxDelay
+  );
+  
+  // Add some randomness to prevent multiple retries happening simultaneously
+  return delay + (Math.random() * 100);
 };
 
-// Check if error is retryable
+// Determine if an error is retryable
 const isRetryableError = (error: any): boolean => {
-  if (!error) return false;
+  // If it's a Prisma error, check the error code
+  if (error?.name === 'PrismaClientKnownRequestError') {
+    // Common Prisma error codes that are retryable:
+    // P1001: Can't reach database server
+    // P1002: Database connection timed out
+    // P1008: Operations timed out
+    // P1017: Server closed the connection
+    const retryablePrismaErrorCodes = ['P1001', 'P1002', 'P1008', 'P1017'];
+    return retryablePrismaErrorCodes.includes(error.code);
+  }
   
-  const errorMessage = error.message?.toLowerCase() || '';
-  const errorCode = error.code;
+  // Check for common Node.js network errors
+  if (error?.code) {
+    const retryableNodeErrorCodes = [
+      'ECONNRESET', 'ENOTFOUND', 'ESOCKETTIMEDOUT', 'ETIMEDOUT', 
+      'ECONNREFUSED', 'EHOSTUNREACH', 'EAI_AGAIN', 'EPIPE'
+    ];
+    return retryableNodeErrorCodes.includes(error.code);
+  }
   
-  // Common retryable database errors
-  const retryablePatterns = [
-    'can\'t reach database server',
-    'connection timeout',
-    'connection refused',
-    'network error',
-    'connection lost',
-    'connection terminated',
-    'socket hang up',
-    'enotfound',
-    'etimedout',
-    'econnrefused',
-    'econnreset',
-  ];
+  // Check error message for common connection issues
+  if (error?.message && typeof error.message === 'string') {
+    const retryableErrorMessages = [
+      'connection timeout',
+      'connection refused',
+      'network timeout',
+      'timeout',
+      'timed out',
+      'socket hang up',
+      'socket timeout',
+      'cannot connect',
+      'unable to connect',
+      'failed to connect',
+      'database connection',
+      'network error',
+      'request timed out',
+      'connection error',
+      'offline',
+      'server closed',
+      'connection lost',
+      'connection dropped'
+    ];
+    
+    const errorMsg = error.message.toLowerCase();
+    return retryableErrorMessages.some(msg => errorMsg.includes(msg));
+  }
   
-  // Prisma specific retryable error codes
-  const retryableErrorCodes = [
-    'P1001', // Can't reach database server
-    'P1002', // Database server timeout
-    'P1008', // Operations timed out
-    'P1017', // Server has closed the connection
-  ];
-  
-  return retryablePatterns.some(pattern => errorMessage.includes(pattern)) ||
-         retryableErrorCodes.includes(errorCode);
+  return false;
 };
 
 // Generic retry wrapper for database operations
@@ -65,13 +89,16 @@ export const withRetry = async <T>(
       
       if (attempt === RETRY_CONFIG.maxRetries || !isRetryableError(error)) {
         // Log the final error
-        console.error(`❌ ${operationName} failed after ${attempt + 1} attempts:`, error);
+        logger.error(`${operationName} failed after ${attempt + 1} attempts`, error, 'DB');
         throw error;
       }
       
       const delay = getRetryDelay(attempt);
-      console.warn(`⚠️ ${operationName} failed (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1}), retrying in ${delay}ms...`);
-      console.warn('Error:', error instanceof Error ? error.message : String(error));
+      logger.warn(
+        `${operationName} failed (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1}), retrying in ${delay.toFixed(0)}ms`,
+        error instanceof Error ? error.message : String(error),
+        'DB'
+      );
       
       await sleep(delay);
     }
@@ -81,48 +108,72 @@ export const withRetry = async <T>(
 };
 
 // Database query with retry
-export const dbQueryWithRetry = async <T>(
+export const dbQueryWithRetry = <T>(
   query: () => Promise<T>,
-  queryName: string = 'Query'
+  operationName: string = 'Database query'
 ): Promise<T> => {
-  return withRetry(query, `Database ${queryName}`);
+  return withRetry(query, operationName);
 };
 
-// Test database connection with retry
-export const testConnectionWithRetry = async (): Promise<boolean> => {
+// Test database connection
+export const testDbConnection = async (): Promise<boolean> => {
   try {
-    await withRetry(
-      async () => {
-        await db.$queryRaw`SELECT 1`;
-      },
-      'Database connection test'
-    );
+    // Simple query to check connection
+    await db.$queryRaw`SELECT 1`;
     return true;
   } catch (error) {
-    console.error('❌ Database connection test failed:', error);
+    logger.error('Database connection test failed', error, 'DB');
     return false;
   }
 };
 
-// Initialize database connection
-export const initializeDatabase = async (): Promise<void> => {
-  console.log('🔄 Initializing database connection...');
-  
-  const isConnected = await testConnectionWithRetry();
-  
-  if (!isConnected) {
-    throw new Error('Failed to establish database connection after retries');
+// Test connection with retry
+export const testConnectionWithRetry = async (): Promise<boolean> => {
+  try {
+    await dbQueryWithRetry(() => db.$queryRaw`SELECT 1`, 'Connection test');
+    return true;
+  } catch (error) {
+    return false;
   }
-  
-  console.log('✅ Database connection initialized successfully');
+};
+
+// Initialize database defaults
+export const initializeDatabase = async (): Promise<void> => {
+  try {
+    logger.info('Initializing database defaults', 'DB');
+    
+    // Check if default prize amount setting exists
+    const prizeAmountSetting = await db.settings.findUnique({
+      where: { key: 'default_prize_amount' }
+    });
+    
+    // Create default prize amount setting if it doesn't exist
+    if (!prizeAmountSetting) {
+      await db.settings.create({
+        data: {
+          key: 'default_prize_amount',
+          value: '50', // Default $50 prize
+          description: 'Default prize amount for lottery draws'
+        }
+      });
+      logger.info('Created default prize amount setting', 'DB');
+    }
+    
+    // Additional initialization can be added here
+    
+    logger.info('Database initialization completed', 'DB');
+  } catch (error) {
+    logger.error('Database initialization failed', error, 'DB');
+    throw error;
+  }
 };
 
 // Graceful database shutdown
 export const shutdownDatabase = async (): Promise<void> => {
   try {
     await db.$disconnect();
-    console.log('✅ Database connection closed gracefully');
+    logger.info('Database connection closed gracefully', 'DB');
   } catch (error) {
-    console.error('❌ Error during database shutdown:', error);
+    logger.error('Error during database shutdown', error, 'DB');
   }
 }; 

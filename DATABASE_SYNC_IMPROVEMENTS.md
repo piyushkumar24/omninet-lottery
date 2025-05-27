@@ -122,6 +122,52 @@ async function performHealthCheck() {
 - Retry logic for user referral queries
 - Proper error message formatting
 
+### 6. Application Startup System (`lib/startup.ts`)
+```typescript
+export async function initializeApplication() {
+  // Validate environment variables
+  // Test database connection with retry
+  // Initialize database defaults
+  // Start database connection monitoring
+}
+```
+
+**Startup Features**:
+- **Environment Validation**: Validates all required configuration at startup
+- **Connection Establishment**: Ensures database is connected before app starts
+- **Default Initialization**: Sets up required database defaults
+- **Monitoring Setup**: Configures ongoing connection health checks
+
+### 7. Database Monitoring System (`lib/db-monitor.ts`)
+```typescript
+export function startConnectionMonitoring(intervalMs = 60000) {
+  // Perform initial check
+  // Set up periodic checks
+  // Log connection issues
+}
+```
+
+**Monitoring Features**:
+- **Periodic Health Checks**: Automated regular connection validation
+- **Performance Metrics**: Latency tracking and success rate calculation
+- **Failure Detection**: Early warning for connection degradation
+- **Environment-Specific Settings**: Different monitoring frequencies for development/production
+
+### 8. Health API Endpoints
+```typescript
+// Public health endpoint
+app/api/health/route.ts
+
+// Admin-only detailed database health
+app/api/health/database/route.ts
+```
+
+**API Features**:
+- **Public Health Check**: Basic system status for monitoring services
+- **Detailed Database Health**: In-depth metrics for administrators
+- **Real-time Checks**: On-demand connection verification
+- **Performance Metrics**: Connection latency and reliability stats
+
 ## Database Schema Synchronization
 
 ### Current Database State
@@ -151,9 +197,16 @@ async function performHealthCheck() {
 - Application sync validation
 - Detailed status reporting
 
+### Server Initialization (`npm run server-init`)
+- Pre-startup environment validation
+- Database connection establishment
+- Default settings initialization
+- Connection monitoring setup
+
 ### Database Management
 - `npm run db:push` - Push schema changes
 - `npm run db:reset` - Reset database (with caution)
+- `npm run db:warmup` - Manually warm up database connections
 
 ## Error Handling Improvements
 
@@ -183,6 +236,7 @@ const users = await dbQueryWithRetry(
 - **Connection Pooling**: Leverages Prisma's built-in pooling
 - **Global Instance**: Single Prisma client instance in development
 - **Graceful Disconnection**: Proper cleanup on application shutdown
+- **Warm-up Procedures**: Pre-establishing connections at startup
 
 ### Query Optimization
 - **Selective Fields**: Only fetch required data fields
@@ -198,6 +252,12 @@ const users = await dbQueryWithRetry(
 - Schema integrity
 - Data consistency
 - Application synchronization
+
+### Connection Monitoring
+- **Regular Health Checks**: Automatic periodic connection verification
+- **Latency Tracking**: Connection response time measurement
+- **Success Rate Calculation**: Percentage of successful connections
+- **Failure Logging**: Detailed error information for debugging
 
 ### Error Tracking
 - Connection failure logging
@@ -216,6 +276,7 @@ const users = await dbQueryWithRetry(
 - Detailed logging at appropriate levels
 - Health check endpoints
 - Status monitoring utilities
+- Connection metrics tracking
 
 ### 3. **Maintainability**
 - Centralized configuration management
@@ -226,6 +287,7 @@ const users = await dbQueryWithRetry(
 - Environment variable validation
 - Secure connection string handling
 - Error message sanitization
+- Admin-only detailed health information
 
 ## Usage Guidelines
 
@@ -239,6 +301,9 @@ npm run db:init
 
 # Schema synchronization
 npm run db:push
+
+# Manual connection warmup
+npm run db:warmup
 ```
 
 ### Error Handling in Code
@@ -260,6 +325,24 @@ AUTH_SECRET="your-secret-here"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
+### Server Startup
+```bash
+# Development with initialization
+npm run dev
+
+# Production with initialization
+npm run start
+```
+
+### Accessing Health Endpoints
+```
+# Public health status
+GET /api/health
+
+# Admin-only detailed database health
+GET /api/health/database
+```
+
 ## Testing and Verification
 
 ### Health Check Results
@@ -277,6 +360,7 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 - Retry mechanism functions correctly
 - Error handling works as expected
 - Recovery from network issues verified
+- Monitoring system properly tracks connection health
 
 ## Future Improvements
 
@@ -309,5 +393,7 @@ The implemented database synchronization and connectivity improvements provide:
 - **Proper Configuration**: Environment validation prevents configuration errors
 - **Enhanced Observability**: Detailed logging aids in troubleshooting
 - **Maintainable Architecture**: Clean separation of concerns and reusable utilities
+- **Proactive Health Checks**: Regular monitoring detects issues before they impact users
+- **Automated Startup**: Server initialization ensures proper database connectivity
 
 The application is now properly synchronized with the database and can handle network instabilities gracefully while maintaining data integrity and user experience. 

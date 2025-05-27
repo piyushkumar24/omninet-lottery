@@ -1,68 +1,68 @@
 #!/usr/bin/env tsx
 
 import { db } from '../lib/db';
-import { testDbConnection } from '../lib/db';
-import { testConnectionWithRetry, initializeDatabase } from '../lib/db-utils';
+import { testDbConnection, testConnectionWithRetry } from '../lib/db-utils';
 import { validateEnvironment } from '../lib/env-validation';
+import logger from '../lib/logger';
 
 async function performHealthCheck() {
-  console.log('🔍 Starting comprehensive health check...\n');
+  logger.info('Starting comprehensive health check...', 'HEALTH');
 
   try {
     // 1. Environment validation
-    console.log('📋 1. Validating environment variables...');
+    logger.info('1. Validating environment variables...', 'HEALTH');
     validateEnvironment();
-    console.log('✅ Environment validation passed\n');
+    logger.info('Environment validation passed', 'HEALTH');
 
     // 2. Database connectivity test
-    console.log('🔗 2. Testing database connection...');
+    logger.info('2. Testing database connection...', 'HEALTH');
     const isConnected = await testDbConnection();
     if (!isConnected) {
       throw new Error('Database connection test failed');
     }
-    console.log('✅ Database connection successful\n');
+    logger.info('Database connection successful', 'HEALTH');
 
     // 3. Database connectivity with retry
-    console.log('🔄 3. Testing database connection with retry logic...');
+    logger.info('3. Testing database connection with retry logic...', 'HEALTH');
     const retryTestPassed = await testConnectionWithRetry();
     if (!retryTestPassed) {
       throw new Error('Database retry connection test failed');
     }
-    console.log('✅ Database retry connection successful\n');
+    logger.info('Database retry connection successful', 'HEALTH');
 
     // 4. Database schema validation
-    console.log('📊 4. Validating database schema...');
+    logger.info('4. Validating database schema...', 'HEALTH');
     const tables = await db.$queryRaw`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public'
       ORDER BY table_name;
     `;
-    console.log(`✅ Found ${Array.isArray(tables) ? tables.length : 0} tables in database\n`);
+    logger.info(`Found ${Array.isArray(tables) ? tables.length : 0} tables in database`, 'HEALTH');
 
     // 5. Test basic CRUD operations
-    console.log('🧪 5. Testing basic database operations...');
+    logger.info('5. Testing basic database operations...', 'HEALTH');
     
     // Count users
     const userCount = await db.user.count();
-    console.log(`   - Users: ${userCount}`);
+    logger.info(`Users: ${userCount}`, 'HEALTH');
 
     // Count tickets
     const ticketCount = await db.ticket.count();
-    console.log(`   - Tickets: ${ticketCount}`);
+    logger.info(`Tickets: ${ticketCount}`, 'HEALTH');
 
     // Count draws
     const drawCount = await db.draw.count();
-    console.log(`   - Draws: ${drawCount}`);
+    logger.info(`Draws: ${drawCount}`, 'HEALTH');
 
     // Count settings
     const settingsCount = await db.settings.count();
-    console.log(`   - Settings: ${settingsCount}`);
+    logger.info(`Settings: ${settingsCount}`, 'HEALTH');
 
-    console.log('✅ Basic database operations successful\n');
+    logger.info('Basic database operations successful', 'HEALTH');
 
     // 6. Application sync verification
-    console.log('🔄 6. Verifying application sync...');
+    logger.info('6. Verifying application sync...', 'HEALTH');
     
     // Check if settings are initialized
     const prizeAmountSetting = await db.settings.findUnique({
@@ -70,31 +70,31 @@ async function performHealthCheck() {
     });
 
     if (prizeAmountSetting) {
-      console.log(`   - Prize amount setting: $${prizeAmountSetting.value}`);
+      logger.info(`Prize amount setting: $${prizeAmountSetting.value}`, 'HEALTH');
     } else {
-      console.log('   - Prize amount setting not found (will use default)');
+      logger.warn('Prize amount setting not found (will use default)', null, 'HEALTH');
     }
 
     // Check admin users
     const adminCount = await db.user.count({
       where: { role: 'ADMIN' }
     });
-    console.log(`   - Admin users: ${adminCount}`);
+    logger.info(`Admin users: ${adminCount}`, 'HEALTH');
 
-    console.log('✅ Application sync verification complete\n');
+    logger.info('Application sync verification complete', 'HEALTH');
 
-    console.log('🎉 Health check completed successfully!');
-    console.log('📊 Summary:');
-    console.log(`   - Environment: ✅ Valid`);
-    console.log(`   - Database: ✅ Connected`);
-    console.log(`   - Retry Logic: ✅ Working`);
-    console.log(`   - Tables: ✅ ${Array.isArray(tables) ? tables.length : 0} found`);
-    console.log(`   - Data: ✅ Users(${userCount}), Tickets(${ticketCount}), Draws(${drawCount}), Settings(${settingsCount})`);
-    console.log(`   - Application: ✅ Synced`);
+    // Summary
+    logger.info('Health check completed successfully!', 'HEALTH');
+    logger.info('Summary:', 'HEALTH');
+    logger.info(`- Environment: Valid`, 'HEALTH');
+    logger.info(`- Database: Connected`, 'HEALTH');
+    logger.info(`- Retry Logic: Working`, 'HEALTH');
+    logger.info(`- Tables: ${Array.isArray(tables) ? tables.length : 0} found`, 'HEALTH');
+    logger.info(`- Data: Users(${userCount}), Tickets(${ticketCount}), Draws(${drawCount}), Settings(${settingsCount})`, 'HEALTH');
+    logger.info(`- Application: Synced`, 'HEALTH');
 
   } catch (error) {
-    console.error('❌ Health check failed!');
-    console.error('Error:', error instanceof Error ? error.message : String(error));
+    logger.error('Health check failed!', error, 'HEALTH');
     process.exit(1);
   } finally {
     await db.$disconnect();
