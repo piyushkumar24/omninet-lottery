@@ -775,6 +775,11 @@ export default function Home() {
               <Heart className="w-4 h-4 mr-2 text-red-500" />
               Real Impact Stories
             </div>
+            <div className="mb-4">
+              <span className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent">
+                0MNINET
+              </span>
+            </div>
             <h2 className={cn(
               "text-4xl md:text-6xl font-bold mb-8 text-slate-900 leading-tight",
               font.className,
@@ -785,27 +790,19 @@ export default function Home() {
               </span>
             </h2>
             <p className="text-xl text-slate-600 max-w-4xl mx-auto leading-relaxed">
-              Discover how our platform creates meaningful change while rewarding participants. 
+              Discover how 0mninet creates meaningful change while rewarding participants. 
               Every interaction drives us closer to a connected world.
             </p>
           </div>
 
           {/* Achievement Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             {[
               {
-                icon: Activity,
-                value: "15,000+",
-                label: "Surveys Completed",
-                description: "Data points collected for global connectivity research",
-                gradient: "from-blue-500 to-blue-600",
-                bgGradient: "from-blue-50 to-blue-100"
-              },
-              {
-                icon: Award,
-                value: "$2,500+",
-                label: "Rewards Distributed",
-                description: "Amazon gift cards delivered to winners worldwide",
+                icon: Users,
+                value: "1000+",
+                label: "Community Members",
+                description: "We're Growing fast, We're Helping people, We are 0mninet",
                 gradient: "from-emerald-500 to-emerald-600",
                 bgGradient: "from-emerald-50 to-emerald-100"
               },
@@ -840,8 +837,57 @@ export default function Home() {
             ))}
           </div>
 
+          {/* Help Decision Buttons */}
+          <div className="text-center mb-20">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 border border-blue-100 shadow-xl max-w-2xl mx-auto">
+              <h3 className="text-2xl font-bold mb-6 text-slate-900">Want to Make a Difference?</h3>
+              <p className="text-lg text-slate-600 mb-8">Join our community and help bring internet access to everyone worldwide.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+                <Link href="/auth/register">
+                  <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
+                    I want to help
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    const messageDiv = document.getElementById('help-decline-message');
+                    if (messageDiv) {
+                      messageDiv.classList.remove('hidden');
+                      messageDiv.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className="border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 px-8 py-4 text-lg font-semibold transition-all duration-300 hover:scale-105"
+                >
+                  No I Don&apos;t want to help
+                </Button>
+              </div>
+              
+              <div id="help-decline-message" className="hidden mt-6 p-4 bg-red-50 border border-red-200 rounded-2xl">
+                <p className="text-red-700 font-medium">
+                  We&apos;re sorry that you don&apos;t want to help, in this case we can&apos;t do nothing for you.
+                  <button
+                    onClick={() => {
+                      // Clear any existing session data
+                      if (typeof window !== 'undefined') {
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        // Redirect to the specified URL
+                        window.location.href = 'https://fallingfalling.com/';
+                      }
+                    }}
+                    className="underline text-red-800 hover:text-red-900 font-semibold transition-colors"
+                  >
+                    Leave the site
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Success Stories Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
             {/* Story 1 */}
             <div className="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 group border border-gray-100">
               <div className="flex items-start gap-6">
@@ -923,101 +969,26 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-                </div>
               </div>
             </div>
-            
-          {/* Impact Showcase */}
-          <div className="bg-gradient-to-r from-blue-600 to-emerald-600 rounded-3xl p-12 text-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-emerald-600/90"></div>
-            <div className="absolute top-0 right-0 opacity-20">
-              <Image
-                src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop"
-                alt="Global Network"
-                width={600}
-                height={400}
-                className="object-cover"
-              />
+          </div>
+
+          {/* Leave a Comment Button */}
+          <div className="text-center mb-20">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-blue-100 shadow-lg max-w-md mx-auto">
+              <MessageCircle className="h-8 w-8 text-blue-600 mx-auto mb-4" />
+              <h4 className="text-lg font-semibold text-slate-900 mb-3">Share Your Experience</h4>
+              <p className="text-slate-600 mb-4 text-sm">Have something to say about your 0mninet journey?</p>
+              <Link href="/auth/register">
+                <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-2 text-sm font-semibold transition-all duration-300 hover:scale-105 shadow-md">
+                  Leave a comment
+                </Button>
+              </Link>
             </div>
-            
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div>
-                <h3 className="text-4xl font-bold mb-6">Global Connectivity Impact</h3>
-                <p className="text-xl mb-8 text-white/90 leading-relaxed">
-                  Your participation directly funds satellite internet infrastructure in remote areas, 
-                  connecting schools, hospitals, and communities that previously had no access.
-                </p>
-                
-                <div className="space-y-6">
-                  {[
-                    {
-                      icon: Users,
-                      text: "12,000+ people connected to the internet for the first time"
-                    },
-                    {
-                      icon: Target,
-                      text: "25 remote schools now have high-speed internet access"
-                    },
-                    {
-                      icon: Heart,
-                      text: "8 rural hospitals connected for telemedicine services"
-                    }
-                  ].map((impact, index) => (
-                    <div key={index} className="flex items-center gap-4 group">
-                      <div className="bg-white/20 rounded-full p-3 group-hover:bg-white/30 transition-colors">
-                        <impact.icon className="h-6 w-6 text-white" />
-                      </div>
-                      <span className="text-lg">{impact.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-6">
-                {[
-                  {
-                    image: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=400&auto=format&fit=crop",
-                    title: "Rural Schools Connected",
-                    description: "Educational opportunities expanded"
-                  },
-                  {
-                    image: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&auto=format&fit=crop",
-                    title: "Healthcare Access",
-                    description: "Telemedicine services enabled"
-                  },
-                  {
-                    image: "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&auto=format&fit=crop",
-                    title: "Community Growth",
-                    description: "Economic opportunities created"
-                  },
-                  {
-                    image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&auto=format&fit=crop",
-                    title: "Digital Literacy",
-                    description: "Skills training programs launched"
-                  }
-                ].map((item, index) => (
-                  <div key={index} className="bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden group hover:scale-105 transition-all duration-300">
-                    <div className="aspect-square relative">
-                      <Image
-                        src={item.image}
-                        alt={item.title}
-                        fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                      <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                        <h4 className="font-bold text-sm mb-1">{item.title}</h4>
-                        <p className="text-xs text-white/80">{item.description}</p>
-                    </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-              </div>
+          </div>
               
           {/* Call to Action */}
-          <div className="text-center mt-20">
+          <div className="text-center">
             <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-100 to-emerald-100 rounded-full text-blue-700 text-sm font-medium mb-8">
               <Zap className="w-4 h-4 mr-2" />
               Join Our Growing Community
