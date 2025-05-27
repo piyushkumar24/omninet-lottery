@@ -27,7 +27,7 @@ export const Navbar = () => {
             className="rounded-lg"
           />
           <h1 className="text-xl font-bold">
-            <span className="text-blue-600">0mninet</span> Lottery
+            <span className="text-blue-600">0mninet</span> <span className="text-blue-600">Lottery</span>
           </h1>
         </Link>
       </div>

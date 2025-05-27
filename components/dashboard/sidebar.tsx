@@ -67,7 +67,7 @@ export const Sidebar = () => {
             className="rounded-lg"
           />
           <h1 className="text-2xl font-bold text-center">
-            <span className="text-blue-600">0mninet</span> Lottery
+            <span className="text-blue-600">0mninet</span>
           </h1>
         </Link>
       </div>
