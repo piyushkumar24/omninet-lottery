@@ -14,6 +14,32 @@ import { initializeHealthMonitoring } from '../lib/server-health';
 import logger from '../lib/logger';
 import '../lib/prisma-log-config'; // Import to ensure logging config is loaded early
 
+// Configure database URL for connection pooling if not already set
+function setupDatabaseConnectionPool() {
+  if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('connection_limit')) {
+    try {
+      // Parse current DATABASE_URL
+      const url = new URL(process.env.DATABASE_URL);
+      
+      // Add connection pooling parameters for better serverless performance
+      // These parameters help manage connections in environments like Vercel
+      const params = new URLSearchParams(url.search);
+      params.set('connection_limit', '5');
+      params.set('pool_timeout', '10');
+      params.set('idle_timeout', '30');
+      
+      // Update the URL
+      url.search = params.toString();
+      process.env.DATABASE_URL = url.toString();
+      
+      console.log('Added connection pooling parameters to DATABASE_URL');
+    } catch (error) {
+      console.error('Error modifying DATABASE_URL:', error);
+      // Continue with original DATABASE_URL
+    }
+  }
+}
+
 async function main() {
   logger.info('Starting server initialization...', 'SERVER');
   
@@ -23,6 +49,9 @@ async function main() {
   }
   
   try {
+    // Setup database connection pooling
+    setupDatabaseConnectionPool();
+    
     // Validate environment variables
     logger.info('Initializing application...', 'STARTUP');
     validateEnvironment();

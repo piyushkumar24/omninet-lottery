@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "tsx scripts/server-init.ts && next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "tsx scripts/server-init.ts && next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
+    "prepare": "prisma generate",
     "db:init": "tsx scripts/init-db.ts",
     "db:push": "prisma db push",
     "db:reset": "prisma migrate reset --force",

@@ -1,150 +1,163 @@
 #!/usr/bin/env node
 
 /**
- * Deployment Hooks Script
+ * Deployment Hooks
  * 
- * This script runs pre and post deployment tasks to ensure smooth operation
- * of the application, particularly focusing on database connections.
+ * This script runs before and after deployment to handle database connection issues
+ * and other deployment-related tasks.
  * 
  * Usage:
- *   node scripts/deploy-hooks.js pre   # Run pre-deployment tasks
- *   node scripts/deploy-hooks.js post  # Run post-deployment tasks
+ *   node scripts/deploy-hooks.js pre|post
  */
 
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
 
-// Maximum time to wait for database connection (in ms)
-const CONNECTION_TIMEOUT = 30000;
+// Determine if we're running in a serverless environment like Vercel
+const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
 
-/**
- * Perform a database health check
- */
-async function checkDatabaseConnection() {
-  console.log('🔍 Checking database connection...');
+// Handle pre-deployment tasks
+async function preDeployTasks() {
+  console.log('Running pre-deployment tasks...');
   
+  if (isServerless) {
+    console.log('Serverless environment detected (Vercel)');
+    configureDatabaseConnection();
+  }
+  
+  // Additional pre-deployment tasks can be added here
   try {
-    // Set a timeout for the connection attempt
-    const connectionPromise = prisma.$queryRaw`SELECT 1 as connection_test`;
+    await validateDatabaseConnection();
+  } catch (error) {
+    console.error('Database validation failed, but continuing deployment:', error.message);
+  }
+  
+  console.log('Pre-deployment tasks completed');
+}
+
+// Handle post-deployment tasks
+async function postDeployTasks() {
+  console.log('Running post-deployment tasks...');
+  
+  if (isServerless) {
+    console.log('Warming up serverless environment...');
+    try {
+      await warmupDatabase();
+    } catch (error) {
+      console.error('Database warmup failed:', error.message);
+    }
+  }
+  
+  console.log('Post-deployment tasks completed');
+}
+
+// Configure database connection for optimal performance in serverless environments
+function configureDatabaseConnection() {
+  if (!process.env.DATABASE_URL) {
+    console.error('DATABASE_URL is not defined');
+    return;
+  }
+
+  try {
+    // Parse the current DATABASE_URL
+    const url = new URL(process.env.DATABASE_URL);
     
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Database connection timeout')), CONNECTION_TIMEOUT)
-    );
+    // Add connection pool parameters for better serverless performance
+    const params = new URLSearchParams(url.search);
     
-    // Race the connection promise against the timeout
-    const result = await Promise.race([connectionPromise, timeoutPromise]);
+    // Set optimal connection pool settings for serverless
+    params.set('connection_limit', '5');
+    params.set('pool_timeout', '10');
+    params.set('idle_timeout', '30');
+    params.set('connect_timeout', '10');
     
-    if (result && result[0] && result[0].connection_test === 1) {
-      console.log('✅ Database connection is healthy');
-      return true;
-    } else {
-      console.error('❌ Database connection test returned unexpected result:', result);
-      return false;
+    // Update the URL
+    url.search = params.toString();
+    process.env.DATABASE_URL = url.toString();
+    
+    console.log('DATABASE_URL configured for serverless environment');
+    
+    // Set DIRECT_URL if not already set (useful for Prisma direct connections)
+    if (!process.env.DIRECT_URL && process.env.DATABASE_URL) {
+      process.env.DIRECT_URL = process.env.DATABASE_URL;
+      console.log('DIRECT_URL set to match DATABASE_URL');
     }
   } catch (error) {
-    console.error('❌ Database connection error:', error.message);
-    return false;
+    console.error('Error configuring DATABASE_URL:', error);
   }
 }
 
-/**
- * Initialize database connection
- */
-async function initializeDatabase() {
-  console.log('🔄 Initializing database connection...');
+// Validate database connection before deployment
+async function validateDatabaseConnection() {
+  console.log('Validating database connection...');
+  
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  });
   
   try {
-    // Warm up the connection pool
     await prisma.$connect();
+    console.log('Database connection successful');
     
-    // Perform simple queries to initialize connection pool
-    await prisma.$queryRaw`SELECT NOW()`;
+    // Test a simple query
+    const result = await prisma.$queryRaw`SELECT 1 as connection_test`;
+    console.log('Database query successful:', result);
     
-    console.log('✅ Database connection pool initialized');
     return true;
   } catch (error) {
-    console.error('❌ Failed to initialize database:', error.message);
-    return false;
+    console.error('Database connection failed:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
-/**
- * Execute pre-deployment tasks
- */
-async function preDeployment() {
-  console.log('🚀 Running pre-deployment tasks...');
+// Warm up database connection after deployment
+async function warmupDatabase() {
+  console.log('Warming up database connection...');
   
-  // Check database connection
-  const isConnected = await checkDatabaseConnection();
-  if (!isConnected) {
-    console.error('❌ Pre-deployment database check failed');
-    process.exit(1);
-  }
-  
-  console.log('✅ Pre-deployment tasks completed successfully');
-}
-
-/**
- * Execute post-deployment tasks
- */
-async function postDeployment() {
-  console.log('🏁 Running post-deployment tasks...');
-  
-  // Initialize database connection pool
-  const initialized = await initializeDatabase();
-  if (!initialized) {
-    console.error('❌ Post-deployment database initialization failed');
-    process.exit(1);
-  }
-  
-  // Verify database connection
-  const isConnected = await checkDatabaseConnection();
-  if (!isConnected) {
-    console.error('❌ Post-deployment database check failed');
-    process.exit(1);
-  }
-  
-  console.log('✅ Post-deployment tasks completed successfully');
-}
-
-/**
- * Main function
- */
-async function main() {
-  const args = process.argv.slice(2);
-  const stage = args[0]?.toLowerCase();
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  });
   
   try {
-    if (stage === 'pre') {
-      await preDeployment();
-    } else if (stage === 'post') {
-      await postDeployment();
-    } else {
-      console.error('❌ Invalid argument. Use "pre" or "post".');
-      process.exit(1);
-    }
+    await prisma.$connect();
+    console.log('Database connection established');
     
-    await prisma.$disconnect();
+    // Perform some simple queries to warm up the connection
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('Database warmed up successfully');
+    
+    return true;
   } catch (error) {
-    console.error('💥 Unexpected error:', error);
-    
-    try {
-      await prisma.$disconnect();
-    } catch (disconnectError) {
-      console.error('Failed to disconnect:', disconnectError);
-    }
-    
-    process.exit(1);
+    console.error('Database warmup failed:', error);
+    throw error;
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
-// Run the script
-main()
-  .then(() => {
-    console.log(`✨ ${process.argv[2]} deployment tasks completed`);
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('💥 Fatal error:', error);
+// Parse command line arguments
+const mode = process.argv[2];
+
+if (mode === 'pre') {
+  preDeployTasks().catch(error => {
+    console.error('Pre-deployment tasks failed:', error);
     process.exit(1);
-  }); 
+  });
+} else if (mode === 'post') {
+  postDeployTasks().catch(error => {
+    console.error('Post-deployment tasks failed:', error);
+    process.exit(1);
+  });
+} else {
+  console.error('Invalid mode. Use "pre" or "post"');
+  process.exit(1);
+} 

@@ -1,0 +1,43 @@
+{
+  "buildCommand": "npm run db:check && npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Connection",
+          "value": "keep-alive"
+        }
+      ]
+    }
+  ],
+  "functions": {
+    "app/api/health/route.ts": {
+      "memory": 128
+    },
+    "app/admin/**/*.ts": {
+      "memory": 1024
+    },
+    "app/admin/**/*.tsx": {
+      "memory": 1024
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/weekly-draw",
+      "schedule": "0 0 * * 0"
+    },
+    {
+      "path": "/api/health/database",
+      "schedule": "*/15 * * * *"
+    }
+  ],
+  "env": {
+    "VERCEL_DEPLOYMENT": "true"
+  }
+} 

@@ -5,14 +5,14 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-// Check if code is running in Edge Runtime to avoid PrismaClient initialization
+// Check if running in Edge Runtime to avoid PrismaClient initialization
 const isEdgeRuntime = () => {
   return typeof process.env.NEXT_RUNTIME === 'string' && 
          process.env.NEXT_RUNTIME === 'edge';
 };
 
 // Connection retry settings
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 1000;
 
 // Connection error handler function (server-side only)
@@ -27,7 +27,7 @@ const handleConnectionError = async (error: any, operation: Function, attempt = 
     console.log(`Retrying database operation, attempt ${attempt} of ${MAX_RETRIES}...`);
     
     // Wait before retry with exponential backoff
-    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * Math.pow(2, attempt - 1)));
     
     // Retry the operation
     try {
@@ -49,7 +49,15 @@ const createPrismaClient = () => {
   }
 
   // Use log settings from prisma-log-config
-  const client = new PrismaClient(prismaLogConfig);
+  const client = new PrismaClient({
+    ...prismaLogConfig,
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+    // Connection pool configuration is handled via connection URL params instead
+  });
 
   // Enhance client with connection error handling
   const enhancedClient = client.$extends({
@@ -62,7 +70,11 @@ const createPrismaClient = () => {
           if (
             error.message.includes("connection") || 
             error.message.includes("Closed") ||
-            error.message.includes("timeout")
+            error.message.includes("timeout") ||
+            error.message.includes("Connection pool") ||
+            error.code === 'P1001' || // Connection error
+            error.code === 'P1008' || // Operation timeout
+            error.code === 'P1017'    // Connection already closed
           ) {
             return handleConnectionError(error, () => query(args));
           }
@@ -70,6 +82,16 @@ const createPrismaClient = () => {
         }
       },
     },
+  });
+
+  // Connection events for health management
+  process.on('beforeExit', async () => {
+    console.log('Process beforeExit event, reconnecting database...');
+    try {
+      await client.$connect();
+    } catch (error) {
+      console.error('Failed to reconnect on beforeExit:', error);
+    }
   });
 
   return enhancedClient;
