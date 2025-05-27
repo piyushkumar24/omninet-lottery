@@ -21,6 +21,8 @@ export default auth(async (req) => {
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isStatsRoute = nextUrl.pathname.startsWith("/api/stats");
   const isHealthRoute = nextUrl.pathname.startsWith("/api/health");
+  const isCpxPostbackRoute = nextUrl.pathname.startsWith("/api/cpx-postback");
+  const isCpxTestRoute = nextUrl.pathname.startsWith("/api/cpx-test");
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);  
   
@@ -31,8 +33,8 @@ export default auth(async (req) => {
   // Run database health monitoring middleware (safe for Edge Runtime)
   await dbMiddleware(req);
 
-  // Make the stats and health API endpoints public
-  if (isStatsRoute || isHealthRoute) {
+  // Make the stats, health, and CPX API endpoints public
+  if (isStatsRoute || isHealthRoute || isCpxPostbackRoute || isCpxTestRoute) {
     return NextResponse.next();
   }
 

@@ -1,11 +1,20 @@
 import * as crypto from 'crypto';
 
+// Get base URL from environment or use fallback
+const getBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  // In server-side context, use environment variable or default
+  return process.env.NEXT_PUBLIC_APP_URL || 'https://7c8d-2406-7400-81-8352-8c1b-f1a9-16a5-f8c3.ngrok-free.app';
+};
+
 const CPX_CONFIG = {
   APP_ID: '27172',
   SECURE_HASH_KEY: 'mZ6JNyV7SeZh9CMPwU9mKe24A0IyfAxC',
   BASE_URL: 'https://offers.cpx-research.com/index.php',
-  POSTBACK_BASE_URL: 'https://8bad-2406-7400-81-835f-cc49-26c4-69fc-3b65.ngrok-free.app',
-  REDIRECT_URL: 'https://8bad-2406-7400-81-835f-cc49-26c4-69fc-3b65.ngrok-free.app/dashboard?survey=completed',
+  POSTBACK_BASE_URL: 'https://7c8d-2406-7400-81-8352-8c1b-f1a9-16a5-f8c3.ngrok-free.app',
+  REDIRECT_URL: 'https://7c8d-2406-7400-81-8352-8c1b-f1a9-16a5-f8c3.ngrok-free.app/dashboard?survey=completed',
 };
 
 /**
@@ -26,6 +35,7 @@ export function generateCPXSurveyURL(user: {
   email?: string | null;
 }): string {
   const secureHash = generateCPXSecureHash(user.id);
+  const baseUrl = getBaseUrl();
   
   const params = new URLSearchParams({
     app_id: CPX_CONFIG.APP_ID,
@@ -35,6 +45,7 @@ export function generateCPXSurveyURL(user: {
     email: user.email || '',
     subid_1: '',
     subid_2: '',
+    redirect: `${baseUrl}/dashboard?survey=completed`,
   });
 
   return `${CPX_CONFIG.BASE_URL}?${params.toString()}`;
@@ -56,6 +67,8 @@ export function getCPXScriptConfig(user: {
   name?: string | null;
   email?: string | null;
 }) {
+  const baseUrl = getBaseUrl();
+  
   return {
     general_config: {
       app_id: parseInt(CPX_CONFIG.APP_ID),
@@ -64,14 +77,16 @@ export function getCPXScriptConfig(user: {
       username: user.name || '',
       subid_1: '',
       subid_2: '',
+      redirect_url: `${baseUrl}/dashboard?survey=completed`,
     },
     style_config: {
       text_color: '#2b2b2b',
       survey_box: {
-        topbar_background_color: '#45c4c6',
+        topbar_background_color: '#3b82f6', // 0mninet blue color
         box_background_color: 'white',
-        rounded_borders: false,
-        stars_filled: '#2b2b2b',
+        rounded_borders: true,
+        stars_filled: '#3b82f6',
+        custom_banner_url: `${baseUrl}/main-logo.png`, // Use 0mninet logo
       },
     },
     debug: false,

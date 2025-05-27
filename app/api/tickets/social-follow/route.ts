@@ -126,11 +126,12 @@ export async function POST() {
       try {
         await sendTicketApplicationEmail(
           userRecord.email,
-          userRecord.name || "User",
-          1,
-          [result.confirmationCode],
-          draw.drawDate,
-          result.totalUserTickets
+          {
+            name: userRecord.name || "User",
+            ticketCount: 1,
+            drawDate: draw.drawDate,
+            confirmationCode: result.confirmationCode
+          }
         );
         console.log('📧 Social media ticket automatically applied, email sent to user:', userRecord.email);
       } catch (emailError) {

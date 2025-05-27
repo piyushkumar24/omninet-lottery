@@ -185,7 +185,7 @@ export const CPXSurveyModal = ({
                 <h3 className="font-semibold text-blue-900 mb-2">📋 How it Works</h3>
                 <ul className="text-blue-800 text-sm space-y-1">
                   <li>• Complete the survey questions honestly and thoroughly</li>
-                  <li>• Survey typically takes 3-10 minutes to complete</li>
+                  <li>• Survey typically takes 2-5 minutes to complete</li>
                   <li>• You&apos;ll automatically earn 1 lottery ticket upon completion</li>
                   <li>• You&apos;ll be redirected back to your dashboard when finished</li>
                 </ul>
@@ -288,7 +288,7 @@ export const CPXSurveyModal = ({
               <Clock className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-blue-800 font-medium text-sm">Quick Completion</p>
-                <p className="text-blue-700 text-xs">Usually 3-10 minutes</p>
+                <p className="text-blue-700 text-xs">Usually 2-5 minutes</p>
               </div>
             </div>
             

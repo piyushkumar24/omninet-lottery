@@ -132,11 +132,12 @@ export const applyTicketsToLottery = async (drawId: string, ticketsToApply: numb
         try {
           await sendTicketApplicationEmail(
             user.email,
-            user.name || "User",
-            appliedTickets,
-            ticketCodes,
-            draw.drawDate,
-            newTotalTickets
+            {
+              name: user.name || "User",
+              ticketCount: appliedTickets,
+              drawDate: draw.drawDate,
+              confirmationCode: ticketCodes[0] // Just use the first code for simplicity
+            }
           );
         } catch (emailError) {
           console.error("Failed to send ticket application email:", emailError);

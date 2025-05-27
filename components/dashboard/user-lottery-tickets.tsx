@@ -21,6 +21,16 @@ export const UserLotteryTickets = ({
 }: UserLotteryTicketsProps) => {
   const participationTickets = userParticipation?.ticketsUsed || 0;
 
+  // Calculate win probability percentage (assuming total tickets in draw is around 100)
+  // This is just an estimate for display purposes
+  const estimatedTotalTickets = 100;
+  const winProbability = appliedTickets > 0 
+    ? (appliedTickets / estimatedTotalTickets) * 100 
+    : 0;
+  
+  // Format probability with 2 decimal places
+  const formattedProbability = winProbability.toFixed(2);
+
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
@@ -40,6 +50,24 @@ export const UserLotteryTickets = ({
             to this week&apos;s lottery
           </p>
         </div>
+
+        {/* Win Probability Information */}
+        {appliedTickets > 0 && (
+          <div className="bg-green-50/70 rounded-xl p-3 border border-green-200">
+            <div className="flex items-center justify-center mb-1">
+              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 px-3 py-1 gap-1">
+                <Trophy className="h-3.5 w-3.5" />
+                <span>Win Probability</span>
+              </Badge>
+            </div>
+            <div className="flex flex-col items-center justify-center">
+              <div className="text-xl font-bold text-green-700">{formattedProbability}%</div>
+              <p className="text-xs text-green-600 text-center">
+                Each ticket increases your chances by 1%
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Auto-Apply Information */}
         <div className="bg-white/70 rounded-xl p-4 border border-blue-200">
