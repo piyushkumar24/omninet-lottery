@@ -19,7 +19,9 @@ import {
   Ticket,
   X,
   History,
-  Eye
+  Eye,
+  Check,
+  Calendar
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { TicketSource } from "@prisma/client";
@@ -31,6 +33,7 @@ interface TicketHistoryModalProps {
     isUsed: boolean;
     drawId: string | null;
     createdAt: Date;
+    confirmationCode?: string | null;
   }>;
 }
 
@@ -41,7 +44,7 @@ const getSourceIcon = (source: TicketSource) => {
     case "SOCIAL":
       return <Share2 className="h-4 w-4 text-indigo-600" />;
     case "REFERRAL":
-      return <Users className="h-4 w-4 text-indigo-600" />;
+      return <Users className="h-4 w-4 text-green-600" />;
     default:
       return <Ticket className="h-4 w-4 text-indigo-600" />;
   }
@@ -54,9 +57,22 @@ const getSourceLabel = (source: TicketSource) => {
     case "SOCIAL":
       return "Social Media Follow";
     case "REFERRAL":
-      return "Friend Invitation";
+      return "Referral Reward";
     default:
       return "Unknown Source";
+  }
+};
+
+const getSourceDescription = (source: TicketSource) => {
+  switch (source) {
+    case "SURVEY":
+      return "Earned by completing a survey";
+    case "SOCIAL":
+      return "Earned by following on social media";
+    case "REFERRAL":
+      return "Earned when a friend completed their first survey";
+    default:
+      return "Ticket from unknown source";
   }
 };
 
@@ -76,9 +92,10 @@ const getSourceBadgeColor = (source: TicketSource) => {
 export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
   const [open, setOpen] = useState(false);
   
-  // Show recent tickets first (latest 3)
-  const recentTickets = tickets.slice(0, 3);
-  const hasMoreTickets = tickets.length > 3;
+  // Count tickets by source
+  const surveyTickets = tickets.filter(t => t.source === "SURVEY").length;
+  const socialTickets = tickets.filter(t => t.source === "SOCIAL").length;
+  const referralTickets = tickets.filter(t => t.source === "REFERRAL").length;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -110,9 +127,42 @@ export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
           </div>
         </DialogHeader>
 
-        <div className="h-[500px] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-slate-100">
+        {/* Ticket Summary */}
+        <div className="grid grid-cols-3 gap-4 my-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+          <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex justify-center mb-2">
+              <div className="p-2 bg-blue-100 rounded-full">
+                <ClipboardCheck className="h-5 w-5 text-blue-600" />
+              </div>
+            </div>
+            <p className="text-xl font-bold text-blue-800">{surveyTickets}</p>
+            <p className="text-sm text-blue-600">Survey Tickets</p>
+          </div>
+          
+          <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-100">
+            <div className="flex justify-center mb-2">
+              <div className="p-2 bg-purple-100 rounded-full">
+                <Share2 className="h-5 w-5 text-purple-600" />
+              </div>
+            </div>
+            <p className="text-xl font-bold text-purple-800">{socialTickets}</p>
+            <p className="text-sm text-purple-600">Social Tickets</p>
+          </div>
+          
+          <div className="text-center p-3 bg-green-50 rounded-lg border border-green-100">
+            <div className="flex justify-center mb-2">
+              <div className="p-2 bg-green-100 rounded-full">
+                <Users className="h-5 w-5 text-green-600" />
+              </div>
+            </div>
+            <p className="text-xl font-bold text-green-800">{referralTickets}</p>
+            <p className="text-sm text-green-600">Referral Tickets</p>
+          </div>
+        </div>
+
+        <div className="h-[400px] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-slate-100">
           {tickets.length > 0 ? (
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4">
               {tickets.map((ticket, index) => (
                 <div 
                   key={ticket.id} 
@@ -132,8 +182,20 @@ export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
                             {getSourceLabel(ticket.source)}
                           </h3>
                           <p className="text-sm text-slate-600 mt-1">
-                            Earned on {formatDate(new Date(ticket.createdAt), 'full')}
+                            {getSourceDescription(ticket.source)}
                           </p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(new Date(ticket.createdAt), 'full')}
+                            </span>
+                            {ticket.confirmationCode && (
+                              <span className="flex items-center gap-1">
+                                <Ticket className="h-3 w-3" />
+                                Code: {ticket.confirmationCode}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         
                         <div className="flex flex-col items-end gap-2">
@@ -146,34 +208,11 @@ export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
                           
                           <Badge 
                             variant="outline"
-                            className="bg-blue-100 text-blue-700 border-blue-300 font-medium"
+                            className="bg-blue-100 text-blue-700 border-blue-300 font-medium flex items-center gap-1"
                           >
+                            <Check className="h-3 w-3" />
                             Applied to Lottery
                           </Badge>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        {ticket.drawId && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Ticket className="h-4 w-4 text-blue-600" />
-                            <span className="text-slate-600">
-                              Used in draw: 
-                              <span className="font-mono text-blue-600 ml-1">
-                                {ticket.drawId.substring(0, 8)}...
-                              </span>
-                            </span>
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center gap-2 text-sm">
-                          <Clock className="h-4 w-4 text-slate-500" />
-                          <span className="text-slate-600">
-                            Ticket ID: 
-                            <span className="font-mono text-slate-500 ml-1">
-                              {ticket.id.substring(0, 12)}...
-                            </span>
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -182,15 +221,13 @@ export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
-                  <Ticket className="h-8 w-8 text-slate-400" />
-                </div>
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="p-4 bg-slate-100 rounded-full mb-4">
+                <Ticket className="h-8 w-8 text-slate-400" />
               </div>
-              <h3 className="text-lg font-medium text-slate-700 mb-2">No Tickets Yet</h3>
-              <p className="text-slate-500">
-                You haven&apos;t earned any tickets yet. Complete surveys, invite friends, or follow us on social media to start earning!
+              <p className="text-lg font-medium text-slate-700">No Tickets Found</p>
+              <p className="text-sm text-slate-500 mt-2">
+                You haven&apos;t earned any tickets yet. Complete surveys and invite friends to earn tickets!
               </p>
             </div>
           )}

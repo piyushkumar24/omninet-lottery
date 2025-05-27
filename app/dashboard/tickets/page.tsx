@@ -383,6 +383,25 @@ export default async function TicketsPage() {
                 </div>
                 <h4 className="font-semibold text-green-700">Referral Tickets</h4>
                 <p className="text-xs text-green-600 mt-1">Earned by inviting friends</p>
+                {ticketCounts["REFERRAL"] > 0 ? (
+                  <div className="mt-3 text-xs bg-green-100 p-2 rounded border border-green-200">
+                    <p className="text-green-700 font-medium">
+                      You've earned {ticketCounts["REFERRAL"]} ticket{ticketCounts["REFERRAL"] !== 1 ? 's' : ''} from friends who completed surveys.
+                    </p>
+                    <Link href="/dashboard/refer" className="flex items-center mt-1 text-green-800 hover:underline">
+                      <p>View your referrals</p>
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="mt-3 text-xs bg-amber-100 p-2 rounded border border-amber-200">
+                    <p className="text-amber-700">You haven't earned any referral tickets yet.</p>
+                    <Link href="/dashboard/refer" className="flex items-center mt-1 text-amber-800 hover:underline">
+                      <p>Invite friends to earn tickets</p>
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
