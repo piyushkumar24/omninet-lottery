@@ -34,6 +34,14 @@ function shouldLog(level: LogLevel): boolean {
 }
 
 /**
+ * Check if a message is a Prisma query log that should be filtered
+ */
+function isPrismaQueryLog(message: string): boolean {
+  return message.includes('prisma:query') || 
+         (message.includes('prisma') && message.includes('SELECT'));
+}
+
+/**
  * Format a log message with timestamp and context if enabled
  */
 function formatMessage(message: string, options: LogOptions): string {
@@ -52,11 +60,22 @@ function formatMessage(message: string, options: LogOptions): string {
   return parts.join(' ');
 }
 
+// Override console.log to filter out Prisma query logs
+const originalConsoleLog = console.log;
+console.log = function(...args) {
+  // Skip Prisma query logs
+  if (args.length > 0 && typeof args[0] === 'string' && isPrismaQueryLog(args[0])) {
+    return;
+  }
+  originalConsoleLog.apply(console, args);
+};
+
 /**
  * Debug level log - only shown in development
  */
 export function debug(message: string, context?: string): void {
   if (!shouldLog('debug')) return;
+  if (isPrismaQueryLog(message)) return;
   
   console.debug(formatMessage(message, {
     ...defaultOptions,
@@ -69,6 +88,7 @@ export function debug(message: string, context?: string): void {
  */
 export function info(message: string, context?: string): void {
   if (!shouldLog('info')) return;
+  if (isPrismaQueryLog(message)) return;
   
   console.log(formatMessage(message, {
     ...defaultOptions,

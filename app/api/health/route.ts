@@ -1,61 +1,60 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { testDbConnection } from "@/lib/db";
-import { getConnectionMetrics } from "@/lib/db-monitor";
-import { validateEnvironment, getAppConfig } from "@/lib/env-validation";
-import logger from "@/lib/logger";
+import { checkConnection } from "@/lib/db-utils";
+import { checkDbHealth } from "@/lib/server-health";
+import { getDbHealthStatus } from "@/middleware/db-middleware";
+
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/health
- * 
- * General health check endpoint that returns basic system status.
- * This endpoint is publicly accessible and provides limited information
- * about system health without exposing sensitive details.
+ * Health check endpoint that returns the status of various application components
  */
 export async function GET() {
   try {
-    logger.info('Health check requested', 'API');
+    // Check database connection using server-side code
+    const isDbConnected = await checkDbHealth();
     
-    // Perform a simple database connection test
-    const dbConnected = await testDbConnection();
+    // Get the connection status data
+    const dbStatus = await checkConnection();
     
-    // Get current metrics (limited information for public endpoint)
-    const metrics = getConnectionMetrics();
+    // Define overall system health
+    const isHealthy = isDbConnected;
     
-    // Get application configuration
-    const appConfig = getAppConfig();
-    
-    const response = {
-      success: true,
+    return NextResponse.json({
+      status: isHealthy ? 'healthy' : 'unhealthy',
       timestamp: new Date().toISOString(),
-      status: dbConnected ? "healthy" : "degraded",
-      environment: appConfig.nodeEnv,
-      services: {
+      uptime: process.uptime(),
+      components: {
         database: {
-          connected: dbConnected,
-          status: metrics.status
-        },
-        api: {
-          status: "operational"
+          status: isDbConnected ? 'healthy' : 'unhealthy',
+          latency: dbStatus.latency,
+          lastChecked: dbStatus.lastChecked,
+          error: dbStatus.errorMessage
         }
       }
-    };
-    
-    logger.info(`Health check result: ${response.status}`, 'API');
-    return NextResponse.json(response);
+    }, {
+      status: isHealthy ? 200 : 503,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (error) {
-    logger.error("Health check failed", error, 'API');
+    console.error('Health check error:', error);
     
-    return NextResponse.json(
-      {
-        success: false,
-        timestamp: new Date().toISOString(),
-        status: "unhealthy",
-        message: "System health check failed",
-        error: error instanceof Error ? error.message : "Unknown error"
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      status: 'error',
+      message: 'Error running health check',
+      timestamp: new Date().toISOString()
+    }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   }
 }
 

@@ -12,7 +12,11 @@
     "db:push": "prisma db push",
     "db:reset": "prisma migrate reset --force",
     "health": "tsx scripts/health-check.ts",
-    "db:warmup": "tsx -e \"import { warmupDatabaseConnection } from './lib/startup'; warmupDatabaseConnection();\""
+    "db:warmup": "tsx -e \"import { warmupDatabaseConnection } from './lib/startup'; warmupDatabaseConnection();\"",
+    "db:check": "node scripts/check-db.js",
+    "db:monitor": "node scripts/check-db.js && node -e \"setInterval(() => require('./scripts/check-db'), 60000)\"",
+    "predeploy": "node scripts/deploy-hooks.js pre",
+    "postdeploy": "node scripts/deploy-hooks.js post"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",

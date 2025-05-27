@@ -6,9 +6,16 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 
 import { db } from '@/lib/db';
 import authConfig from '@/auth.config';
+import authEdgeConfig from '@/auth.edge-config';
 import { getUserById } from '@/data/user';
 import { getAccountByUserId } from './data/account';
 import { getTwoFactorConfirmationByUserId } from '@/data/two-factor-confirmation';
+
+// Check if running in Edge Runtime
+const isEdgeRuntime = () => {
+  return typeof process.env.NEXT_RUNTIME === 'string' && 
+         process.env.NEXT_RUNTIME === 'edge';
+};
 
 declare module "next-auth" {
   interface Session {
@@ -21,10 +28,12 @@ declare module "next-auth" {
       isTwoFactorEnabled: boolean;
       isOAuth: boolean;
       isBlocked: boolean;
+      hasWon?: boolean;
     }
   }
 }
 
+// Server-side auth options with full functionality
 export const authOptions: any = {
   pages: {
     signIn: '/auth/login',
@@ -85,6 +94,7 @@ export const authOptions: any = {
         session.user.email = token.email;
         session.user.isOAuth = token.isOAuth as boolean;
         session.user.isBlocked = token.isBlocked as boolean;
+        session.user.hasWon = token.hasWon as boolean;
       }
 
       return session;
@@ -104,6 +114,7 @@ export const authOptions: any = {
       token.role = existingUser.role;
       token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled;
       token.isBlocked = existingUser.isBlocked;
+      token.hasWon = existingUser.hasWon;
 
       return token;
     },
@@ -113,9 +124,12 @@ export const authOptions: any = {
   ...authConfig,
 };
 
+// Use edge config in Edge Runtime, otherwise use server config
 export const {
   handlers: { GET, POST },
   auth,
   signIn,
   signOut,
-} = NextAuth(authOptions);
+} = isEdgeRuntime() 
+  ? NextAuth(authEdgeConfig) 
+  : NextAuth(authOptions);

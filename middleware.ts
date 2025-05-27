@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import authConfig from '@/auth.config';
+import authEdgeConfig from '@/auth.edge-config';
 import {
   DEFAULT_LOGIN_REDIRECT,
   apiAuthPrefix,
@@ -9,10 +9,12 @@ import {
   dashboardRoutes,
 } from '@/routes';
 import { UserRole } from '@prisma/client';
+import { dbMiddleware } from '@/middleware/db-middleware';
 
-const { auth } = NextAuth(authConfig);
+// Use the Edge-compatible auth config for middleware
+const { auth } = NextAuth(authEdgeConfig);
 
-export default auth((req) => {
+export default auth(async (req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
   
@@ -25,6 +27,9 @@ export default auth((req) => {
   const isDashboardRoute = dashboardRoutes.some(route => 
     nextUrl.pathname === route || nextUrl.pathname.startsWith(`${route}/`)
   );
+
+  // Run database health monitoring middleware (safe for Edge Runtime)
+  await dbMiddleware(req);
 
   // Make the stats and health API endpoints public
   if (isStatsRoute || isHealthRoute) {

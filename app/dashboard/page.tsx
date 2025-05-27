@@ -12,6 +12,7 @@ import { SurveyCompletionAlert } from "@/components/dashboard/survey-completion-
 import { UserLotteryTickets } from "@/components/dashboard/user-lottery-tickets";
 import { NextLotteryDraw } from "@/components/dashboard/next-lottery-draw";
 import { RecentWinners } from "@/components/dashboard/recent-winners";
+import { WinnerBanner } from "@/components/dashboard/winner-banner";
 
 export const metadata: Metadata = {
   title: "Dashboard | 0mninet Lottery",
@@ -49,7 +50,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const userWinner = await db.winner.findFirst({
     where: {
       userId: user.id,
-      // Find the most recent win for this user
     },
     orderBy: {
       drawDate: 'desc',
@@ -82,6 +82,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   return (
     <DashboardWrapper>
       <div className="p-6 space-y-6">
+        {/* Winner Banner */}
+        {user.hasWon && userWinner && (
+          <WinnerBanner 
+            prizeAmount={userWinner.prizeAmount}
+            drawDate={userWinner.drawDate}
+            couponCode={userWinner.couponCode}
+          />
+        )}
+
         {/* Survey Completion Alert */}
         {surveyCompleted && <SurveyCompletionAlert />}
 

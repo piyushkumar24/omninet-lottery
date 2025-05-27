@@ -8,37 +8,51 @@
  * default settings.
  */
 
-import { initializeApplication, shutdownApplication } from '../lib/startup';
+import { validateEnvironment } from '../lib/env-validation';
+import { initializeDatabase } from '../lib/db-utils';
+import { initializeHealthMonitoring } from '../lib/server-health';
 import logger from '../lib/logger';
+import '../lib/prisma-log-config'; // Import to ensure logging config is loaded early
 
 async function main() {
   logger.info('Starting server initialization...', 'SERVER');
   
+  // Disable noisy Prisma query logs if environment variable is not explicitly set
+  if (process.env.PRISMA_LOG_QUERIES !== 'true') {
+    process.env.PRISMA_LOG_QUERIES = 'false';
+  }
+  
   try {
-    // Initialize application
-    const initSuccess = await initializeApplication();
-    
-    if (!initSuccess) {
-      logger.error('Server initialization failed due to application initialization error', null, 'SERVER');
-      process.exit(1);
+    // Validate environment variables
+    logger.info('Initializing application...', 'STARTUP');
+    validateEnvironment();
+    logger.info('Environment validation passed', 'STARTUP');
+
+    // Initialize database connection
+    try {
+      // Check database connection
+      const dbResult = await initializeDatabase();
+      logger.info('Database connection established', 'STARTUP');
+      logger.info('Database initialization complete', 'STARTUP');
+
+      // Set up health monitoring
+      await initializeHealthMonitoring();
+      logger.info('Database monitoring started (development mode)', 'STARTUP');
+    } catch (dbError) {
+      logger.error('Database initialization failed', dbError, 'STARTUP');
+      // Allow server to start even with DB issues - it will retry connections
     }
-    
+
+    logger.info('Application initialization completed', 'STARTUP');
     logger.info('Server initialization completed successfully', 'SERVER');
-    process.exit(0);
   } catch (error) {
-    logger.error('Server initialization error', error, 'SERVER');
-    
-    // Attempt to gracefully shutdown
-    await shutdownApplication().catch(err => {
-      logger.error('Failed to shutdown cleanly', err, 'SERVER');
-    });
-    
+    logger.error('Server initialization failed', error, 'SERVER');
     process.exit(1);
   }
 }
 
 // Run the initialization
-main().catch((error) => {
-  logger.error('Fatal error', error, 'SERVER');
+main().catch(error => {
+  console.error('Fatal error during server initialization:', error);
   process.exit(1);
 }); 

@@ -448,3 +448,184 @@ export const sendTicketApplicationEmail = async (
     throw error;
   }
 };
+
+export const sendWinnerNotificationEmail = async (
+  email: string, 
+  userName: string,
+  prizeAmount: number,
+  couponCode: string,
+  drawDate: Date
+) => {
+  const formattedDrawDate = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(drawDate);
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Congratulations! You Won the Lottery - 0MNINET</title>
+        <style>
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                line-height: 1.6; 
+                color: #333; 
+                max-width: 600px; 
+                margin: 0 auto; 
+                padding: 20px;
+                background-color: #f8fafc;
+            }
+            .container { 
+                background: white; 
+                padding: 40px; 
+                border-radius: 16px; 
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                border: 1px solid #e2e8f0;
+            }
+            .header { 
+                text-align: center; 
+                margin-bottom: 30px; 
+            }
+            .logo { 
+                font-size: 28px; 
+                font-weight: bold; 
+                background: linear-gradient(135deg, #3b82f6, #10b981);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 10px;
+            }
+            .prize-amount {
+                font-size: 42px;
+                font-weight: bold;
+                color: #16a34a;
+                text-align: center;
+                margin: 20px 0;
+            }
+            .coupon-code {
+                background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+                border: 2px dashed #0284c7;
+                padding: 20px;
+                text-align: center;
+                border-radius: 12px;
+                margin: 30px 0;
+            }
+            .code {
+                font-size: 28px;
+                font-weight: bold;
+                color: #0284c7;
+                letter-spacing: 2px;
+                font-family: monospace;
+            }
+            .instructions {
+                background: #f1f5f9;
+                padding: 20px;
+                border-radius: 12px;
+                margin: 20px 0;
+            }
+            .step {
+                margin: 12px 0;
+                padding-left: 24px;
+                position: relative;
+            }
+            .step:before {
+                content: '●';
+                color: #10b981;
+                font-weight: bold;
+                position: absolute;
+                left: 0;
+            }
+            .footer { 
+                text-align: center; 
+                margin-top: 30px; 
+                padding-top: 20px; 
+                border-top: 1px solid #e2e8f0;
+                color: #64748b;
+                font-size: 14px;
+            }
+            .emoji { font-size: 24px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">0MNINET</div>
+                <h1 style="color: #1e293b; margin: 0;">🎉 Congratulations! 🎉</h1>
+                <p style="color: #64748b; font-size: 18px;">You Won the 0MNINET Lottery!</p>
+            </div>
+            
+            <p style="font-size: 16px; margin-bottom: 20px;">
+                Hi <strong>${userName}</strong>,
+            </p>
+            
+            <p style="font-size: 16px; margin-bottom: 20px;">
+                Great news! You've won the 0MNINET lottery draw that took place on <strong>${formattedDrawDate}</strong>!
+            </p>
+            
+            <div class="prize-amount">
+                <span class="emoji">💰</span> $${prizeAmount.toFixed(2)} <span class="emoji">💰</span>
+            </div>
+            
+            <p style="font-size: 16px; text-align: center; font-weight: 500; color: #1e293b;">
+                Your Amazon Gift Card Coupon Code:
+            </p>
+            
+            <div class="coupon-code">
+                <div class="code">${couponCode}</div>
+                <p style="margin-top: 10px; color: #0284c7; font-size: 14px;">
+                    Use this code to redeem your prize on Amazon
+                </p>
+            </div>
+            
+            <div class="instructions">
+                <p style="font-weight: 600; margin-bottom: 15px; color: #1e293b;">How to Redeem Your Prize:</p>
+                <div class="step">Go to <a href="https://www.amazon.com/gc/redeem" style="color: #0284c7; text-decoration: none;">amazon.com/gc/redeem</a></div>
+                <div class="step">Sign in to your Amazon account (or create one)</div>
+                <div class="step">Enter the coupon code exactly as shown above</div>
+                <div class="step">The gift card amount will be applied to your Amazon account balance</div>
+                <div class="step">Use your balance on your next Amazon purchase!</div>
+            </div>
+            
+            <p style="font-size: 16px; margin-top: 25px; color: #1e293b;">
+                Thank you for participating in the 0MNINET lottery and supporting digital inclusion worldwide!
+            </p>
+            
+            <p style="font-size: 14px; color: #64748b; margin-top: 20px;">
+                <strong>What's Next?</strong><br>
+                • You can continue to participate in future draws<br>
+                • Keep earning tickets through surveys and referrals<br>
+                • Look out for special promotions and bonus tickets
+            </p>
+            
+            <div class="footer">
+                <p><strong>The 0mninet Team</strong></p>
+                <p><a href="https://www.0mninet.com" style="color: #3b82f6; text-decoration: none;">www.0mninet.com</a></p>
+                <p style="font-size: 12px; margin-top: 10px;">
+                    Need help? Reply to this email or visit our support center.
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    const result = await resend.emails.send({
+      from: 'noreply@resend.dev',
+      to: email,
+      subject: `🏆 CONGRATULATIONS! You Won the $${prizeAmount} Lottery Prize - 0MNINET`,
+      html: emailHtml,
+    });
+    
+    console.log("Winner notification email sent successfully:", result.data?.id);
+    return result;
+  } catch (error) {
+    console.error("Error sending winner notification email:", error);
+    throw error;
+  }
+};

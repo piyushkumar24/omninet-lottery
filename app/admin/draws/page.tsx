@@ -4,12 +4,13 @@ import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DrawLogsTable } from "@/components/admin/draw-logs-table";
 import { ManualDrawForm } from "@/components/admin/manual-draw-form";
-import { Gift, Users, AlertTriangle, Calendar } from "lucide-react";
+import { ManualWinnerSelect } from "@/components/admin/manual-winner-select";
+import { Gift, Users, AlertTriangle, Calendar, Ticket } from "lucide-react";
 import { DrawStatus } from "@prisma/client";
 
 export const metadata: Metadata = {
-  title: "Draw Logs | Admin Dashboard",
-  description: "View lottery draw logs and winners",
+  title: "Draw Management | Admin Dashboard",
+  description: "Manage lottery draws, select winners, and process prizes",
 };
 
 export default async function DrawsPage() {
@@ -42,8 +43,10 @@ export default async function DrawsPage() {
         include: {
           user: {
             select: {
+              id: true,
               name: true,
               email: true,
+              image: true,
             },
           },
         },
@@ -78,6 +81,16 @@ export default async function DrawsPage() {
     createdAt: winner.createdAt,
   }));
 
+  // Format participants data for manual selection
+  const formattedParticipants = activeDraw?.participants.map(participant => ({
+    id: participant.userId,
+    name: participant.user.name,
+    email: participant.user.email,
+    image: participant.user.image,
+    ticketsUsed: participant.ticketsUsed,
+    participatedAt: participant.participatedAt,
+  })) || [];
+
   const canRunDraw = participantCount > 0;
 
   return (
@@ -109,7 +122,7 @@ export default async function DrawsPage() {
               </div>
               
               <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
-                <Gift className="h-8 w-8 text-purple-600" />
+                <Ticket className="h-8 w-8 text-purple-600" />
                 <div>
                   <p className="text-sm font-medium text-purple-700">Tickets in Draw</p>
                   <p className="text-2xl font-bold text-purple-900">{totalTicketsInDraw}</p>
@@ -117,7 +130,7 @@ export default async function DrawsPage() {
               </div>
               
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <Gift className="h-8 w-8 text-gray-600" />
+                <Ticket className="h-8 w-8 text-gray-600" />
                 <div>
                   <p className="text-sm font-medium text-gray-700">Unused Tickets</p>
                   <p className="text-2xl font-bold text-gray-900">{unusedTickets}</p>
@@ -145,9 +158,12 @@ export default async function DrawsPage() {
       {/* Manual Draw Trigger */}
       <Card>
         <CardHeader>
-          <CardTitle>Manual Draw Trigger</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Gift className="h-5 w-5 text-indigo-600" />
+            Random Draw Selection
+          </CardTitle>
           <CardDescription>
-            Run a lottery draw manually for the current active draw
+            Run a lottery draw with random winner selection for the current active draw
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -159,11 +175,26 @@ export default async function DrawsPage() {
         </CardContent>
       </Card>
       
+      {/* Manual Winner Selection */}
+      {activeDraw && (
+        <ManualWinnerSelect 
+          canRunDraw={canRunDraw}
+          participants={formattedParticipants}
+          drawDate={new Date(activeDraw.drawDate)}
+          prizeAmount={activeDraw.prizeAmount}
+        />
+      )}
+      
       {/* Past Draws */}
       <Card>
         <CardHeader>
-          <CardTitle>Past Draws</CardTitle>
-          <CardDescription>History of all lottery draws and winners</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-gray-600" />
+            Past Draws & Winners
+          </CardTitle>
+          <CardDescription>
+            History of all lottery draws, winners, and prize claim status
+          </CardDescription>
         </CardHeader>
         <DrawLogsTable draws={formattedDraws} />
       </Card>

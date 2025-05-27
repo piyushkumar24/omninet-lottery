@@ -1,5 +1,141 @@
-import { db } from './db';
+import { db } from '@/lib/db';
+import { PrismaClient } from '@prisma/client';
 import logger from './logger';
+
+/**
+ * Database connection status interface
+ */
+interface ConnectionStatus {
+  isConnected: boolean;
+  latency: number | null;
+  lastChecked: Date;
+  errorMessage?: string;
+}
+
+// Track the connection status
+let connectionStatus: ConnectionStatus = {
+  isConnected: false,
+  latency: null,
+  lastChecked: new Date(0), // Initialize with epoch time
+};
+
+/**
+ * Check database connection and measure latency
+ * @returns Connection status object
+ */
+export async function checkConnection(): Promise<ConnectionStatus> {
+  const startTime = Date.now();
+  
+  try {
+    // Perform a simple query to test connection
+    await db.$queryRaw`SELECT 1`;
+    
+    const endTime = Date.now();
+    connectionStatus = {
+      isConnected: true,
+      latency: endTime - startTime,
+      lastChecked: new Date(),
+    };
+    
+    return connectionStatus;
+  } catch (error: any) {
+    connectionStatus = {
+      isConnected: false,
+      latency: null,
+      lastChecked: new Date(),
+      errorMessage: error.message || 'Unknown database error',
+    };
+    
+    console.error('Database connection check failed:', error);
+    return connectionStatus;
+  }
+}
+
+/**
+ * Get the current connection status without performing a check
+ * @returns Current connection status
+ */
+export function getConnectionStatus(): ConnectionStatus {
+  return connectionStatus;
+}
+
+/**
+ * Execute a database operation with retry logic
+ * @param operation Function that performs a database operation
+ * @param maxRetries Maximum number of retry attempts
+ * @param retryDelay Delay between retries in ms
+ * @returns Result of the database operation
+ */
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  retryDelay: number = 1000
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if this is a connection-related error
+      const isConnectionError = 
+        error.message.includes('connection') ||
+        error.message.includes('timeout') ||
+        error.message.includes('Closed');
+      
+      // If it's not a connection error or we've used all retries, throw
+      if (!isConnectionError || attempt > maxRetries) {
+        throw error;
+      }
+      
+      // Log the retry attempt
+      console.warn(
+        `Database operation failed (attempt ${attempt}/${maxRetries + 1}). Retrying in ${retryDelay}ms...`,
+        error.message
+      );
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+    }
+  }
+  
+  // This should never be reached due to the throw in the catch block
+  throw lastError;
+}
+
+/**
+ * Safely disconnect from the database
+ */
+export async function disconnectSafely(): Promise<void> {
+  try {
+    await db.$disconnect();
+    console.log('Database disconnected successfully');
+  } catch (error) {
+    console.error('Error disconnecting from database:', error);
+  }
+}
+
+/**
+ * Safely reconnect to the database
+ */
+export async function reconnectSafely(): Promise<ConnectionStatus> {
+  try {
+    await disconnectSafely();
+    
+    // Force a new connection
+    await db.$connect();
+    
+    return await checkConnection();
+  } catch (error) {
+    console.error('Error reconnecting to database:', error);
+    connectionStatus.isConnected = false;
+    connectionStatus.errorMessage = 'Failed to reconnect to database';
+    connectionStatus.lastChecked = new Date();
+    return connectionStatus;
+  }
+}
 
 // Retry configuration for database operations
 const RETRY_CONFIG = {
@@ -75,7 +211,7 @@ const isRetryableError = (error: any): boolean => {
 };
 
 // Generic retry wrapper for database operations
-export const withRetry = async <T>(
+export const withRetryWrapper = async <T>(
   operation: () => Promise<T>,
   operationName: string = 'Database operation'
 ): Promise<T> => {
@@ -112,7 +248,7 @@ export const dbQueryWithRetry = <T>(
   query: () => Promise<T>,
   operationName: string = 'Database query'
 ): Promise<T> => {
-  return withRetry(query, operationName);
+  return withRetryWrapper(query, operationName);
 };
 
 // Test database connection

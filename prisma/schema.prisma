@@ -25,6 +25,8 @@ model User {
   socialMediaFollowed   Boolean                @default(false)
   username              String?                @unique
   newsletterSubscribed  Boolean                @default(false)
+  hasWon                Boolean                @default(false)
+  lastWinDate           DateTime?
   accounts              Account[]
   drawParticipations    DrawParticipation[]
   tickets               Ticket[]
@@ -53,6 +55,7 @@ model Winner {
   drawDate    DateTime
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  couponCode  String?
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
