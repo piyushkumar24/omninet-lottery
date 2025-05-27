@@ -215,7 +215,13 @@ export default function Home() {
           <div className="flex justify-between items-center max-w-7xl mx-auto">
             <div className="flex items-center group">
               <div className="bg-white/10 backdrop-blur-md rounded-full p-2 mr-3 group-hover:bg-white/20 transition-all duration-300">
-                <Globe className="h-8 w-8 text-white" />
+                <Image
+                  src="/main-logo.png"
+                  alt="0mninet Logo"
+                  width={32}
+                  height={32}
+                  className="rounded-lg"
+                />
               </div>
               <span className={cn("text-2xl font-bold text-white", font.className)}>0mninet</span>
             </div>

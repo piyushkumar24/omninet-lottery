@@ -20,7 +20,7 @@ const Navbar = () => {
       <div className="md:max-w-screen-2xl mx-auto flex items-center w-full justify-between">
         <Link href="/">
           <h1 className="font-bold text-xl">
-            <span className="text-indigo-600">Social</span> Lottery
+            <span className="text-blue-600">0mninet</span> Lottery
           </h1>
         </Link>
         <div className="space-x-4 flex items-center">

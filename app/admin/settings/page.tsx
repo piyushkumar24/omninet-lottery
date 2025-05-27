@@ -6,8 +6,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
 export const metadata: Metadata = {
-  title: "Admin Settings | Social Lottery",
-  description: "Admin settings for the social lottery platform",
+  title: "Admin Settings | 0mninet Lottery",
+  description: "Admin settings for the 0mninet lottery platform",
 };
 
 export default function AdminSettingsPage() {

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { UserButton } from "@/components/auth/user-button";
 import { MobileSidebar } from "./mobile-sidebar";
 import { useSession } from "next-auth/react";
@@ -17,9 +18,16 @@ export const Navbar = () => {
     <div className="h-16 fixed inset-x-0 top-0 border-b border-slate-200 bg-white z-[100] flex justify-between items-center px-4 shadow-sm">
       <div className="flex items-center gap-x-4">
         <MobileSidebar />
-        <Link href="/dashboard">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <Image
+            src="/main-logo.png"
+            alt="0mninet Logo"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
           <h1 className="text-xl font-bold">
-            <span className="text-indigo-600">Social</span> Lottery
+            <span className="text-blue-600">0mninet</span> Lottery
           </h1>
         </Link>
       </div>

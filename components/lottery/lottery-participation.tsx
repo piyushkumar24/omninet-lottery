@@ -30,7 +30,6 @@ import {
   DollarSign, 
   Users,
   Clock,
-  Home,
   TrendingUp
 } from "lucide-react";
 
@@ -152,12 +151,6 @@ export const LotteryParticipation = ({
                 Refer Friends
               </Button>
             </Link>
-            <Link href="/">
-              <Button variant="outline">
-                <Home className="h-4 w-4 mr-2" />
-                Back to Home
-              </Button>
-            </Link>
           </div>
         </CardContent>
       </Card>
@@ -168,33 +161,21 @@ export const LotteryParticipation = ({
     <>
       <Card className="bg-gradient-to-br from-white to-blue-50 border-2 border-blue-200 shadow-xl">
         <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-lg">
-                <Ticket className="h-6 w-6" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl font-bold">
-                  {isExistingParticipation ? "This Week’s Lottery" : "Join the Upcoming Lottery Draw"}
-                </CardTitle>
-                <p className="text-blue-100 mt-1">
-                  {isExistingParticipation 
-                    ? `Add more tickets to boost your chances! You're currently participating with ${userParticipation?.ticketsUsed} tickets in the ${drawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} draw.`
-                    : `Participate in the lottery draw on ${drawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })} and win amazing prizes! Good luck! 🍀`
-                  }
-                </p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Ticket className="h-6 w-6" />
             </div>
-            <Link href="/">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="bg-white/20 border-white/30 text-white hover:bg-white/30 hover:border-white/50"
-              >
-                <Home className="h-4 w-4 mr-2" />
-                Home
-              </Button>
-            </Link>
+            <div>
+              <CardTitle className="text-2xl font-bold">
+                {isExistingParticipation ? "This Week's Lottery" : "Join the Upcoming Lottery Draw"}
+              </CardTitle>
+              <p className="text-blue-100 mt-1">
+                {isExistingParticipation 
+                  ? `Add more tickets to boost your chances! You're currently participating with ${userParticipation?.ticketsUsed} tickets in the ${drawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} draw.`
+                  : `Participate in the lottery draw on ${drawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })} and win amazing prizes! Good luck! 🍀`
+                }
+              </p>
+            </div>
           </div>
         </CardHeader>
 

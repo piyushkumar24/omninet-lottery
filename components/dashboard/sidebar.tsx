@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -57,9 +58,16 @@ export const Sidebar = () => {
   return (
     <div className="h-full border-r flex flex-col overflow-y-auto bg-white shadow-sm">
       <div className="p-6">
-        <Link href="/dashboard">
+        <Link href="/dashboard" className="flex items-center justify-center gap-3">
+          <Image
+            src="/main-logo.png"
+            alt="0mninet Logo"
+            width={40}
+            height={40}
+            className="rounded-lg"
+          />
           <h1 className="text-2xl font-bold text-center">
-            <span className="text-indigo-600">Social</span> Lottery
+            <span className="text-blue-600">0mninet</span> Lottery
           </h1>
         </Link>
       </div>

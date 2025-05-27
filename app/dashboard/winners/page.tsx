@@ -7,8 +7,8 @@ import { formatDate } from "@/lib/utils";
 import { Trophy, Crown, Gift, Calendar, Ticket, DollarSign } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Winners | Social Lottery",
-  description: "View past lottery winners",
+  title: "Winners | 0mninet Lottery",
+  description: "View recent lottery winners and their prizes",
 };
 
 export default async function WinnersPage() {

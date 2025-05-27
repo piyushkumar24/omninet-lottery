@@ -8,8 +8,8 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Social Lottery - Support Digital Inclusion',
-  description: 'A reward-based lottery platform where users earn tickets by completing surveys and helping a cause',
+  title: '0mninet Lottery - Support Digital Inclusion',
+  description: 'Join the 0mninet lottery platform where you can win Amazon gift cards while supporting digital inclusion initiatives worldwide.',
   keywords: 'lottery, social impact, digital inclusion, surveys, rewards, amazon gift card',
 }
 

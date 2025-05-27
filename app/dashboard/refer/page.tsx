@@ -117,8 +117,8 @@ export default function ReferPage() {
   const shareViaEmail = () => {
     if (!referralCode) return;
     
-    const subject = encodeURIComponent("Join me in the Social Lottery");
-    const body = encodeURIComponent(`Hey, I thought you might be interested in this social lottery platform. You can win Amazon gift cards by completing surveys and other social activities. Use my referral link to sign up: ${referralLink}`);
+    const subject = encodeURIComponent("Join me in the 0mninet Lottery");
+    const body = encodeURIComponent(`Hey, I thought you might be interested in the 0mninet lottery platform. You can win Amazon gift cards by completing surveys while supporting digital inclusion initiatives worldwide. Use my referral link to sign up: ${referralLink}`);
     window.open(`mailto:?subject=${subject}&body=${body}`);
   };
 

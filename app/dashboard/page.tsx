@@ -14,7 +14,7 @@ import { getUserAvailableTickets } from "@/lib/ticket-utils";
 import { SurveyCompletionAlert } from "@/components/dashboard/survey-completion-alert";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Social Lottery",
+  title: "Dashboard | 0mninet Lottery",
   description: "Your lottery dashboard",
 };
 

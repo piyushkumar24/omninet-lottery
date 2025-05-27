@@ -6,8 +6,8 @@ import { Card } from "@/components/ui/card";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Admin Test | Social Lottery",
-  description: "Test page for admin access",
+  title: "Admin Test | 0mninet Lottery",
+  description: "Test administrative functions",
 };
 
 export default async function AdminTestPage() {

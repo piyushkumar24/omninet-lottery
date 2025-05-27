@@ -28,8 +28,8 @@ import {
 import { TicketHistoryModal } from "@/components/dashboard/ticket-history-modal";
 
 export const metadata: Metadata = {
-  title: "My Tickets | Social Lottery",
-  description: "View your lottery tickets",
+  title: "My Tickets | 0mninet Lottery",
+  description: "View your lottery tickets and participation history",
 };
 
 const getSourceIcon = (source: TicketSource) => {

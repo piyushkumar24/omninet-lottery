@@ -7,8 +7,8 @@ import { TicketsChart } from "@/components/admin/tickets-chart";
 import { PlatformMetrics } from "@/components/admin/platform-metrics";
 
 export const metadata: Metadata = {
-  title: "Platform Stats | Admin Dashboard",
-  description: "Platform statistics for the social lottery",
+  title: "Statistics",
+  description: "Platform statistics for the 0mninet lottery",
 };
 
 export default async function StatsPage() {

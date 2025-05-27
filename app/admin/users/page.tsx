@@ -4,8 +4,8 @@ import { UserRole } from "@prisma/client";
 import { UsersTable } from "@/components/admin/users-table";
 
 export const metadata: Metadata = {
-  title: "Users Management | Admin Dashboard",
-  description: "Manage users of the social lottery platform",
+  title: "Users Management",
+  description: "Manage users of the 0mninet lottery platform",
 };
 
 export default async function UsersPage() {
