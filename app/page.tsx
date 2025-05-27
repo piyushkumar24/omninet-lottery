@@ -437,46 +437,47 @@ export default function Home() {
       
       
       {/* Enhanced Current Draw Section */}
-      <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white py-24 md:py-32">
+      <div className="bg-gradient-to-br from-white to-slate-50 py-24 md:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          {/* Centered Title */}
+          <div className="text-center mb-16">
+            <h2 className={cn(
+              "text-4xl md:text-5xl font-bold text-slate-900 leading-tight",
+              font.className,
+            )}>
+              0mninet Weekly Lottery Status
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <div>
-              <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-white/90 text-sm font-medium mb-8">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
-                Global Lottery Dashboard
+              {/* Countdown Timer Section - Moved Up */}
+              <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl hover:shadow-2xl transition-all duration-300 mb-8">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-3 mb-6">
+                    <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+                    <p className="text-xl font-semibold text-slate-900">Drawing on Thursday, 18:30 IST</p>
+                  </div>
+                  <CountdownTimer targetDate={nextDrawDate} theme="light" />
+                </div>
               </div>
-              
-              <h2 className={cn(
-                "text-4xl md:text-5xl font-bold mb-8 leading-tight",
-                font.className,
-              )}>
-                This Week&apos;s
-                <span className="block text-emerald-400">Prize Draw</span>
-              </h2>
-              
-              <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl hover:shadow-3xl transition-all duration-300">
+
+              {/* Lottery Stats Section - Moved Down */}
+              <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl hover:shadow-2xl transition-all duration-300">
                 <LotteryStats
                   totalUsers={stats.totalUsers}
                   totalTickets={stats.totalTickets}
                   prizeAmount={50}
                   latestWinner={stats.latestWinner}
                   latestWinnerProfile={stats.latestWinnerProfile}
-                  theme="dark"
+                  theme="light"
                 />
-                
-                <div className="mt-8 pt-8 border-t border-white/10">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
-                    <p className="text-xl font-semibold">Drawing on Thursday, 18:30 IST</p>
-                  </div>
-                  <CountdownTimer targetDate={nextDrawDate} theme="dark" />
-                </div>
               </div>
             </div>
             
-            <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-10 border border-white/10 shadow-2xl">
-              <h3 className="text-3xl font-bold mb-8">Ready to Win While Making an Impact?</h3>
-              <p className="text-xl mb-10 text-white/90 leading-relaxed">
+            <div className="bg-white rounded-3xl p-10 border border-slate-200 shadow-xl">
+              <h3 className="text-3xl font-bold mb-8 text-slate-900">Ready to Win While Making an Impact?</h3>
+              <p className="text-xl mb-10 text-slate-600 leading-relaxed">
                 The 0mninet lottery uniquely combines social impact with personal rewards. 
                 Every survey helps fund internet infrastructure in underserved areas.
               </p>
@@ -489,16 +490,16 @@ export default function Home() {
                   "Direct contribution to global internet accessibility"
                 ].map((item, index) => (
                   <div key={index} className="flex items-center group">
-                    <div className="bg-emerald-500/20 rounded-full p-1 mr-4 group-hover:bg-emerald-500/30 transition-colors">
-                      <CheckCircle className="h-5 w-5 text-emerald-400" />
+                    <div className="bg-blue-100 rounded-full p-1 mr-4 group-hover:bg-blue-200 transition-colors">
+                      <CheckCircle className="h-5 w-5 text-blue-600" />
                     </div>
-                    <span className="text-white/90 group-hover:text-white transition-colors">{item}</span>
+                    <span className="text-slate-700 group-hover:text-slate-900 transition-colors font-medium">{item}</span>
                   </div>
                 ))}
               </div>
               
               <Link href="/auth/register">
-                <Button size="lg" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-2xl hover:shadow-emerald-500/25 transition-all duration-300 hover:scale-105 text-lg py-6 font-semibold">
+                <Button size="lg" className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-none shadow-xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 text-lg py-6 font-semibold">
                   <Play className="mr-2 h-5 w-5" />
                   Enter Now and Win
                 </Button>
@@ -523,7 +524,7 @@ export default function Home() {
               How It Works
             </h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Getting started is simple. Follow these three steps to begin earning rewards while supporting global connectivity.
+              Getting started is simple. Follow these steps to begin earning rewards while supporting global connectivity.
             </p>
           </div>
           
