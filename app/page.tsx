@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/landing/countdown-timer";
 import { LotteryStats } from "@/components/landing/lottery-stats";
 import { cn } from "@/lib/utils";
-import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play, User, Trophy, Star, Heart, Zap, TrendingUp, MapPin, Award, Target, Activity, ChevronDown, ChevronUp, HelpCircle, Mail, Clock, MessageCircle, Instagram, Youtube, ExternalLink } from "lucide-react";
+import { Globe, Gift, Users, Share, CheckCircle, ArrowRight, Play, User, Trophy, Star, Heart, Zap, TrendingUp, MapPin, Award, Target, Activity, ChevronDown, ChevronUp, HelpCircle, Mail, Clock, MessageCircle, Instagram, Youtube, ExternalLink, FileText, Shield, Cookie } from "lucide-react";
 
 const font = Poppins({
   subsets: ["latin"],
@@ -22,6 +22,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalTickets: 0,
@@ -30,6 +31,7 @@ export default function Home() {
   });
   const [nextDrawDate, setNextDrawDate] = useState(new Date());
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [showDeclineMessage, setShowDeclineMessage] = useState(false);
   
   // Professional showcase images
   const showcaseImages = [
@@ -50,16 +52,26 @@ export default function Home() {
     },
     {
       title: "Amazon Gift Cards",
-      image: "https://images.unsplash.com/photo-1607734834519-d8576ae60ea4?w=800&auto=format&fit=crop&ixlib=rb-4.0.3",
+      image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&auto=format&fit=crop&ixlib=rb-4.0.3",
       description: "Win $50 Amazon gift cards weekly"
     },
   ];
   
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     // Check for referral code in URL
     const refCode = searchParams.get('ref');
     if (refCode) {
-      localStorage.setItem('referralCode', refCode);
+      try {
+        localStorage.setItem('referralCode', refCode);
+      } catch (error) {
+        console.error("Error setting referral code:", error);
+      }
     }
     
     // Check if the user is already signed in
@@ -149,11 +161,23 @@ export default function Home() {
     
     const initializeApp = async () => {
       await checkSession();
-        await fetchStats();
+      await fetchStats();
     };
     
     initializeApp();
-  }, [router, searchParams]);
+  }, [router, searchParams, mounted]);
+
+  // Prevent hydration issues
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-slate-600 text-lg font-medium">Loading...</div>
+        </div>
+      </div>
+    );
+  }
   
   if (isLoading) {
     return (
@@ -852,11 +876,14 @@ export default function Home() {
                 <Button 
                   variant="outline" 
                   onClick={() => {
-                    const messageDiv = document.getElementById('help-decline-message');
-                    if (messageDiv) {
-                      messageDiv.classList.remove('hidden');
-                      messageDiv.scrollIntoView({ behavior: 'smooth' });
-                    }
+                    setShowDeclineMessage(true);
+                    // Smooth scroll to message after state update
+                    setTimeout(() => {
+                      const element = document.getElementById('help-decline-message');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }, 100);
                   }}
                   className="border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 px-8 py-4 text-lg font-semibold transition-all duration-300 hover:scale-105"
                 >
@@ -864,25 +891,33 @@ export default function Home() {
                 </Button>
               </div>
               
-              <div id="help-decline-message" className="hidden mt-6 p-4 bg-red-50 border border-red-200 rounded-2xl">
-                <p className="text-red-700 font-medium">
-                  We&apos;re sorry that you don&apos;t want to help, in this case we can&apos;t do nothing for you.
-                  <button
-                    onClick={() => {
-                      // Clear any existing session data
-                      if (typeof window !== 'undefined') {
-                        localStorage.clear();
-                        sessionStorage.clear();
-                        // Redirect to the specified URL
-                        window.location.href = 'https://fallingfalling.com/';
-                      }
-                    }}
-                    className="underline text-red-800 hover:text-red-900 font-semibold transition-colors"
-                  >
-                    Leave the site
-                  </button>
-                </p>
-              </div>
+              {showDeclineMessage && (
+                <div id="help-decline-message" className="mt-6 p-4 bg-red-50 border border-red-200 rounded-2xl">
+                  <p className="text-red-700 font-medium">
+                    We&apos;re sorry that you don&apos;t want to help, in this case we can&apos;t do nothing for you.
+                    <button
+                      onClick={() => {
+                        // Clear any existing session data
+                        if (typeof window !== 'undefined') {
+                          try {
+                            localStorage.clear();
+                            sessionStorage.clear();
+                            // Redirect to the specified URL
+                            window.location.href = 'https://fallingfalling.com/';
+                          } catch (error) {
+                            console.error("Error clearing storage:", error);
+                            // Fallback redirect
+                            window.location.href = 'https://fallingfalling.com/';
+                          }
+                        }
+                      }}
+                      className="underline text-red-800 hover:text-red-900 font-semibold transition-colors"
+                    >
+                      Leave the site
+                    </button>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1067,8 +1102,176 @@ export default function Home() {
         </div>
         
         <div className="relative z-10">
+          {/* Policy Text Boxes Section */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-8">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-white/90 text-sm font-medium mb-6">
+                <Shield className="w-4 h-4 mr-2" />
+                Legal Policies
+              </div>
+              <h3 className={cn("text-3xl md:text-4xl font-bold mb-4 text-white", font.className)}>
+                Important Legal Information
+              </h3>
+              <p className="text-slate-300 text-lg max-w-3xl mx-auto">
+                Please review our key policies that govern the use of our platform and protect your rights.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              {/* Terms of Use */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl hover:shadow-3xl transition-all duration-300 group">
+                <div className="text-center mb-4">
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-xl">
+                    <FileText className="h-7 w-7 text-white" />
+                  </div>
+                  <h4 className="text-xl font-bold text-white mb-3">Terms of Use</h4>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <div className="text-center mb-4">
+                    <div className="inline-flex items-center px-3 py-1 bg-yellow-500/20 backdrop-blur-sm rounded-full text-yellow-300 text-xs font-medium mb-3">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Content Pending
+                    </div>
+                  </div>
+                  <p className="text-slate-300 text-sm leading-relaxed mb-3 text-center">
+                    <strong className="text-white">Terms of Use content will be added here.</strong>
+                  </p>
+                  <p className="text-slate-400 text-xs leading-relaxed mb-3">
+                    This section will comprehensively outline the rules, regulations, and guidelines 
+                    governing the use of the 0mninet platform, including user responsibilities, 
+                    account management, survey participation requirements, and lottery eligibility criteria.
+                  </p>
+                  <ul className="text-slate-400 text-xs space-y-1 mb-3">
+                    <li>• User account obligations and responsibilities</li>
+                    <li>• Survey participation rules and guidelines</li>
+                    <li>• Lottery eligibility requirements and restrictions</li>
+                    <li>• Platform usage policies and prohibited activities</li>
+                    <li>• Dispute resolution and enforcement procedures</li>
+                  </ul>
+                  <div className="bg-slate-600/30 rounded-lg p-3 border border-slate-500/20">
+                    <p className="text-slate-400 text-xs italic text-center">
+                      📝 <strong>Status:</strong> Content to be completed by the legal team.<br/>
+                      <span className="text-slate-500">Comprehensive terms documentation in progress.</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 text-center">
+                  <Link 
+                    href="https://www.0mninet.com/terms" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors text-sm font-medium"
+                  >
+                    Read Full Terms
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Privacy Policy */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl hover:shadow-3xl transition-all duration-300 group">
+                <div className="text-center mb-4">
+                  <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-xl">
+                    <Shield className="h-7 w-7 text-white" />
+                  </div>
+                  <h4 className="text-xl font-bold text-white mb-3">Privacy Policy</h4>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <div className="text-center mb-4">
+                    <div className="inline-flex items-center px-3 py-1 bg-yellow-500/20 backdrop-blur-sm rounded-full text-yellow-300 text-xs font-medium mb-3">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Content Pending
+                    </div>
+                  </div>
+                  <p className="text-slate-300 text-sm leading-relaxed mb-3 text-center">
+                    <strong className="text-white">Privacy Policy content will be added here.</strong>
+                  </p>
+                  <p className="text-slate-400 text-xs leading-relaxed mb-3">
+                    This section will detail our comprehensive approach to data protection, 
+                    including how we collect, process, store, and safeguard your personal information, 
+                    survey responses, and user interactions within the 0mninet ecosystem.
+                  </p>
+                  <ul className="text-slate-400 text-xs space-y-1 mb-3">
+                    <li>• Data collection practices and purposes</li>
+                    <li>• Information usage and processing policies</li>
+                    <li>• User privacy rights and data protection</li>
+                    <li>• Communication preferences and opt-out options</li>
+                    <li>• Third-party integrations and data sharing</li>
+                  </ul>
+                  <div className="bg-slate-600/30 rounded-lg p-3 border border-slate-500/20">
+                    <p className="text-slate-400 text-xs italic text-center">
+                      🔒 <strong>Status:</strong> Content to be completed by the legal team.<br/>
+                      <span className="text-slate-500">Privacy documentation under development.</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 text-center">
+                  <Link 
+                    href="https://www.0mninet.com/privacy" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors text-sm font-medium"
+                  >
+                    Read Full Policy
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Cookie Policy */}
+              <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl hover:shadow-3xl transition-all duration-300 group">
+                <div className="text-center mb-4">
+                  <div className="bg-gradient-to-br from-purple-500 to-purple-600 w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-xl">
+                    <Cookie className="h-7 w-7 text-white" />
+                  </div>
+                  <h4 className="text-xl font-bold text-white mb-3">Cookie Policy</h4>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <div className="text-center mb-4">
+                    <div className="inline-flex items-center px-3 py-1 bg-yellow-500/20 backdrop-blur-sm rounded-full text-yellow-300 text-xs font-medium mb-3">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Content Pending
+                    </div>
+                  </div>
+                  <p className="text-slate-300 text-sm leading-relaxed mb-3 text-center">
+                    <strong className="text-white">Cookie Policy content will be added here.</strong>
+                  </p>
+                  <p className="text-slate-400 text-xs leading-relaxed mb-3">
+                    This section will explain our use of cookies, web beacons, and similar tracking 
+                    technologies to enhance user experience, analyze platform performance, 
+                    and provide personalized features within the 0mninet lottery platform.
+                  </p>
+                  <ul className="text-slate-400 text-xs space-y-1 mb-3">
+                    <li>• Essential cookies for platform functionality</li>
+                    <li>• Analytics cookies for performance monitoring</li>
+                    <li>• User preference storage and customization</li>
+                    <li>• Third-party integrations and external services</li>
+                    <li>• Cookie management and user control options</li>
+                  </ul>
+                  <div className="bg-slate-600/30 rounded-lg p-3 border border-slate-500/20">
+                    <p className="text-slate-400 text-xs italic text-center">
+                      🍪 <strong>Status:</strong> Content to be completed by the legal team.<br/>
+                      <span className="text-slate-500">Cookie policy documentation in preparation.</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 text-center">
+                  <Link 
+                    href="https://www.0mninet.com/cookies" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors text-sm font-medium"
+                  >
+                    Read Full Policy
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Main Footer Content */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-20 border-t border-white/10">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
               
               {/* Company Information */}
@@ -1147,22 +1350,24 @@ export default function Home() {
                 <h4 className="text-xl font-bold mb-6 text-white">Support & Legal</h4>
                 <ul className="space-y-4 mb-8">
                   {[
-                    { label: "Contact Support", href: "mailto:ask@0mninet.info" },
-                    { label: "FAQ", href: "#" },
-                    { label: "Terms of Service", href: "#" },
-                    { label: "Privacy Policy", href: "#" },
-                    { label: "Cookie Policy", href: "#" },
+                    { label: "Contact Support", href: "mailto:ask@0mninet.info", external: false },
+                    { label: "FAQ", href: "#", external: false },
+                    { label: "Terms of Service", href: "https://www.0mninet.com/terms", external: true },
+                    { label: "Privacy Policy", href: "https://www.0mninet.com/privacy", external: true },
+                    { label: "Cookie Policy", href: "https://www.0mninet.com/cookies", external: true },
                   ].map((link, index) => (
                     <li key={index}>
                       <Link 
                         href={link.href}
+                        target={link.external ? "_blank" : undefined}
+                        rel={link.external ? "noopener noreferrer" : undefined}
                         className="text-slate-300 hover:text-emerald-400 transition-colors duration-200 flex items-center group"
                       >
                         <span className="group-hover:translate-x-1 transition-transform duration-200">{link.label}</span>
                         {link.href.startsWith('mailto:') && (
                           <Mail className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-200" />
                         )}
-                        {link.href.startsWith('http') && (
+                        {link.external && (
                           <ExternalLink className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-200" />
                         )}
                       </Link>
