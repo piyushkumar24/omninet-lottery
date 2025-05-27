@@ -5,9 +5,9 @@ import { nanoid } from "nanoid";
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const sessionUser = await getCurrentUser();
     
-    if (!user || !user.id) {
+    if (!sessionUser || !sessionUser.id) {
       return NextResponse.json(
         {
           success: false,
@@ -17,28 +17,47 @@ export async function GET() {
       );
     }
     
-    // Check if user already has a referral code
-    const existingUser = await db.user.findUnique({
+    // First, verify the user exists in the database
+    const dbUser = await db.user.findUnique({
       where: {
-        id: user.id,
+        id: sessionUser.id,
       },
       select: {
+        id: true,
         referralCode: true
       }
     });
     
-    let referralCode = existingUser?.referralCode;
+    if (!dbUser) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "User not found in database",
+        },
+        { status: 404 }
+      );
+    }
+    
+    let referralCode = dbUser.referralCode;
     
     // If no referral code exists, generate one and save it
     if (!referralCode) {
       referralCode = nanoid(8); // Generate an 8-character unique code
       
-      await db.user.update({
+      // Use upsert to handle potential race conditions
+      await db.user.upsert({
         where: {
-          id: user.id,
+          id: dbUser.id,
         },
-        data: {
+        update: {
           referralCode,
+        },
+        create: {
+          // This shouldn't happen since we verified the user exists
+          id: dbUser.id,
+          referralCode,
+          email: sessionUser.email || "",
+          name: sessionUser.name || "",
         },
       });
     }

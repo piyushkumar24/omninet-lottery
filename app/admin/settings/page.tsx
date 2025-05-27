@@ -1,16 +1,22 @@
 import { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { PrizeAmountManager } from "@/components/admin/prize-amount-manager";
+import { getPrizeAmount, initializeDefaultSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: "Admin Settings | 0mninet Lottery",
   description: "Admin settings for the 0mninet lottery platform",
 };
 
-export default function AdminSettingsPage() {
+export default async function AdminSettingsPage() {
+  // Initialize default settings first
+  await initializeDefaultSettings();
+  
+  const currentPrizeAmount = await getPrizeAmount();
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -53,19 +59,9 @@ export default function AdminSettingsPage() {
             <div className="space-y-0.5">
               <Label>Default Prize Amount</Label>
               <p className="text-sm text-slate-500">
-                The amount awarded to winners for each draw
+                The amount awarded to winners for each draw. Changes will apply to new draws.
               </p>
-              <div className="flex items-center mt-2">
-                <div className="border rounded-md px-3 py-2 w-40">
-                  <div className="flex items-center">
-                    <span className="text-slate-500 mr-1">$</span>
-                    <span className="font-medium">50.00</span>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" className="ml-2">
-                  Change
-                </Button>
-              </div>
+              <PrizeAmountManager currentAmount={currentPrizeAmount} />
             </div>
           </div>
         </CardContent>
@@ -98,12 +94,12 @@ export default function AdminSettingsPage() {
                 Manage database backup and restoration
               </p>
               <div className="flex space-x-2 mt-2">
-                <Button variant="outline" size="sm">
+                <button className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded border transition-colors">
                   Backup Database
-                </Button>
-                <Button variant="outline" size="sm">
+                </button>
+                <button className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded border transition-colors">
                   Restore
-                </Button>
+                </button>
               </div>
             </div>
             
@@ -115,9 +111,9 @@ export default function AdminSettingsPage() {
                 Clear platform cache to ensure all users see the latest data
               </p>
               <div className="mt-2">
-                <Button variant="outline" size="sm">
+                <button className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded border transition-colors">
                   Clear Cache
-                </Button>
+                </button>
               </div>
             </div>
           </div>

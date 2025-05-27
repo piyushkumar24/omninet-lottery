@@ -125,7 +125,7 @@ export const NextLotteryDraw = ({
             </div>
             <h2 className="text-xl font-bold text-amber-900 mb-2">You Won the Lottery!</h2>
             <p className="text-amber-700">
-              You've won a ${draw.prizeAmount} Amazon Gift Card!
+              You&apos;ve won a ${draw.prizeAmount} Amazon Gift Card!
             </p>
             <Badge className="mt-3 bg-amber-100 text-amber-800 border-amber-300">
               Check your email for details

@@ -23,13 +23,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   MoreHorizontal, 
   Shield, 
   User, 
   Ban,
   CheckCircle,
-  Trash2 
+  Trash2,
+  Search,
+  Calendar,
+  Mail,
+  Ticket
 } from "lucide-react";
 import { 
   AlertDialog,
@@ -60,6 +65,51 @@ interface UsersTableProps {
 export const UsersTable = ({ users }: UsersTableProps) => {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "email" | "createdAt" | "ticketCount">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Filter users based on search term (name and email)
+  const filteredUsers = users.filter(user =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Sort filtered users
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    let aValue: any = a[sortBy];
+    let bValue: any = b[sortBy];
+
+    if (sortBy === "createdAt") {
+      aValue = new Date(aValue).getTime();
+      bValue = new Date(bValue).getTime();
+    }
+
+    if (sortBy === "name" || sortBy === "email") {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+
+    if (sortOrder === "asc") {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
+  });
+
+  const handleSort = (column: typeof sortBy) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("desc");
+    }
+  };
+
+  const getSortIcon = (column: typeof sortBy) => {
+    if (sortBy !== column) return null;
+    return sortOrder === "asc" ? "↑" : "↓";
+  };
 
   const blockUser = async (userId: string, currentStatus: boolean) => {
     try {
@@ -110,111 +160,223 @@ export const UsersTable = ({ users }: UsersTableProps) => {
   };
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created At</TableHead>
-            <TableHead>Tickets</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell className="font-medium">{user.name}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>
-                {user.role === "ADMIN" ? (
-                  <Badge variant="default" className="bg-indigo-600">
-                    <Shield className="h-3 w-3 mr-1" /> Admin
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">
-                    <User className="h-3 w-3 mr-1" /> User
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                {user.isBlocked ? (
-                  <Badge variant="destructive">Blocked</Badge>
-                ) : (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    Active
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell>{formatDate(new Date(user.createdAt), 'dateOnly')}</TableCell>
-              <TableCell>{user.ticketCount}</TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">Open menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => blockUser(user.id, user.isBlocked)}
-                      disabled={loading === user.id}
-                    >
-                      {user.isBlocked ? (
-                        <>
-                          <CheckCircle className="h-4 w-4 mr-2" /> Unblock User
-                        </>
-                      ) : (
-                        <>
-                          <Ban className="h-4 w-4 mr-2" /> Block User
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                          <Trash2 className="h-4 w-4 mr-2 text-red-600" /> 
-                          <span className="text-red-600">Delete User</span>
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the user
-                            account and all associated data.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
-                            className="bg-red-600 hover:bg-red-700" 
-                            onClick={() => deleteUser(user.id)}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-          {users.length === 0 && (
+    <div className="space-y-4">
+      {/* Search and Filter Controls */}
+      <div className="flex items-center justify-between">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="h-4 w-4 absolute top-1/2 transform -translate-y-1/2 left-3 text-slate-500" />
+          <Input
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-slate-500">
+            {sortedUsers.length} user{sortedUsers.length !== 1 ? 's' : ''} found
+          </span>
+        </div>
+      </div>
+
+      {/* Stats Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-blue-50 rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-blue-700">{sortedUsers.length}</p>
+          <p className="text-sm text-blue-600">Total Users</p>
+        </div>
+        <div className="bg-green-50 rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-green-700">
+            {sortedUsers.filter(u => u.role === "ADMIN").length}
+          </p>
+          <p className="text-sm text-green-600">Admins</p>
+        </div>
+        <div className="bg-yellow-50 rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-yellow-700">
+            {sortedUsers.filter(u => u.isBlocked).length}
+          </p>
+          <p className="text-sm text-yellow-600">Blocked</p>
+        </div>
+        <div className="bg-purple-50 rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-purple-700">
+            {sortedUsers.reduce((sum, user) => sum + user.ticketCount, 0)}
+          </p>
+          <p className="text-sm text-purple-600">Total Applied Tickets</p>
+        </div>
+      </div>
+
+      {/* Users Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
-                No users found.
-              </TableCell>
+              <TableHead 
+                className="cursor-pointer hover:bg-slate-50"
+                onClick={() => handleSort("name")}
+              >
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Name {getSortIcon("name")}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-slate-50"
+                onClick={() => handleSort("email")}
+              >
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email {getSortIcon("email")}
+                </div>
+              </TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-slate-50"
+                onClick={() => handleSort("createdAt")}
+              >
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Date Joined {getSortIcon("createdAt")}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-slate-50"
+                onClick={() => handleSort("ticketCount")}
+              >
+                <div className="flex items-center gap-2">
+                  <Ticket className="h-4 w-4" />
+                  Applied Tickets {getSortIcon("ticketCount")}
+                </div>
+              </TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {sortedUsers.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-indigo-100 text-indigo-700 rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    {user.name}
+                  </div>
+                </TableCell>
+                <TableCell className="text-slate-600">{user.email}</TableCell>
+                <TableCell>
+                  {user.role === "ADMIN" ? (
+                    <Badge variant="default" className="bg-indigo-600">
+                      <Shield className="h-3 w-3 mr-1" /> Admin
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">
+                      <User className="h-3 w-3 mr-1" /> User
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {user.isBlocked ? (
+                    <Badge variant="destructive">Blocked</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      Active
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-sm">
+                      {formatDate(new Date(user.createdAt), 'dateOnly')}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {new Date(user.createdAt).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    {user.ticketCount} tickets
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => blockUser(user.id, user.isBlocked)}
+                        disabled={loading === user.id}
+                      >
+                        {user.isBlocked ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" /> Unblock User
+                          </>
+                        ) : (
+                          <>
+                            <Ban className="h-4 w-4 mr-2" /> Block User
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            <Trash2 className="h-4 w-4 mr-2 text-red-600" /> 
+                            <span className="text-red-600">Delete User</span>
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the user
+                              account and all associated data including applied tickets.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              className="bg-red-600 hover:bg-red-700" 
+                              onClick={() => deleteUser(user.id)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+            {sortedUsers.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  {searchTerm ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Search className="h-8 w-8 text-slate-300" />
+                      <p className="text-slate-500">No users found matching &quot;{searchTerm}&quot;</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <User className="h-8 w-8 text-slate-300" />
+                      <p className="text-slate-500">No users found.</p>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }; 

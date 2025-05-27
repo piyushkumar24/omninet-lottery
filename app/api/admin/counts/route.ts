@@ -19,12 +19,15 @@ export async function GET() {
     // Get count of all users
     const users = await db.user.count();
     
-    // Get count of active tickets
-    const activeTickets = await db.ticket.count({
+    // Get count of newsletter subscribers
+    const newsletterSubscribers = await db.user.count({
       where: {
-        isUsed: false
+        newsletterSubscribed: true
       }
     });
+    
+    // Get count of applied tickets (all tickets since they're all applied)
+    const appliedTickets = await db.ticket.count();
     
     // Get count of unclaimed winners
     const unclaimedWinners = await db.winner.count({
@@ -37,8 +40,11 @@ export async function GET() {
       success: true,
       counts: {
         users,
-        activeTickets,
-        unclaimedWinners
+        newsletterSubscribers,
+        appliedTickets,
+        unclaimedWinners,
+        // Keep backward compatibility
+        activeTickets: appliedTickets
       }
     });
   } catch (error) {

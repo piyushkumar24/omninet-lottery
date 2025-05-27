@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { dbQueryWithRetry } from "@/lib/db-utils";
 
 /**
  * Get the user's tickets that will be applied to the lottery
@@ -6,47 +7,59 @@ import { db } from "@/lib/db";
  */
 export const getUserAppliedTickets = async (userId: string): Promise<number> => {
   // Count all tickets for the user as they are all automatically applied
-  return await db.ticket.count({
-    where: {
-      userId: userId,
-    },
-  });
+  return await dbQueryWithRetry(
+    () => db.ticket.count({
+      where: {
+        userId: userId,
+      },
+    }),
+    'getUserAppliedTickets'
+  );
 };
 
 /**
  * Get tickets used by a user in a specific draw
  */
 export const getUserTicketsInDraw = async (userId: string, drawId: string): Promise<number> => {
-  return await db.ticket.count({
-    where: {
-      userId: userId,
-      drawId: drawId,
-      isUsed: true,
-    },
-  });
+  return await dbQueryWithRetry(
+    () => db.ticket.count({
+      where: {
+        userId: userId,
+        drawId: drawId,
+        isUsed: true,
+      },
+    }),
+    'getUserTicketsInDraw'
+  );
 };
 
 /**
  * Get user's total tickets (all time)
  */
 export const getUserTotalTickets = async (userId: string): Promise<number> => {
-  return await db.ticket.count({
-    where: {
-      userId: userId,
-    },
-  });
+  return await dbQueryWithRetry(
+    () => db.ticket.count({
+      where: {
+        userId: userId,
+      },
+    }),
+    'getUserTotalTickets'
+  );
 };
 
 /**
  * Get user's used tickets across all draws (historical)
  */
 export const getUserUsedTickets = async (userId: string): Promise<number> => {
-  return await db.ticket.count({
-    where: {
-      userId: userId,
-      isUsed: true,
-    },
-  });
+  return await dbQueryWithRetry(
+    () => db.ticket.count({
+      where: {
+        userId: userId,
+        isUsed: true,
+      },
+    }),
+    'getUserUsedTickets'
+  );
 };
 
 /**
@@ -63,29 +76,35 @@ export const getUserAvailableTickets = async (userId: string): Promise<number> =
  */
 export const applyAllTicketsToLottery = async (userId: string, drawId: string): Promise<number> => {
   // Find all tickets that aren't used yet
-  const tickets = await db.ticket.findMany({
-    where: {
-      userId: userId,
-      isUsed: false,
-    },
-  });
+  const tickets = await dbQueryWithRetry(
+    () => db.ticket.findMany({
+      where: {
+        userId: userId,
+        isUsed: false,
+      },
+    }),
+    'findAvailableTickets'
+  );
   
   if (tickets.length === 0) {
     return 0;
   }
   
   // Update all tickets to be used in this draw
-  await db.ticket.updateMany({
-    where: {
-      id: {
-        in: tickets.map(ticket => ticket.id)
+  await dbQueryWithRetry(
+    () => db.ticket.updateMany({
+      where: {
+        id: {
+          in: tickets.map(ticket => ticket.id)
+        }
+      },
+      data: {
+        isUsed: true,
+        drawId: drawId
       }
-    },
-    data: {
-      isUsed: true,
-      drawId: drawId
-    }
-  });
+    }),
+    'applyTicketsToLottery'
+  );
   
   return tickets.length;
 };

@@ -14,7 +14,31 @@ export default function DashboardLayout({
         <Sidebar />
       </div>
       <main className="md:pl-56 pt-16 h-full relative z-[1]">
-        <Toaster position="top-center" reverseOrder={false} />
+        <Toaster 
+          position="top-center" 
+          reverseOrder={false}
+          toastOptions={{
+            duration: 4000,
+            style: {
+              marginTop: '80px', // Add margin to appear below navbar
+              zIndex: 9999, // Very high z-index
+            },
+            success: {
+              duration: 4000,
+              style: {
+                marginTop: '80px',
+                zIndex: 9999,
+              },
+            },
+            error: {
+              duration: 4000,
+              style: {
+                marginTop: '80px',
+                zIndex: 9999,
+              },
+            },
+          }}
+        />
         {children}
       </main>
     </div>

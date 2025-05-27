@@ -71,7 +71,7 @@ export const AdminNavbar = () => {
   }, []);
 
   return (
-    <div className="h-16 fixed inset-x-0 top-0 border-b border-slate-200 bg-white z-[10] flex justify-between items-center px-4 shadow-sm">
+    <div className="h-16 fixed inset-x-0 top-0 border-b border-slate-200 bg-white z-[100] flex justify-between items-center px-4 shadow-sm">
       <div className="flex items-center gap-x-4">
         <MobileSidebar />
         <Link href="/admin">

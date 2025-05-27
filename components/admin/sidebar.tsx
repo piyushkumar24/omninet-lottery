@@ -9,7 +9,7 @@ import {
   BarChart2, 
   Gift,
   Settings,
-  Ticket,
+  Mail,
   Home
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +64,7 @@ const SidebarItem = ({ icon, label, href, badge, isBadgeAlert = false }: Sidebar
 export const AdminSidebar = () => {
   const [counts, setCounts] = useState({
     users: 0,
-    activeTickets: 0,
+    newsletterSubscribers: 0,
     unclaimedWinners: 0
   });
   
@@ -78,7 +78,7 @@ export const AdminSidebar = () => {
         if (data.success) {
           setCounts({
             users: data.counts.users || 0,
-            activeTickets: data.counts.activeTickets || 0,
+            newsletterSubscribers: data.counts.newsletterSubscribers || 0,
             unclaimedWinners: data.counts.unclaimedWinners || 0
           });
         }
@@ -136,16 +136,23 @@ export const AdminSidebar = () => {
       </div>
       
       <div className="px-3 mt-6 mb-2">
-        <p className="text-xs font-medium text-slate-400 px-3 mb-1 uppercase tracking-wider">Lottery</p>
+        <p className="text-xs font-medium text-slate-400 px-3 mb-1 uppercase tracking-wider">Communication</p>
       </div>
       
       <div className="flex flex-col w-full space-y-1 px-3">
         <SidebarItem
-          icon={<Ticket className="h-5 w-5" />}
-          label="Active Tickets"
-          href="/admin/tickets"
-          badge={counts.activeTickets}
+          icon={<Mail className="h-5 w-5" />}
+          label="Newsletter"
+          href="/admin/newsletter"
+          badge={counts.newsletterSubscribers}
         />
+      </div>
+      
+      <div className="px-3 mt-6 mb-2">
+        <p className="text-xs font-medium text-slate-400 px-3 mb-1 uppercase tracking-wider">Lottery</p>
+      </div>
+      
+      <div className="flex flex-col w-full space-y-1 px-3">
         <SidebarItem
           icon={<Gift className="h-5 w-5" />}
           label="Draw Management"
@@ -174,7 +181,7 @@ export const AdminSidebar = () => {
           <div className="mt-2 h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden">
             <div className="h-full bg-indigo-600 rounded-full" style={{ width: '65%' }} />
           </div>
-          <p className="text-xs text-slate-500 mt-1 text-right">{counts.activeTickets} active tickets</p>
+          <p className="text-xs text-slate-500 mt-1 text-right">{counts.newsletterSubscribers} newsletter subscribers</p>
         </div>
       </div>
     </div>

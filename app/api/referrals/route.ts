@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { dbQueryWithRetry } from "@/lib/db-utils";
 
 export async function GET() {
   try {
@@ -16,21 +17,24 @@ export async function GET() {
       );
     }
     
-    // Find users who used this user's referral code
-    const referrals = await db.user.findMany({
-      where: {
-        referredBy: user.id,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    // Find users who used this user's referral code with retry logic
+    const referrals = await dbQueryWithRetry(
+      () => db.user.findMany({
+        where: {
+          referredBy: user.id,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      }),
+      'getReferrals'
+    );
     
     return NextResponse.json({
       success: true,
@@ -43,6 +47,7 @@ export async function GET() {
       {
         success: false,
         message: "Internal server error",
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

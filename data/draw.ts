@@ -1,73 +1,87 @@
 import { db } from "@/lib/db";
 import { DrawStatus } from "@prisma/client";
+import { getPrizeAmount } from "@/lib/settings";
+import { dbQueryWithRetry } from "@/lib/db-utils";
 
 export const getActiveOrUpcomingDraw = async () => {
-  return await db.draw.findFirst({
-    where: {
-      status: DrawStatus.PENDING,
-      drawDate: {
-        gte: new Date(),
+  return await dbQueryWithRetry(
+    () => db.draw.findFirst({
+      where: {
+        status: DrawStatus.PENDING,
+        drawDate: {
+          gte: new Date(),
+        },
       },
-    },
-    orderBy: {
-      drawDate: 'asc',
-    },
-    include: {
-      participants: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+      orderBy: {
+        drawDate: 'asc',
+      },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    'getActiveOrUpcomingDraw'
+  );
 };
 
 export const getDrawById = async (drawId: string) => {
-  return await db.draw.findUnique({
-    where: { id: drawId },
-    include: {
-      participants: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+  return await dbQueryWithRetry(
+    () => db.draw.findUnique({
+      where: { id: drawId },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    'getDrawById'
+  );
 };
 
 export const getUserParticipationInDraw = async (userId: string, drawId: string) => {
-  return await db.drawParticipation.findUnique({
-    where: {
-      userId_drawId: {
-        userId,
-        drawId,
+  return await dbQueryWithRetry(
+    () => db.drawParticipation.findUnique({
+      where: {
+        userId_drawId: {
+          userId,
+          drawId,
+        },
       },
-    },
-  });
+    }),
+    'getUserParticipationInDraw'
+  );
 };
 
 export const getUserDrawParticipations = async (userId: string) => {
-  return await db.drawParticipation.findMany({
-    where: { userId },
-    include: {
-      draw: true,
-    },
-    orderBy: {
-      participatedAt: 'desc',
-    },
-  });
+  return await dbQueryWithRetry(
+    () => db.drawParticipation.findMany({
+      where: { userId },
+      include: {
+        draw: true,
+      },
+      orderBy: {
+        participatedAt: 'desc',
+      },
+    }),
+    'getUserDrawParticipations'
+  );
 };
 
 export const createOrGetNextDraw = async () => {
@@ -79,27 +93,31 @@ export const createOrGetNextDraw = async () => {
 
   // Create a new draw for next Thursday
   const nextThursday = getNextThursday();
+  const prizeAmount = await getPrizeAmount();
   
-  return await db.draw.create({
-    data: {
-      drawDate: nextThursday,
-      status: DrawStatus.PENDING,
-      prizeAmount: 50,
-    },
-    include: {
-      participants: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+  return await dbQueryWithRetry(
+    () => db.draw.create({
+      data: {
+        drawDate: nextThursday,
+        status: DrawStatus.PENDING,
+        prizeAmount: prizeAmount,
+      },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    'createOrGetNextDraw'
+  );
 };
 
 function getNextThursday() {

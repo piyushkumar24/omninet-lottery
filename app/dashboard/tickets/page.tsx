@@ -182,7 +182,7 @@ export default async function TicketsPage() {
               <Clock className="h-5 w-5 text-slate-600" />
               <div>
                 <CardTitle className="text-slate-800">Recent Ticket History</CardTitle>
-                <p className="text-sm text-slate-600">Latest tickets you've earned</p>
+                <p className="text-sm text-slate-600">Latest tickets you&apos;ve earned</p>
               </div>
             </div>
             <TicketHistoryModal tickets={tickets} />

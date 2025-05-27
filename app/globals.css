@@ -86,3 +86,27 @@ body,
   transform: perspective(1000px);
   transform-style: preserve-3d;
 }
+
+/* Toast notifications styling */
+@layer components {
+  /* React Hot Toast container */
+  .react-hot-toast {
+    z-index: 9999 !important;
+  }
+  
+  /* Ensure toast wrapper has high z-index */
+  div[data-hot-toast] {
+    z-index: 9999 !important;
+  }
+  
+  /* Toast positioning below navbar */
+  [data-hot-toast] > div {
+    margin-top: 80px !important;
+  }
+  
+  /* Individual toast styling */
+  .react-hot-toast > div {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+    backdrop-filter: blur(8px);
+  }
+}
