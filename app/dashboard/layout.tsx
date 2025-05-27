@@ -10,10 +10,10 @@ export default function DashboardLayout({
   return (
     <div className="h-full bg-slate-100">
       <Navbar />
-      <div className="hidden md:flex h-full w-56 flex-col fixed inset-y-0 z-50">
+      <div className="hidden md:flex h-full w-56 flex-col fixed inset-y-0 z-[90]">
         <Sidebar />
       </div>
-      <main className="md:pl-56 pt-16 h-full">
+      <main className="md:pl-56 pt-16 h-full relative z-[1]">
         <Toaster position="top-center" reverseOrder={false} />
         {children}
       </main>

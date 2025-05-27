@@ -414,7 +414,7 @@ export default function ProfilePage() {
               <CardHeader className="bg-gradient-to-r from-green-100 to-emerald-100 border-b border-green-200">
                 <CardTitle className="flex items-center gap-2 text-green-800">
                   <Ticket className="h-5 w-5" />
-                  Your Tickets
+                  Available Tickets
                 </CardTitle>
                 <CardDescription className="text-green-700">
                   Current available tickets for lottery participation
@@ -429,8 +429,8 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="bg-green-100 rounded-lg p-4 border border-green-200">
-                    <p className="text-green-800 text-sm font-medium mb-1">💡 Pro Tip</p>
-                    <p className="text-green-700 text-xs">
+                    <p className="text-green-800 text-base font-semibold mb-2">💡 Pro Tip</p>
+                    <p className="text-green-700 text-sm leading-relaxed">
                       The more tickets you have, the higher your chances of winning the weekly lottery draw!
                     </p>
                   </div>
