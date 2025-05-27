@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Trophy, Crown, DollarSign } from "lucide-react";
+import { Trophy, Crown, DollarSign, Ticket } from "lucide-react";
 import Image from "next/image";
 import { formatDate } from "@/lib/utils";
 
@@ -21,7 +21,7 @@ interface RecentWinnersProps {
 
 export const RecentWinners = ({ winners }: RecentWinnersProps) => {
   return (
-    <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 shadow-lg hover:shadow-xl transition-all duration-300">
+    <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
         <h3 className="text-lg font-semibold text-amber-800">Recent Winners</h3>
         <div className="p-2 bg-amber-100 rounded-lg">
@@ -40,7 +40,7 @@ export const RecentWinners = ({ winners }: RecentWinnersProps) => {
             <p className="text-xs text-amber-600">Be the first to win the lottery!</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
             {winners.map((winner, index) => (
               <div 
                 key={winner.id} 
@@ -96,6 +96,18 @@ export const RecentWinners = ({ winners }: RecentWinnersProps) => {
             ))}
           </div>
         )}
+        
+        {/* Increase Your Chances Message */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-full">
+              <Ticket className="h-4 w-4 text-blue-600" />
+            </div>
+            <p className="text-sm font-medium text-blue-700">
+              Increase your chances to win by earning more tickets!
+            </p>
+          </div>
+        </div>
         
         {/* Motivational Message */}
         <div className="text-xs text-amber-600 text-center bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg p-3 border border-amber-200">

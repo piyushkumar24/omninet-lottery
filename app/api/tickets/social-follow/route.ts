@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { createOrGetNextDraw } from "@/data/draw";
+import { sendTicketApplicationEmail } from "@/lib/mail";
+import { nanoid } from "nanoid";
 
 export async function POST() {
   try {
@@ -34,7 +37,11 @@ export async function POST() {
     // Check if the user has already followed on social media
     const userRecord = await db.user.findUnique({
       where: { id: user.id },
-      select: { socialMediaFollowed: true },
+      select: { 
+        socialMediaFollowed: true,
+        name: true,
+        email: true,
+      },
     });
 
     if (userRecord?.socialMediaFollowed) {
@@ -44,7 +51,10 @@ export async function POST() {
       });
     }
 
-    // Use transaction to ensure both operations succeed
+    // Get or create the current lottery draw
+    const draw = await createOrGetNextDraw();
+
+    // Use transaction to ensure all operations succeed
     const result = await db.$transaction(async (tx) => {
       // Mark user as having followed on social media
       await tx.user.update({
@@ -52,22 +62,88 @@ export async function POST() {
         data: { socialMediaFollowed: true },
       });
 
-      // Create the social media ticket
+      // Create the social media ticket and immediately apply to lottery
+      const confirmationCode = nanoid(10);
       const ticket = await tx.ticket.create({
         data: {
           userId: user.id,
           source: "SOCIAL",
-          isUsed: false,
+          isUsed: true, // Automatically mark as used since we're applying to lottery
+          drawId: draw.id,
+          confirmationCode: confirmationCode,
         },
       });
 
-      return ticket;
+      // Update or create draw participation
+      const existingParticipation = await tx.drawParticipation.findUnique({
+        where: {
+          userId_drawId: {
+            userId: user.id,
+            drawId: draw.id,
+          },
+        },
+      });
+
+      let totalUserTickets = 1;
+      if (existingParticipation) {
+        totalUserTickets = existingParticipation.ticketsUsed + 1;
+        await tx.drawParticipation.update({
+          where: { id: existingParticipation.id },
+          data: {
+            ticketsUsed: totalUserTickets,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        await tx.drawParticipation.create({
+          data: {
+            userId: user.id,
+            drawId: draw.id,
+            ticketsUsed: 1,
+          },
+        });
+      }
+
+      // Update draw total tickets
+      await tx.draw.update({
+        where: { id: draw.id },
+        data: {
+          totalTickets: {
+            increment: 1,
+          },
+        },
+      });
+
+      return {
+        ticket,
+        confirmationCode,
+        totalUserTickets,
+      };
     });
+
+    // Send email notification
+    if (userRecord?.email) {
+      try {
+        await sendTicketApplicationEmail(
+          userRecord.email,
+          userRecord.name || "User",
+          1,
+          [result.confirmationCode],
+          draw.drawDate,
+          result.totalUserTickets
+        );
+        console.log('📧 Social media ticket automatically applied, email sent to user:', userRecord.email);
+      } catch (emailError) {
+        console.error('📧 Failed to send social media ticket email:', emailError);
+      }
+    }
     
     return NextResponse.json({
       success: true,
-      message: "🎉 Thanks for following us! Your reward has been added.",
-      ticket: result,
+      message: "🎉 Thanks for following us! Your ticket has been automatically applied to this week's lottery!",
+      ticket: result.ticket,
+      appliedToLottery: true,
+      totalUserTickets: result.totalUserTickets,
     });
   } catch (error) {
     console.error("Error earning social media ticket:", error);

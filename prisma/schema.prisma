@@ -45,14 +45,15 @@ model User {
 }
 
 model Ticket {
-  id            String       @id @default(cuid())
-  userId        String
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  source        TicketSource
-  isUsed        Boolean      @default(false)
-  drawId        String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                String       @id @default(cuid())
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source            TicketSource
+  isUsed            Boolean      @default(false)
+  drawId            String?
+  confirmationCode  String?      // Unique confirmation code for ticket tracking
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }
 
 model Winner {

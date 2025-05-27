@@ -74,18 +74,19 @@ const getSourceBadgeColor = (source: TicketSource) => {
 };
 
 export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   
   // Show recent tickets first (latest 3)
   const recentTickets = tickets.slice(0, 3);
   const hasMoreTickets = tickets.length > 3;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
           variant="outline" 
           className="bg-gradient-to-r from-slate-50 to-blue-50 border-2 border-blue-200 hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 text-slate-700 font-medium transition-all duration-300 hover:shadow-md"
+          onClick={() => setOpen(true)}
         >
           <Eye className="h-4 w-4 mr-2" />
           View Complete History
@@ -145,13 +146,9 @@ export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
                           
                           <Badge 
                             variant="outline"
-                            className={`${
-                              ticket.isUsed 
-                                ? "bg-orange-100 text-orange-700 border-orange-300" 
-                                : "bg-green-100 text-green-700 border-green-300"
-                            } font-medium`}
+                            className="bg-blue-100 text-blue-700 border-blue-300 font-medium"
                           >
-                            {ticket.isUsed ? "Used in Lottery" : "Available"}
+                            Applied to Lottery
                           </Badge>
                         </div>
                       </div>
@@ -205,7 +202,7 @@ export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
           </p>
           
           <Button
-            onClick={() => setIsOpen(false)}
+            onClick={() => setOpen(false)}
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
           >
             <X className="h-4 w-4 mr-2" />

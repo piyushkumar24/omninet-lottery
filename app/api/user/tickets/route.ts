@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getUserAvailableTickets, getUserUsedTickets, getUserTotalTickets } from "@/lib/ticket-utils";
+import { getUserAppliedTickets, getUserUsedTickets, getUserTotalTickets } from "@/lib/ticket-utils";
 
 export async function GET() {
   try {
@@ -17,15 +17,17 @@ export async function GET() {
     }
 
     // Get ticket counts using utility functions
-    const availableTickets = await getUserAvailableTickets(user.id);
+    const appliedTickets = await getUserAppliedTickets(user.id);
     const usedTickets = await getUserUsedTickets(user.id);
     const totalTickets = await getUserTotalTickets(user.id);
 
     return NextResponse.json({
       success: true,
-      availableTickets,
+      appliedTickets,
       usedTickets,
       totalTickets,
+      // Keep availableTickets for backward compatibility
+      availableTickets: appliedTickets,
     });
   } catch (error) {
     console.error("Error fetching user tickets:", error);

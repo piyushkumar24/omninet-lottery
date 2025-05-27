@@ -15,21 +15,31 @@ import {
   Trophy,
   Clock,
   DollarSign,
-  TrendingUp,
+  ArrowRight,
+  Info,
   Eye
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getUserDrawParticipations } from "@/data/draw";
 import { 
-  getUserAvailableTickets, 
-  getUserUsedTickets, 
-  getUserTotalTickets 
+  getUserAppliedTickets,
+  getUserUsedTickets,
+  getUserTotalTickets
 } from "@/lib/ticket-utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { TicketHistoryModal } from "@/components/dashboard/ticket-history-modal";
 
 export const metadata: Metadata = {
   title: "My Tickets | 0mninet Lottery",
-  description: "View your lottery tickets and participation history",
+  description: "Manage and track your lottery tickets",
 };
 
 const getSourceIcon = (source: TicketSource) => {
@@ -82,12 +92,18 @@ export default async function TicketsPage() {
     return redirect("/auth/blocked");
   }
 
-  // Get accurate ticket counts using utility functions
-  const activeTickets = await getUserAvailableTickets(user.id);
+  // Get ticket counts - now all tickets are applied tickets
+  const appliedTickets = await getUserAppliedTickets(user.id);
   const usedTickets = await getUserUsedTickets(user.id);
   const totalTickets = await getUserTotalTickets(user.id);
 
-  // Fetch user's tickets with details for history
+  // Fetch user's lottery participations with detailed information
+  const participations = await getUserDrawParticipations(user.id);
+
+  // Calculate total tickets user has applied across all draws
+  const totalAppliedTickets = participations.reduce((sum, p) => sum + p.ticketsUsed, 0);
+
+  // Fetch user's tickets for earning history
   const tickets = await db.ticket.findMany({
     where: {
       userId: user.id,
@@ -95,12 +111,10 @@ export default async function TicketsPage() {
     orderBy: {
       createdAt: "desc",
     },
+    take: 10, // Show only recent 10 tickets for performance
   });
 
-  // Fetch user's lottery participations
-  const participations = await getUserDrawParticipations(user.id);
-
-  // Group tickets by source
+  // Group tickets by source for display
   const ticketsBySource = tickets.reduce((acc, ticket) => {
     if (!acc[ticket.source]) {
       acc[ticket.source] = [];
@@ -109,76 +123,51 @@ export default async function TicketsPage() {
     return acc;
   }, {} as Record<TicketSource, typeof tickets>);
 
-  // Get recent tickets (latest 3)
-  const recentTickets = tickets.slice(0, 3);
+  // Count tickets by source
+  const ticketCounts = Object.entries(ticketsBySource).reduce((acc, [source, tickets]) => {
+    acc[source as TicketSource] = tickets.length;
+    return acc;
+  }, {} as Record<TicketSource, number>);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-indigo-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-emerald-400/20 to-blue-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/3 left-1/3 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-3xl"></div>
-      </div>
-
-      <div className="relative z-10 p-6 space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-lg">
-              <Ticket className="h-8 w-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-slate-800">My Tickets</h1>
-              <p className="text-slate-600 mt-1">Manage and track your lottery tickets</p>
-            </div>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">My Tickets</h1>
+          <p className="text-slate-600 mt-1">Manage and track your lottery tickets</p>
         </div>
         
-        {/* Ticket Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-xl hover:shadow-2xl transition-all duration-300">
-            <CardContent className="pt-6">
-              <div className="flex items-center mb-4">
-                <div className="bg-green-100 p-3 rounded-xl mr-4 shadow-md">
-                  <Ticket className="h-6 w-6 text-green-600" />
+        {/* Ticket Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Applied Tickets */}
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg">
+            <CardContent className="pt-6 pb-4">
+              <div className="flex items-center gap-4">
+                <div className="bg-blue-100 p-3 rounded-lg">
+                  <Ticket className="h-5 w-5 text-blue-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-green-800">Available Tickets</h3>
+                <h3 className="text-lg font-semibold text-blue-800">Applied Tickets</h3>
               </div>
-              <p className="text-4xl font-bold mt-2 text-green-900">{activeTickets}</p>
-              <p className="text-sm text-green-700 mt-2 flex items-center">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                Ready for lottery participation
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-200 shadow-xl hover:shadow-2xl transition-all duration-300">
-            <CardContent className="pt-6">
-              <div className="flex items-center mb-4">
-                <div className="bg-orange-100 p-3 rounded-xl mr-4 shadow-md">
-                  <Ticket className="h-6 w-6 text-orange-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-orange-800">Used Tickets</h3>
-              </div>
-              <p className="text-4xl font-bold mt-2 text-orange-900">{usedTickets}</p>
-              <p className="text-sm text-orange-700 mt-2 flex items-center">
-                <Trophy className="h-4 w-4 mr-1" />
-                Used in lottery draws
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-xl hover:shadow-2xl transition-all duration-300">
-            <CardContent className="pt-6">
-              <div className="flex items-center mb-4">
-                <div className="bg-blue-100 p-3 rounded-xl mr-4 shadow-md">
-                  <Ticket className="h-6 w-6 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-blue-800">Total Tickets</h3>
-              </div>
-              <p className="text-4xl font-bold mt-2 text-blue-900">{totalTickets}</p>
+              <p className="text-4xl font-bold mt-4 text-blue-900">{appliedTickets}</p>
               <p className="text-sm text-blue-700 mt-2 flex items-center">
+                <Trophy className="h-4 w-4 mr-1" />
+                Automatically entered in lottery
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Total Tickets */}
+          <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 shadow-lg">
+            <CardContent className="pt-6 pb-4">
+              <div className="flex items-center gap-4">
+                <div className="bg-green-100 p-3 rounded-lg">
+                  <Ticket className="h-5 w-5 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-green-800">Total Tickets</h3>
+              </div>
+              <p className="text-4xl font-bold mt-4 text-green-900">{totalTickets}</p>
+              <p className="text-sm text-green-700 mt-2 flex items-center">
                 <Calendar className="h-4 w-4 mr-1" />
                 All time earned
               </p>
@@ -186,199 +175,234 @@ export default async function TicketsPage() {
           </Card>
         </div>
 
-        {/* Lottery Participation History */}
-        {participations.length > 0 && (
-          <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
-              <CardTitle className="flex items-center gap-2 text-yellow-800">
-                <Trophy className="h-6 w-6" />
-                Lottery Participation History
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {participations.map((participation) => (
-                  <div 
-                    key={participation.id} 
-                    className="group p-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-xl hover:shadow-lg transition-all duration-300"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-yellow-100 p-3 rounded-xl group-hover:bg-yellow-200 transition-colors">
-                          <Ticket className="h-6 w-6 text-yellow-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-yellow-900 text-lg">
-                            Lottery Draw - {formatDate(new Date(participation.draw.drawDate), 'dateOnly')}
-                          </h3>
-                          <p className="text-sm text-yellow-700 mt-1">
-                            Participated with <span className="font-semibold">{participation.ticketsUsed} tickets</span>
-                          </p>
-                          <p className="text-sm text-yellow-600 mt-1">
-                            Participated on {formatDate(new Date(participation.participatedAt), 'full')}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        <div className="flex items-center gap-2 mb-2">
-                          <DollarSign className="h-5 w-5 text-green-600" />
-                          <span className="font-bold text-green-800 text-lg">${participation.draw.prizeAmount}</span>
-                        </div>
-                        <span className={`text-sm px-4 py-2 rounded-full font-medium shadow-sm ${
-                          participation.draw.status === 'COMPLETED' 
-                            ? participation.isWinner 
-                              ? 'bg-green-100 text-green-800 border border-green-300' 
-                              : 'bg-gray-100 text-gray-700 border border-gray-300'
-                            : 'bg-blue-100 text-blue-700 border border-blue-300'
-                        }`}>
-                          {participation.draw.status === 'COMPLETED' 
-                            ? participation.isWinner 
-                              ? '🎉 Winner!' 
-                              : 'Not selected'
-                            : 'Pending draw'
-                          }
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Recent Ticket History */}
         <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="h-6 w-6 text-slate-600" />
-                <div>
-                  <CardTitle className="text-slate-800">Recent Ticket History</CardTitle>
-                  <p className="text-sm text-slate-600 mt-1">Latest tickets you&apos;ve earned</p>
-                </div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-slate-600" />
+              <div>
+                <CardTitle className="text-slate-800">Recent Ticket History</CardTitle>
+                <p className="text-sm text-slate-600">Latest tickets you've earned</p>
               </div>
-              <TicketHistoryModal tickets={tickets} />
             </div>
+            <TicketHistoryModal tickets={tickets} />
           </CardHeader>
-          <CardContent className="p-6">
-            {recentTickets.length > 0 ? (
-              <div className="space-y-4">
-                {recentTickets.map((ticket) => (
-                  <div key={ticket.id} className="group p-4 bg-gradient-to-r from-white to-slate-50 border border-slate-200 rounded-xl hover:shadow-md transition-all duration-300">
-                    <div className="flex items-start gap-4">
-                      <div className="bg-indigo-100 p-3 rounded-xl group-hover:bg-indigo-200 transition-colors">
+          <CardContent className="p-4">
+            {tickets.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-slate-600">No tickets earned yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {tickets.slice(0, 3).map((ticket) => (
+                  <div key={ticket.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white rounded-lg">
                         {getSourceIcon(ticket.source)}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold text-slate-800 text-lg group-hover:text-blue-800 transition-colors">
-                            {getSourceLabel(ticket.source)}
-                          </h3>
-                          <span className={`text-sm px-3 py-1 rounded-full font-medium ${
-                            ticket.isUsed 
-                              ? "bg-orange-100 text-orange-700 border border-orange-300" 
-                              : "bg-green-100 text-green-700 border border-green-300"
-                          }`}>
-                            {ticket.isUsed ? "Used in Lottery" : "Available"}
-                          </span>
-                        </div>
-                        <p className="text-sm text-slate-600">
-                          Earned on {formatDate(new Date(ticket.createdAt), 'full')}
-                        </p>
-                        {ticket.drawId && (
-                          <p className="text-sm text-blue-600 mt-1">
-                            Used in draw: <span className="font-mono">{ticket.drawId.substring(0, 8)}...</span>
-                          </p>
-                        )}
+                      <div>
+                        <p className="font-medium text-slate-800">{getSourceLabel(ticket.source)}</p>
+                        <p className="text-xs text-slate-500">Earned on {formatDate(ticket.createdAt, 'short')}</p>
                       </div>
                     </div>
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
+                      Applied
+                    </Badge>
                   </div>
                 ))}
                 
                 {tickets.length > 3 && (
-                  <div className="text-center pt-4 border-t border-slate-200">
-                    <p className="text-slate-600 text-sm mb-3">
-                      Showing {recentTickets.length} of {tickets.length} tickets
-                    </p>
-                    <TicketHistoryModal tickets={tickets} />
+                  <div className="text-center pt-2">
+                    <p className="text-sm text-slate-500">Showing 3 of {tickets.length} tickets</p>
                   </div>
                 )}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
-                    <Ticket className="h-8 w-8 text-slate-400" />
-                  </div>
-                </div>
-                <p className="text-slate-500 text-lg">You don&apos;t have any tickets yet.</p>
-                <p className="mt-2 text-slate-400">Complete surveys, invite friends, or follow us on social media to earn tickets!</p>
-                <div className="mt-6">
-                  <Link href="/dashboard">
-                    <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
-                      <TrendingUp className="h-4 w-4 mr-2" />
-                      Start Earning Tickets
-                    </Button>
-                  </Link>
-                </div>
               </div>
             )}
           </CardContent>
         </Card>
-        
-        {/* Tickets by Source */}
+
+        {/* Lottery Participation History */}
         <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-200">
-            <CardTitle className="flex items-center gap-2 text-indigo-800">
-              <TrendingUp className="h-6 w-6" />
-              Tickets by Source
-            </CardTitle>
+          <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
+            <div className="flex items-center gap-3">
+              <Trophy className="h-5 w-5 text-amber-600" />
+              <CardTitle className="text-amber-800">Lottery Participation History</CardTitle>
+            </div>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className={`group p-6 bg-gradient-to-r ${getSourceColor("SURVEY")} border-2 rounded-xl hover:shadow-lg transition-all duration-300`}>
-                <div className="flex items-center mb-4">
-                  <div className="bg-blue-100 p-3 rounded-xl mr-4 group-hover:bg-blue-200 transition-colors">
-                    <ClipboardCheck className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-blue-800">Survey Tickets</h3>
-                    <p className="text-2xl font-bold text-blue-900">{ticketsBySource["SURVEY"]?.length || 0}</p>
+            {participations.length === 0 ? (
+              <div className="text-center py-6">
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <Ticket className="h-8 w-8 text-yellow-600" />
                   </div>
                 </div>
-                <p className="text-blue-700 text-sm">Earned by completing surveys</p>
+                <h3 className="text-lg font-medium text-slate-800 mb-2">No Lottery Participation Yet</h3>
+                <p className="text-slate-600">
+                  You haven&apos;t participated in any lottery draws yet. Start earning tickets to join the next draw!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {participations.map((participation) => (
+                  <Dialog key={participation.id}>
+                    <DialogTrigger asChild>
+                      <div className="bg-yellow-50/70 border border-yellow-200 rounded-lg p-4 hover:bg-yellow-50 transition-colors cursor-pointer">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-yellow-100 rounded-lg">
+                              <Ticket className="h-5 w-5 text-yellow-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-amber-900">
+                                Lottery Draw - {formatDate(new Date(participation.draw.drawDate), 'dateOnly')}
+                              </h4>
+                              <p className="text-sm text-amber-700">
+                                Participated with {participation.ticketsUsed} tickets
+                              </p>
+                              <p className="text-xs text-amber-600 mt-1">
+                                Participated on {formatDate(new Date(participation.participatedAt), 'short')}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 mb-2">
+                              <DollarSign className="h-4 w-4 text-green-600" />
+                              <span className="font-bold text-green-700">${participation.draw.prizeAmount}</span>
+                            </div>
+                            <div className={`text-xs px-3 py-1 rounded-full ${
+                              participation.draw.status === 'COMPLETED' 
+                                ? participation.isWinner 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-gray-100 text-gray-600'
+                                : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {participation.draw.status === 'COMPLETED' 
+                                ? participation.isWinner 
+                                  ? '🎉 Winner!' 
+                                  : 'Not selected'
+                                : 'Pending draw'
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Lottery Draw Details</DialogTitle>
+                        <DialogDescription>
+                          Details about your participation in this lottery draw
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <h4 className="font-semibold text-blue-800 mb-2">Draw Information</h4>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="text-blue-700">Date:</div>
+                            <div className="font-medium">{formatDate(new Date(participation.draw.drawDate), 'dateOnly')}</div>
+                            <div className="text-blue-700">Prize:</div>
+                            <div className="font-medium">${participation.draw.prizeAmount}</div>
+                            <div className="text-blue-700">Status:</div>
+                            <div className="font-medium">{participation.draw.status}</div>
+                          </div>
+                        </div>
+                        <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                          <h4 className="font-semibold text-indigo-800 mb-2">Your Participation</h4>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="text-indigo-700">Tickets Used:</div>
+                            <div className="font-medium">{participation.ticketsUsed}</div>
+                            <div className="text-indigo-700">Participated On:</div>
+                            <div className="font-medium">{formatDate(new Date(participation.participatedAt), 'full')}</div>
+                            <div className="text-indigo-700">Result:</div>
+                            <div className="font-medium">
+                              {participation.draw.status === 'COMPLETED' 
+                                ? participation.isWinner 
+                                  ? '🎉 Winner!' 
+                                  : 'Not selected'
+                                : 'Pending draw'
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Tickets by Source */}
+        <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
+          <CardHeader className="flex items-center gap-2 pb-2">
+            <ArrowRight className="h-5 w-5 text-slate-600" />
+            <CardTitle className="text-slate-800">Tickets by Source</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Survey Tickets */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2 bg-white rounded-lg">
+                    <ClipboardCheck className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-blue-800">
+                    {ticketCounts["SURVEY"] || 0}
+                  </h3>
+                </div>
+                <h4 className="font-semibold text-blue-700">Survey Tickets</h4>
+                <p className="text-xs text-blue-600 mt-1">Earned by completing surveys</p>
               </div>
               
-              <div className={`group p-6 bg-gradient-to-r ${getSourceColor("SOCIAL")} border-2 rounded-xl hover:shadow-lg transition-all duration-300`}>
-                <div className="flex items-center mb-4">
-                  <div className="bg-purple-100 p-3 rounded-xl mr-4 group-hover:bg-purple-200 transition-colors">
-                    <Share2 className="h-6 w-6 text-purple-600" />
+              {/* Social Media Tickets */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2 bg-white rounded-lg">
+                    <Share2 className="h-5 w-5 text-purple-600" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-purple-800">Social Media Tickets</h3>
-                    <p className="text-2xl font-bold text-purple-900">{ticketsBySource["SOCIAL"]?.length || 0}</p>
-                  </div>
+                  <h3 className="text-lg font-bold text-purple-800">
+                    {ticketCounts["SOCIAL"] || 0}
+                  </h3>
                 </div>
-                <p className="text-purple-700 text-sm">Earned by following on social media</p>
+                <h4 className="font-semibold text-purple-700">Social Media Tickets</h4>
+                <p className="text-xs text-purple-600 mt-1">Earned by following on social media</p>
               </div>
               
-              <div className={`group p-6 bg-gradient-to-r ${getSourceColor("REFERRAL")} border-2 rounded-xl hover:shadow-lg transition-all duration-300`}>
-                <div className="flex items-center mb-4">
-                  <div className="bg-green-100 p-3 rounded-xl mr-4 group-hover:bg-green-200 transition-colors">
-                    <Users className="h-6 w-6 text-green-600" />
+              {/* Referral Tickets */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2 bg-white rounded-lg">
+                    <Users className="h-5 w-5 text-green-600" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-green-800">Referral Tickets</h3>
-                    <p className="text-2xl font-bold text-green-900">{ticketsBySource["REFERRAL"]?.length || 0}</p>
-                  </div>
+                  <h3 className="text-lg font-bold text-green-800">
+                    {ticketCounts["REFERRAL"] || 0}
+                  </h3>
                 </div>
-                <p className="text-green-700 text-sm">Earned by inviting friends</p>
+                <h4 className="font-semibold text-green-700">Referral Tickets</h4>
+                <p className="text-xs text-green-600 mt-1">Earned by inviting friends</p>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link href="/dashboard">
+            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+              <ArrowRight className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          <Link href="/dashboard/refer">
+            <Button variant="outline" className="border-green-200 text-green-700 hover:bg-green-50">
+              <Users className="h-4 w-4 mr-2" />
+              Earn More Tickets
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

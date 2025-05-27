@@ -77,7 +77,7 @@ export const CountdownTimer = ({ targetDate, theme = "light" }: CountdownTimerPr
         <div className={`${containerBg} rounded-2xl px-6 py-3 flex items-center gap-3`}>
           <Clock className={`h-6 w-6 ${textColor} animate-pulse`} />
           <span className={`text-lg font-semibold ${textColor}`}>
-            Draw Countdown
+            Next Lottery Draw
           </span>
         </div>
       </div>
@@ -129,7 +129,7 @@ export const CountdownTimer = ({ targetDate, theme = "light" }: CountdownTimerPr
             <div className="flex items-center justify-center mt-2 gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span className={`text-xs ${labelColor}`}>
-                Live countdown
+                Weekly lottery - tickets reset after each draw
               </span>
             </div>
           </div>

@@ -24,7 +24,7 @@ interface ParticipationConfirmationProps {
   onClose: () => void;
   onConfirm: () => void;
   ticketsToUse: number;
-  availableTickets: number;
+  appliedTickets: number;
   drawDate: Date;
   prizeAmount: number;
   isLoading: boolean;
@@ -37,14 +37,14 @@ export const ParticipationConfirmation = ({
   onClose,
   onConfirm,
   ticketsToUse,
-  availableTickets,
+  appliedTickets,
   drawDate,
   prizeAmount,
   isLoading,
   isExistingParticipation = false,
   currentTicketsInDraw = 0,
 }: ParticipationConfirmationProps) => {
-  const remainingTickets = availableTickets - ticketsToUse;
+  const remainingTickets = appliedTickets - ticketsToUse;
   const newTotalTickets = isExistingParticipation ? currentTicketsInDraw + ticketsToUse : ticketsToUse;
 
   return (
@@ -111,7 +111,7 @@ export const ParticipationConfirmation = ({
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-slate-600">Available tickets:</span>
-                  <span className="font-semibold text-slate-800">{availableTickets}</span>
+                  <span className="font-semibold text-slate-800">{appliedTickets}</span>
                 </div>
                 
                 <div className="flex justify-between">

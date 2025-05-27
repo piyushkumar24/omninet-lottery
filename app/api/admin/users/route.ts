@@ -23,11 +23,7 @@ export async function GET() {
       include: {
         _count: {
           select: {
-            tickets: {
-              where: {
-                isUsed: false
-              }
-            }
+            tickets: true
           }
         }
       }

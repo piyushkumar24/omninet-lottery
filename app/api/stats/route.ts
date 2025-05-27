@@ -6,9 +6,9 @@ export async function GET() {
   try {
     // Get lottery stats
     const totalUsers = await db.user.count();
-    const totalTickets = await db.ticket.count({ 
-      where: { isUsed: false }
-    });
+    
+    // Get total tickets (both used and unused)
+    const totalTickets = await db.ticket.count();
     
     // Get latest winner
     const latestWinner = await db.winner.findFirst({
@@ -30,7 +30,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       totalUsers,
-      totalTickets,
+      totalTickets: totalTickets, // Return total tickets, not just applied tickets
       latestWinner: latestWinner?.user?.name || null,
       latestWinnerProfile: latestWinner?.user ? {
         name: latestWinner.user.name,

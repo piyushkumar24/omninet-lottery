@@ -1,19 +1,12 @@
 "use server";
 
-import * as z from "zod";
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
-import { LotteryParticipationSchema } from "@/schemas";
-import { 
-  getDrawById, 
-  getUserParticipationInDraw, 
-  createOrGetNextDraw 
-} from "@/data/draw";
 import { verifyUserTicketAvailability, applyAllTicketsToLottery } from "@/lib/ticket-utils";
+import { sendTicketApplicationEmail } from "@/lib/mail";
+import { nanoid } from "nanoid";
 
-export const participateInLottery = async (
-  values: z.infer<typeof LotteryParticipationSchema>
-) => {
+export const applyTicketsToLottery = async (drawId: string, ticketsToApply: number) => {
   const user = await currentUser();
   
   if (!user) {
@@ -24,17 +17,13 @@ export const participateInLottery = async (
     return { error: "Account is blocked. Cannot participate in lottery." };
   }
 
-  const validatedFields = LotteryParticipationSchema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return { error: "Invalid fields!" };
+  if (ticketsToApply <= 0) {
+    return { error: "Invalid number of tickets to apply." };
   }
-
-  const { ticketsToUse, drawId } = validatedFields.data;
 
   try {
     // Pre-validate ticket availability
-    const ticketValidation = await verifyUserTicketAvailability(user.id, ticketsToUse);
+    const ticketValidation = await verifyUserTicketAvailability(user.id, ticketsToApply);
     
     if (!ticketValidation.canParticipate) {
       return { error: ticketValidation.error };
@@ -45,19 +34,6 @@ export const participateInLottery = async (
       // Check if draw exists and is active
       const draw = await tx.draw.findUnique({
         where: { id: drawId },
-        include: {
-          participants: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
-        },
       });
 
       if (!draw) {
@@ -72,15 +48,11 @@ export const participateInLottery = async (
         throw new Error("This draw has already ended!");
       }
 
-      // Apply tickets to lottery using utility function
+      // Apply all available tickets using our utility function
       const appliedTickets = await applyAllTicketsToLottery(user.id, drawId);
       
       if (appliedTickets === 0) {
         throw new Error("No tickets available to apply.");
-      }
-
-      if (appliedTickets < ticketsToUse) {
-        throw new Error(`Could only apply ${appliedTickets} tickets, which is less than the ${ticketsToUse} requested.`);
       }
 
       // Check if user already participated in this draw
@@ -92,6 +64,32 @@ export const participateInLottery = async (
           },
         },
       });
+
+      // Get the tickets that were just applied
+      const ticketsApplied = await tx.ticket.findMany({
+        where: {
+          userId: user.id,
+          drawId: drawId,
+          isUsed: true,
+        },
+        take: appliedTickets,
+        orderBy: {
+          updatedAt: 'desc', // Get most recently applied tickets
+        },
+      });
+
+      // Generate unique ticket confirmation codes
+      const ticketCodes = ticketsApplied.map(() => nanoid(10));
+
+      // Update tickets with confirmation codes
+      for (let i = 0; i < ticketsApplied.length; i++) {
+        await tx.ticket.update({
+          where: { id: ticketsApplied[i].id },
+          data: {
+            confirmationCode: ticketCodes[i],
+          },
+        });
+      }
 
       // Update or create participation record
       let newTotalTickets = appliedTickets;
@@ -129,29 +127,37 @@ export const participateInLottery = async (
         },
       });
 
+      // Send email notification
+      if (user.email) {
+        try {
+          await sendTicketApplicationEmail(
+            user.email,
+            user.name || "User",
+            appliedTickets,
+            ticketCodes,
+            draw.drawDate,
+            newTotalTickets
+          );
+        } catch (emailError) {
+          console.error("Failed to send ticket application email:", emailError);
+          // Don't fail the transaction for email errors
+        }
+      }
+
       return { 
-        success: `Successfully applied ${appliedTickets} tickets to the lottery!`,
+        success: `Successfully applied ${appliedTickets} tickets to the lottery! Confirmation email sent with your ticket details.`,
         ticketsUsed: appliedTickets,
-        newTotal: newTotalTickets
+        newTotal: newTotalTickets,
+        confirmationCodes: ticketCodes
       };
     });
 
     return result;
   } catch (error) {
-    console.error("Lottery participation error:", error);
+    console.error("Auto ticket application error:", error);
     if (error instanceof Error) {
       return { error: error.message };
     }
     return { error: "Something went wrong! Please try again." };
-  }
-};
-
-export const getNextLotteryDraw = async () => {
-  try {
-    const draw = await createOrGetNextDraw();
-    return { success: true, draw };
-  } catch (error) {
-    console.error("Error getting next draw:", error);
-    return { error: "Failed to get lottery information." };
   }
 }; 

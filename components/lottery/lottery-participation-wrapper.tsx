@@ -4,7 +4,7 @@ import { LotteryParticipation } from "./lottery-participation";
 import { useRouter } from "next/navigation";
 
 interface LotteryParticipationWrapperProps {
-  availableTickets: number;
+  appliedTickets: number;
   draw: {
     id: string;
     drawDate: string;

@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateCPXPostbackHash } from "@/lib/cpx-utils";
 import { db } from "@/lib/db";
+import { createOrGetNextDraw } from "@/data/draw";
+import { sendTicketApplicationEmail } from "@/lib/mail";
+import { nanoid } from "nanoid";
 
 /**
  * CPX Research Postback Handler
  * 
  * This endpoint receives notifications from CPX Research when a user completes a survey.
- * It validates the request and awards tickets to the user.
+ * It validates the request, awards tickets to the user, and automatically applies them to the current lottery.
  * 
  * Expected parameters from CPX:
  * - status: 1 (completed) or 0 (not completed)
@@ -147,24 +150,73 @@ export async function GET(request: NextRequest) {
       transId,
     });
 
-    // Use transaction to handle both survey completion and potential referral reward
+    // Get or create the current lottery draw
+    const draw = await createOrGetNextDraw();
+
+    // Use transaction to handle survey completion, potential referral reward, and auto-apply to lottery
     const result = await db.$transaction(async (tx) => {
-      // Award survey ticket to the user
+      // Award survey ticket to the user and immediately apply to lottery
+      const confirmationCode = nanoid(10);
       const newTicket = await tx.ticket.create({
         data: {
           userId: user.id,
           source: "SURVEY",
-          isUsed: false,
+          isUsed: true, // Automatically mark as used since we're applying to lottery
+          drawId: draw.id,
+          confirmationCode: confirmationCode,
         },
       });
 
-      console.log('🎫 Survey ticket created:', {
+      console.log('🎫 Survey ticket created and applied to lottery:', {
         ticketId: newTicket.id,
         userId: user.id,
+        drawId: draw.id,
+        confirmationCode,
         transId,
       });
 
+      // Update or create draw participation
+      const existingParticipation = await tx.drawParticipation.findUnique({
+        where: {
+          userId_drawId: {
+            userId: user.id,
+            drawId: draw.id,
+          },
+        },
+      });
+
+      let totalUserTickets = 1;
+      if (existingParticipation) {
+        totalUserTickets = existingParticipation.ticketsUsed + 1;
+        await tx.drawParticipation.update({
+          where: { id: existingParticipation.id },
+          data: {
+            ticketsUsed: totalUserTickets,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        await tx.drawParticipation.create({
+          data: {
+            userId: user.id,
+            drawId: draw.id,
+            ticketsUsed: 1,
+          },
+        });
+      }
+
+      // Update draw total tickets
+      await tx.draw.update({
+        where: { id: draw.id },
+        data: {
+          totalTickets: {
+            increment: 1,
+          },
+        },
+      });
+
       let referralTicketAwarded = false;
+      let referralConfirmationCode = '';
 
       // If this is the user's first survey and they were referred, award referral ticket
       if (isFirstSurvey && user.referredBy) {
@@ -183,21 +235,64 @@ export async function GET(request: NextRequest) {
         });
 
         if (referrerSurveyTickets > 0) {
-          // Award referral ticket to the referrer
+          // Award referral ticket to the referrer and apply to lottery
+          referralConfirmationCode = nanoid(10);
           const referralTicket = await tx.ticket.create({
             data: {
               userId: user.referredBy,
               source: "REFERRAL",
-              isUsed: false,
+              isUsed: true, // Automatically apply to lottery
+              drawId: draw.id,
+              confirmationCode: referralConfirmationCode,
+            },
+          });
+
+          // Update referrer's draw participation
+          const referrerParticipation = await tx.drawParticipation.findUnique({
+            where: {
+              userId_drawId: {
+                userId: user.referredBy,
+                drawId: draw.id,
+              },
+            },
+          });
+
+          if (referrerParticipation) {
+            await tx.drawParticipation.update({
+              where: { id: referrerParticipation.id },
+              data: {
+                ticketsUsed: referrerParticipation.ticketsUsed + 1,
+                updatedAt: new Date(),
+              },
+            });
+          } else {
+            await tx.drawParticipation.create({
+              data: {
+                userId: user.referredBy,
+                drawId: draw.id,
+                ticketsUsed: 1,
+              },
+            });
+          }
+
+          // Update draw total tickets again for referral
+          await tx.draw.update({
+            where: { id: draw.id },
+            data: {
+              totalTickets: {
+                increment: 1,
+              },
             },
           });
 
           referralTicketAwarded = true;
 
-          console.log('🎁 Referral ticket awarded:', {
+          console.log('🎁 Referral ticket awarded and applied to lottery:', {
             referralTicketId: referralTicket.id,
             referrerId: user.referredBy,
             newUserId: user.id,
+            drawId: draw.id,
+            confirmationCode: referralConfirmationCode,
             transId,
           });
         } else {
@@ -210,17 +305,48 @@ export async function GET(request: NextRequest) {
 
       return {
         surveyTicket: newTicket,
+        confirmationCode,
+        totalUserTickets,
         referralTicketAwarded,
+        referralConfirmationCode,
         isFirstSurvey,
       };
     });
 
-    console.log('✅ Survey completion processed successfully:', {
+    // Send email notifications
+    if (user.email) {
+      try {
+        await sendTicketApplicationEmail(
+          user.email,
+          user.name || "User",
+          1,
+          [result.confirmationCode],
+          draw.drawDate,
+          result.totalUserTickets
+        );
+        console.log('📧 Ticket application email sent to user:', user.email);
+      } catch (emailError) {
+        console.error('📧 Failed to send ticket email to user:', emailError);
+      }
+    }
+
+    // Send email to referrer if applicable - removed separate email to streamline notifications
+    if (result.referralTicketAwarded && user.referredBy) {
+      try {
+        // Just log that a referral was awarded, but don't send separate email
+        console.log('📊 Referral ticket awarded to:', user.referredBy);
+      } catch (emailError) {
+        console.error('📧 Failed to log referral award:', emailError);
+      }
+    }
+
+    console.log('✅ Survey completion and auto-lottery application processed successfully:', {
       userId: user.id,
       transId,
       isFirstSurvey: result.isFirstSurvey,
       referralTicketAwarded: result.referralTicketAwarded,
       referredBy: user.referredBy,
+      totalUserTickets: result.totalUserTickets,
       amountUsd,
       timestamp: new Date().toISOString(),
     });
@@ -228,11 +354,13 @@ export async function GET(request: NextRequest) {
     // Return detailed success response for debugging
     return new NextResponse(JSON.stringify({
       success: true,
-      message: 'Survey completion processed successfully',
+      message: 'Survey completion and lottery application processed successfully',
       data: {
         userId: user.id,
         transId,
         ticketAwarded: true,
+        ticketAppliedToLottery: true,
+        totalUserTickets: result.totalUserTickets,
         isFirstSurvey: result.isFirstSurvey,
         referralTicketAwarded: result.referralTicketAwarded,
         timestamp: new Date().toISOString(),

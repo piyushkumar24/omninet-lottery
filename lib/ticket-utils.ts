@@ -1,13 +1,14 @@
 import { db } from "@/lib/db";
 
 /**
- * Get the user's available tickets (not used in any draw)
+ * Get the user's tickets that will be applied to the lottery
+ * All tickets are automatically applied to the lottery
  */
-export const getUserAvailableTickets = async (userId: string): Promise<number> => {
+export const getUserAppliedTickets = async (userId: string): Promise<number> => {
+  // Count all tickets for the user as they are all automatically applied
   return await db.ticket.count({
     where: {
       userId: userId,
-      isUsed: false,
     },
   });
 };
@@ -37,7 +38,7 @@ export const getUserTotalTickets = async (userId: string): Promise<number> => {
 };
 
 /**
- * Get user's used tickets across all draws
+ * Get user's used tickets across all draws (historical)
  */
 export const getUserUsedTickets = async (userId: string): Promise<number> => {
   return await db.ticket.count({
@@ -49,7 +50,48 @@ export const getUserUsedTickets = async (userId: string): Promise<number> => {
 };
 
 /**
- * Verify user has enough available tickets for participation
+ * DEPRECATED: Use getUserAppliedTickets instead
+ * Kept for backward compatibility
+ */
+export const getUserAvailableTickets = async (userId: string): Promise<number> => {
+  // Return all tickets as they are all automatically applied
+  return await getUserAppliedTickets(userId);
+};
+
+/**
+ * Apply all available tickets to the current lottery
+ */
+export const applyAllTicketsToLottery = async (userId: string, drawId: string): Promise<number> => {
+  // Find all tickets that aren't used yet
+  const tickets = await db.ticket.findMany({
+    where: {
+      userId: userId,
+      isUsed: false,
+    },
+  });
+  
+  if (tickets.length === 0) {
+    return 0;
+  }
+  
+  // Update all tickets to be used in this draw
+  await db.ticket.updateMany({
+    where: {
+      id: {
+        in: tickets.map(ticket => ticket.id)
+      }
+    },
+    data: {
+      isUsed: true,
+      drawId: drawId
+    }
+  });
+  
+  return tickets.length;
+};
+
+/**
+ * Verify user has enough tickets for participation
  */
 export const verifyUserTicketAvailability = async (
   userId: string, 
@@ -59,13 +101,13 @@ export const verifyUserTicketAvailability = async (
   canParticipate: boolean;
   error?: string;
 }> => {
-  const availableTickets = await getUserAvailableTickets(userId);
+  const availableTickets = await getUserAppliedTickets(userId);
   
   if (availableTickets < requestedTickets) {
     return {
       available: availableTickets,
       canParticipate: false,
-      error: `Insufficient tickets! You have ${availableTickets} available, but requested ${requestedTickets}.`,
+      error: `Insufficient tickets! You have ${availableTickets} tickets, but requested ${requestedTickets}.`,
     };
   }
   

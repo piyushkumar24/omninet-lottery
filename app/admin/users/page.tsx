@@ -17,11 +17,7 @@ export default async function UsersPage() {
     include: {
       _count: {
         select: {
-          tickets: {
-            where: {
-              isUsed: false
-            }
-          }
+          tickets: true // Count all tickets as they are all applied
         }
       }
     }

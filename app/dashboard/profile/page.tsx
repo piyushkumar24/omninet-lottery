@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "react-hot-toast";
 import { Upload, Calendar, Trophy, Ticket, Edit2, Save, X, AlertTriangle, User } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { getUserAvailableTickets } from "@/lib/ticket-utils";
+import { getUserAppliedTickets } from "@/lib/ticket-utils";
 
 interface DrawParticipation {
   id: string;
@@ -43,7 +43,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [availableTickets, setAvailableTickets] = useState(0);
+  const [appliedTickets, setAppliedTickets] = useState(0);
   const [editForm, setEditForm] = useState({
     name: "",
     username: "",
@@ -103,7 +103,7 @@ export default function ProfilePage() {
       const response = await fetch("/api/user/tickets");
       if (response.ok) {
         const data = await response.json();
-        setAvailableTickets(data.availableTickets || 0);
+        setAppliedTickets(data.appliedTickets || 0);
       }
     } catch (error) {
       console.error("Error fetching ticket count:", error);
@@ -280,10 +280,10 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* Profile Information Card */}
-          <div className="xl:col-span-2">
-            <Card className="bg-white/90 backdrop-blur-sm border-2 border-white/50 shadow-xl overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Profile Card */}
+          <div className="lg:col-span-2">
+            <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
               <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-gray-100">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <User className="h-5 w-5 text-blue-600" />
@@ -408,30 +408,62 @@ export default function ProfilePage() {
             </Card>
           </div>
 
-          {/* Ticket Information Card */}
-          <div className="space-y-6">
-            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-green-100 to-emerald-100 border-b border-green-200">
-                <CardTitle className="flex items-center gap-2 text-green-800">
-                  <Ticket className="h-5 w-5" />
-                  Available Tickets
-                </CardTitle>
-                <CardDescription className="text-green-700">
-                  Current available tickets for lottery participation
+          {/* Stats Card */}
+          <div className="lg:col-span-1">
+            <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl h-full">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+                <CardTitle className="text-blue-800">Your Stats</CardTitle>
+                <CardDescription className="text-blue-600">
+                  Your lottery participation overview
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="text-center space-y-4">
-                  <div className="bg-white/80 rounded-xl p-6 border border-green-200">
-                    <div className="text-4xl font-bold text-green-800 mb-2">{availableTickets}</div>
-                    <p className="text-green-700 font-medium">Available Tickets</p>
-                    <p className="text-green-600 text-sm mt-1">Ready for lottery participation</p>
+              <CardContent className="p-6 space-y-6">
+                {/* Account Age */}
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <Calendar className="h-6 w-6 text-blue-600" />
                   </div>
-                  
-                  <div className="bg-green-100 rounded-lg p-4 border border-green-200">
-                    <p className="text-green-800 text-base font-semibold mb-2">💡 Pro Tip</p>
-                    <p className="text-green-700 text-sm leading-relaxed">
-                      The more tickets you have, the higher your chances of winning the weekly lottery draw!
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Account Age</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {formatDate(new Date(profile.createdAt), 'relative')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Applied Tickets */}
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-indigo-100 rounded-lg">
+                    <Ticket className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Applied Tickets</p>
+                    <p className="text-lg font-semibold text-gray-900">{appliedTickets}</p>
+                  </div>
+                </div>
+
+                {/* Lottery Participations */}
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <Trophy className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Lottery Entries</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {profile.drawParticipations.length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Wins */}
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-100 rounded-lg">
+                    <Trophy className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Wins</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {profile.drawParticipations.filter(p => p.isWinner).length}
                     </p>
                   </div>
                 </div>

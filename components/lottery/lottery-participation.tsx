@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 
 interface LotteryParticipationProps {
-  availableTickets: number;
+  appliedTickets: number;
   draw: {
     id: string;
     drawDate: string;
@@ -49,7 +49,7 @@ interface LotteryParticipationProps {
 }
 
 export const LotteryParticipation = ({
-  availableTickets,
+  appliedTickets,
   draw,
   userParticipation,
   onParticipationUpdate,
@@ -74,7 +74,7 @@ export const LotteryParticipation = ({
   const updateTickets = (increment: boolean) => {
     const current = form.getValues("ticketsToUse");
     const newValue = increment ? current + 1 : current - 1;
-    const maxTickets = Math.min(availableTickets, 1000);
+    const maxTickets = Math.min(appliedTickets, 1000);
     
     if (newValue >= 1 && newValue <= maxTickets) {
       form.setValue("ticketsToUse", newValue);
@@ -93,8 +93,8 @@ export const LotteryParticipation = ({
       return;
     }
     
-    if (values.ticketsToUse > availableTickets) {
-      setError(`You only have ${availableTickets} tickets available.`);
+    if (values.ticketsToUse > appliedTickets) {
+      setError(`You only have ${appliedTickets} tickets available.`);
       return;
     }
     
@@ -130,7 +130,7 @@ export const LotteryParticipation = ({
     });
   };
 
-  if (availableTickets === 0) {
+  if (appliedTickets === 0) {
     return (
       <Card className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200">
         <CardContent className="p-8 text-center">
@@ -251,10 +251,10 @@ export const LotteryParticipation = ({
                               {...field}
                               type="number"
                               min={1}
-                              max={Math.min(availableTickets, 1000)}
+                              max={Math.min(appliedTickets, 1000)}
                               onChange={(e) => {
                                 const value = parseInt(e.target.value) || 1;
-                                const maxValue = Math.min(availableTickets, 1000);
+                                const maxValue = Math.min(appliedTickets, 1000);
                                 field.onChange(Math.max(1, Math.min(value, maxValue)));
                               }}
                               className="text-center text-2xl font-bold w-24 h-16 border-2 border-blue-200 focus:border-blue-500"
@@ -270,7 +270,7 @@ export const LotteryParticipation = ({
                           variant="outline"
                           size="icon"
                           onClick={() => updateTickets(true)}
-                          disabled={field.value >= Math.min(availableTickets, 1000)}
+                          disabled={field.value >= Math.min(appliedTickets, 1000)}
                           className="h-12 w-12 rounded-full border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50"
                         >
                           <Plus className="h-5 w-5" />
@@ -279,10 +279,10 @@ export const LotteryParticipation = ({
                       
                       <div className="mt-4 text-center">
                         <p className="text-sm text-slate-600">
-                          Available tickets: <span className="font-semibold text-blue-600">{availableTickets}</span>
+                          Available tickets: <span className="font-semibold text-blue-600">{appliedTickets}</span>
                         </p>
                         <p className="text-sm text-slate-600">
-                          Tickets remaining after: <span className="font-semibold">{availableTickets - ticketsToUse}</span>
+                          Tickets remaining after: <span className="font-semibold">{appliedTickets - ticketsToUse}</span>
                         </p>
                       </div>
                       
@@ -298,7 +298,7 @@ export const LotteryParticipation = ({
               <div className="flex justify-center">
                 <Button
                   type="submit"
-                  disabled={ticketsToUse > availableTickets || ticketsToUse < 1}
+                  disabled={ticketsToUse > appliedTickets || ticketsToUse < 1}
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg min-w-[200px]"
                 >
                   <Ticket className="h-5 w-5 mr-2" />
@@ -315,7 +315,7 @@ export const LotteryParticipation = ({
         onClose={() => setShowConfirmation(false)}
         onConfirm={confirmParticipation}
         ticketsToUse={ticketsToUse}
-        availableTickets={availableTickets}
+        appliedTickets={appliedTickets}
         drawDate={drawDate}
         prizeAmount={draw.prizeAmount}
         isLoading={isPending}

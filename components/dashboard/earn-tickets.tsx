@@ -24,10 +24,10 @@ import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
 
 interface EarnTicketsProps {
   userId: string;
-  availableTickets: number;
+  appliedTickets: number;
 }
 
-export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
+export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
   const router = useRouter();
   const { data: session } = useSession();
   const [loading, setLoading] = useState<string | null>(null);
@@ -247,7 +247,7 @@ export const EarnTickets = ({ userId, availableTickets }: EarnTicketsProps) => {
   };
 
   const getStatusMessage = () => {
-    if (availableTickets === 0) {
+    if (appliedTickets === 0) {
       return "Start by completing your first survey to unlock more ways to earn tickets!";
     }
     return "Great! Keep going — every new ticket increases your chance to win!";
