@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { writeFile } from "fs/promises";
-import path from "path";
+import { uploadFileToR2, deleteFileFromR2, isR2Url, checkBucketAccess } from "@/lib/r2";
+import { db } from "@/lib/db";
 
+/**
+ * Profile Picture Upload API
+ * 
+ * This endpoint handles uploading profile pictures EXCLUSIVELY to Cloudflare R2 storage.
+ * It does NOT fall back to local storage.
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -28,42 +34,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File size must be less than 5MB" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // Check R2 bucket access
+    const bucketAccessible = await checkBucketAccess();
+    if (!bucketAccessible) {
+      return NextResponse.json({ 
+        error: "R2 bucket is not accessible",
+        message: "Please make sure the 'profile-pictures' bucket exists in your Cloudflare R2 dashboard and is properly configured."
+      }, { status: 500 });
+    }
 
-    // Create filename with timestamp and user ID for uniqueness
-    const timestamp = Date.now();
-    const fileExtension = path.extname(file.name);
-    const filename = `profile-${session.user.id}-${timestamp}${fileExtension}`;
-    
-    // Ensure the uploads directory exists
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    
-    try {
-      await writeFile(path.join(uploadsDir, filename), buffer);
-    } catch (error) {
-      // If directory doesn't exist, create it and try again
-      const fs = require('fs');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-        await writeFile(path.join(uploadsDir, filename), buffer);
-      } else {
-        throw error;
+    // Delete previous profile image from R2 if exists
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { profileImage: true }
+    });
+
+    if (user?.profileImage && isR2Url(user.profileImage)) {
+      try {
+        await deleteFileFromR2(user.profileImage);
+        console.log(`Deleted previous profile image from R2: ${user.profileImage}`);
+      } catch (error) {
+        // Log but continue if deletion fails
+        console.error("Error deleting previous profile image from R2:", error);
       }
     }
 
-    const imageUrl = `/uploads/${filename}`;
+    // Convert file to buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    
+    // Upload to Cloudflare R2 - no fallback to local storage
+    const imageUrl = await uploadFileToR2(
+      buffer,
+      session.user.id,
+      file.type
+    );
+    
+    console.log(`Successfully uploaded profile image to R2: ${imageUrl}`);
     
     return NextResponse.json({ 
       url: imageUrl,
-      filename: filename 
+      success: true,
+      storageMethod: "r2",
+      message: "Profile picture successfully uploaded to R2 storage"
     });
-
   } catch (error) {
-    console.error("Error uploading file:", error);
-    return NextResponse.json(
-      { error: "Internal server error" }, 
-      { status: 500 }
-    );
+    console.error("Error uploading profile picture to R2:", error);
+    
+    return NextResponse.json({ 
+      error: "Failed to upload profile picture to R2",
+      message: error instanceof Error ? error.message : "Unknown error",
+      details: "Please check your R2 configuration and bucket settings"
+    }, { 
+      status: 500 
+    });
   }
 } 

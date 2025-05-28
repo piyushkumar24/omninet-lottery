@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     const confirmationCode = nanoid(10);
     
     const result = await db.$transaction(async (tx) => {
-      // Create the survey ticket
+      // Create the survey ticket - always just ONE ticket
       const newTicket = await tx.ticket.create({
         data: {
           userId: user.id,
@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Always increment participation by exactly 1 ticket
       let totalUserTickets = 1;
       if (existingParticipation) {
         totalUserTickets = existingParticipation.ticketsUsed + 1;
@@ -134,13 +135,27 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Update draw total tickets
+      // Update draw total tickets - always increment by 1
       await tx.draw.update({
         where: { id: draw.id },
         data: {
           totalTickets: {
             increment: 1,
           },
+        },
+      });
+
+      // Log the exact award amount
+      await tx.settings.create({
+        data: {
+          key: `survey_ticket_${newTicket.id}`,
+          value: JSON.stringify({
+            userId: user.id,
+            ticketId: newTicket.id,
+            ticketCount: 1, // Always exactly 1
+            timestamp: new Date().toISOString(),
+          }),
+          description: "Survey completion ticket awarded - guaranteed 1 ticket",
         },
       });
 
@@ -151,19 +166,20 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    console.log('🎫 Manual survey completion ticket awarded:', {
+    console.log('🎫 Survey completion ticket awarded:', {
       userId: user.id,
       ticketId: result.ticketId,
       drawId: result.drawId,
+      ticketCount: 1 // Always exactly 1
     });
     
     return NextResponse.json({
       success: true,
-      message: "Survey completion ticket awarded",
+      message: "Survey completion ticket awarded - 1 ticket",
       data: result
     });
   } catch (error) {
-    console.error("Error processing manual survey completion:", error);
+    console.error("Error processing survey completion:", error);
     
     return new NextResponse(
       JSON.stringify({

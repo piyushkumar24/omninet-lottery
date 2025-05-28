@@ -7,6 +7,7 @@
 - Major languages: TypeScript
 - Framework: Next.js
 - Libraries: Prisma, Auth.js, React, Framer Motion
+- Storage: Cloudflare R2 for profile images
 
 ## Environment Variables
 
@@ -17,6 +18,34 @@ DATABASE_URL=""
 DIRECT_URL=http://localhost:3000
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 RESEND_API_KEY=""
+
+# Cloudflare R2 Storage (added automatically by setup script)
+R2_ACCESS_KEY_ID=""
+R2_SECRET_ACCESS_KEY=""
+R2_ENDPOINT=""
+R2_BUCKET_NAME="profile-pictures"
+R2_PUBLIC_URL=""
+
+## Cloudflare R2 Setup
+
+The application uses Cloudflare R2 for storing profile images. To set up:
+
+1. Run the R2 setup script:
+   ```
+   npm run setup:r2
+   ```
+
+2. This will automatically:
+   - Add R2 credentials to your `.env.local` file
+   - Create the bucket if it doesn't exist on first upload
+   - Configure CORS for the bucket
+
+3. To migrate from local uploads to R2:
+   ```
+   npm run cleanup:uploads
+   ```
+
+4. For more details, see the [Cloudflare R2 Setup Guide](docs/cloudflare-r2-setup.md)
 
 ## Homepage Implementation
 

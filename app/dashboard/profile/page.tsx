@@ -13,6 +13,8 @@ import { toast } from "react-hot-toast";
 import { Upload, Calendar, Trophy, Ticket, Edit2, Save, X, AlertTriangle, User } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getUserAppliedTickets } from "@/lib/ticket-utils";
+import { isR2Url } from "@/lib/r2";
+import { R2Image } from "@/components/ui/r2-image";
 
 interface DrawParticipation {
   id: string;
@@ -200,6 +202,18 @@ export default function ProfilePage() {
     setIsEditing(false);
   };
 
+  const getProfileImageUrl = (url: string | null | undefined) => {
+    if (!url) return getRandomProfileImage();
+    
+    // Handle Cloudflare R2 URLs directly
+    if (isR2Url(url)) {
+      return url;
+    }
+    
+    // Handle local uploads or other URLs
+    return url;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
@@ -226,7 +240,7 @@ export default function ProfilePage() {
     );
   }
 
-  const profileImageUrl = profile.profileImage || getRandomProfileImage();
+  const profileImageUrl = getProfileImageUrl(profile.profileImage);
   const isDefaultImage = !profile.profileImage;
 
   return (
@@ -297,14 +311,21 @@ export default function ProfilePage() {
                   <div className="flex flex-col items-center space-y-6 lg:min-w-0 lg:flex-shrink-0">
                     <div className="relative">
                       <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
-                        <AvatarImage 
-                          src={isEditing ? editForm.profileImage : profileImageUrl} 
-                          alt="Profile" 
-                          className="object-cover"
-                        />
-                        <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700">
-                          {profile.name?.charAt(0) || "U"}
-                        </AvatarFallback>
+                        {(isEditing ? editForm.profileImage : profileImageUrl) ? (
+                          <div className="w-full h-full">
+                            <R2Image 
+                              src={isEditing ? editForm.profileImage : profileImageUrl} 
+                              alt="Profile"
+                              width={128}
+                              height={128}
+                              className="object-cover w-full h-full"
+                            />
+                          </div>
+                        ) : (
+                          <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700">
+                            {profile.name?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                       {isDefaultImage && !isEditing && (
                         <div className="absolute -bottom-2 -right-2 bg-red-500 text-white p-2 rounded-full shadow-lg">
