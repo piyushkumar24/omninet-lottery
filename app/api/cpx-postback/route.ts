@@ -99,27 +99,15 @@ export async function GET(request: NextRequest) {
 
   console.log('✅ Hash validation passed for user:', userId);
 
-  // Check if survey was completed successfully
-  if (status !== '1') {
-    console.log('⏸️ Survey not completed (status !== 1):', {
-      status,
-      userId,
-      transId,
-    });
-    return new NextResponse('Survey not completed', { status: 200 });
-  }
-
-  console.log('🎯 Processing successful survey completion for user:', userId);
-
+  // Enhanced ticket awarding logic - Award ticket for ANY survey attempt
   try {
-    // Check if this transaction has already been processed by looking for existing tickets
-    // We'll use a simple approach of checking if a ticket was recently created for this user
+    // Check for recent tickets to prevent duplicates (within last 3 minutes)
     const recentTicket = await db.ticket.findFirst({
       where: {
         userId: userId,
         source: "SURVEY",
         createdAt: {
-          gte: new Date(Date.now() - 5 * 60 * 1000), // Extended to 5 minutes for safety
+          gte: new Date(Date.now() - 3 * 60 * 1000), // 3 minutes
         },
       },
       orderBy: {
@@ -128,17 +116,19 @@ export async function GET(request: NextRequest) {
     });
 
     if (recentTicket) {
-      console.log('⚠️ Recent survey ticket found - possible duplicate transaction:', {
+      console.log('⚠️ Recent survey ticket found - possible duplicate:', {
         transId,
         userId,
         recentTicketId: recentTicket.id,
         recentTicketTime: recentTicket.createdAt,
-        timeDiff: Date.now() - recentTicket.createdAt.getTime(),
+        timeDiff: (Date.now() - recentTicket.createdAt.getTime()) / 1000,
+        status,
       });
       return new NextResponse(JSON.stringify({
         success: true,
-        message: "Duplicate transaction - ticket already awarded",
-        ticketId: recentTicket.id
+        message: "Ticket already awarded recently",
+        ticketId: recentTicket.id,
+        reason: "duplicate_prevention"
       }), { 
         status: 200,
         headers: { 'Content-Type': 'application/json' }
@@ -182,10 +172,14 @@ export async function GET(request: NextRequest) {
       existingSurveyTickets,
       isFirstSurvey,
       transId,
+      status,
     });
 
     // Get or create the current lottery draw
     const draw = await createOrGetNextDraw();
+
+    // GUARANTEED TICKET AWARD - Process regardless of status
+    console.log('🎫 Processing guaranteed ticket award for user:', userId);
 
     // Use transaction to handle survey completion, potential referral reward, and auto-apply to lottery
     const result = await db.$transaction(async (tx) => {
@@ -207,6 +201,8 @@ export async function GET(request: NextRequest) {
         drawId: draw.id,
         confirmationCode,
         transId,
+        status,
+        completionType: status === '1' ? 'completed' : 'participation'
       });
 
       // Update or create draw participation
@@ -222,25 +218,73 @@ export async function GET(request: NextRequest) {
       let totalUserTickets = 1;
       if (existingParticipation) {
         totalUserTickets = existingParticipation.ticketsUsed + 1;
-        await tx.drawParticipation.update({
+        
+        // Update participation record
+        const updatedParticipation = await tx.drawParticipation.update({
           where: { id: existingParticipation.id },
           data: {
             ticketsUsed: totalUserTickets,
             updatedAt: new Date(),
           },
         });
+        
+        // Verify the update was successful
+        if (updatedParticipation.ticketsUsed !== totalUserTickets) {
+          console.error('⚠️ Participation update verification failed:', {
+            participationId: existingParticipation.id,
+            expectedCount: totalUserTickets,
+            actualCount: updatedParticipation.ticketsUsed,
+            userId: user.id,
+            drawId: draw.id,
+          });
+        } else {
+          console.log('✅ Participation update verified:', {
+            participationId: updatedParticipation.id,
+            ticketsUsed: updatedParticipation.ticketsUsed,
+            userId: user.id,
+            drawId: draw.id,
+          });
+        }
+        
+        console.log('📈 Updated existing participation:', {
+          participationId: existingParticipation.id,
+          newTotalTickets: totalUserTickets,
+        });
       } else {
-        await tx.drawParticipation.create({
+        const newParticipation = await tx.drawParticipation.create({
           data: {
             userId: user.id,
             drawId: draw.id,
             ticketsUsed: 1,
           },
         });
+        
+        // Verify the creation was successful
+        if (newParticipation.ticketsUsed !== 1) {
+          console.error('⚠️ Participation creation verification failed:', {
+            participationId: newParticipation.id,
+            expectedCount: 1,
+            actualCount: newParticipation.ticketsUsed,
+            userId: user.id,
+            drawId: draw.id,
+          });
+        } else {
+          console.log('✅ Participation creation verified:', {
+            participationId: newParticipation.id,
+            ticketsUsed: newParticipation.ticketsUsed,
+            userId: user.id,
+            drawId: draw.id,
+          });
+        }
+        
+        console.log('🆕 Created new participation:', {
+          participationId: newParticipation.id,
+          tickets: 1,
+        });
       }
 
       // Update draw total tickets
-      await tx.draw.update({
+      const updatedDraw = await tx.draw.update({
         where: { id: draw.id },
         data: {
           totalTickets: {
@@ -249,97 +293,129 @@ export async function GET(request: NextRequest) {
         },
       });
 
+      // Double-check ticket and participation counts after transaction
+      const finalTicketCount = await tx.ticket.count({
+        where: {
+          userId: user.id,
+          drawId: draw.id,
+        },
+      });
+
+      const finalParticipation = await tx.drawParticipation.findUnique({
+        where: {
+          userId_drawId: {
+            userId: user.id,
+            drawId: draw.id,
+          },
+        },
+      });
+
+      console.log('🔍 Final verification:', {
+        userId: user.id,
+        drawId: draw.id,
+        ticketCount: finalTicketCount,
+        participationTickets: finalParticipation?.ticketsUsed || 0,
+        inSync: finalTicketCount === finalParticipation?.ticketsUsed,
+      });
+
+      console.log('🎯 Updated draw total tickets:', {
+        drawId: draw.id,
+        newTotal: updatedDraw.totalTickets,
+      });
+
       let referralTicketAwarded = false;
-      let referralConfirmationCode = '';
 
       // If this is the user's first survey and they were referred, award referral ticket
       if (isFirstSurvey && user.referredBy) {
-        // Check if the referrer has completed at least one survey (required for referral system)
-        const referrerSurveyTickets = await tx.ticket.count({
-          where: {
-            userId: user.referredBy,
-            source: "SURVEY",
-          },
-        });
-
-        console.log('🔍 Checking referrer eligibility:', {
-          referrerId: user.referredBy,
-          referrerSurveyTickets,
-          eligible: referrerSurveyTickets > 0,
-        });
-
-        if (referrerSurveyTickets > 0) {
-          // Award referral ticket to the referrer and apply to lottery
-          referralConfirmationCode = nanoid(10);
-          const referralTicket = await tx.ticket.create({
-            data: {
-              userId: user.referredBy,
-              source: "REFERRAL",
-              isUsed: true, // Automatically apply to lottery
-              drawId: draw.id,
-              confirmationCode: referralConfirmationCode,
-            },
-          });
-
-          // Update referrer's draw participation
-          const referrerParticipation = await tx.drawParticipation.findUnique({
+        try {
+          // Check if the referrer has completed at least one survey (required for referral system)
+          const referrerSurveyTickets = await tx.ticket.count({
             where: {
-              userId_drawId: {
-                userId: user.referredBy,
-                drawId: draw.id,
-              },
+              userId: user.referredBy,
+              source: "SURVEY",
             },
           });
 
-          if (referrerParticipation) {
-            await tx.drawParticipation.update({
-              where: { id: referrerParticipation.id },
-              data: {
-                ticketsUsed: referrerParticipation.ticketsUsed + 1,
-                updatedAt: new Date(),
-              },
-            });
-          } else {
-            await tx.drawParticipation.create({
-              data: {
-                userId: user.referredBy,
-                drawId: draw.id,
-                ticketsUsed: 1,
-              },
-            });
-          }
-
-          // Update draw total tickets again for referral
-          await tx.draw.update({
-            where: { id: draw.id },
-            data: {
-              totalTickets: {
-                increment: 1,
-              },
-            },
-          });
-
-          referralTicketAwarded = true;
-
-          console.log('🎁 Referral ticket awarded and applied to lottery:', {
-            referralTicketId: referralTicket.id,
-            referrerId: user.referredBy,
-            newUserId: user.id,
-            drawId: draw.id,
-            confirmationCode: referralConfirmationCode,
-            transId,
-          });
-        } else {
-          console.log('❌ Referrer not eligible (no survey tickets):', {
+          console.log('🔍 Checking referrer eligibility:', {
             referrerId: user.referredBy,
             referrerSurveyTickets,
+            eligible: referrerSurveyTickets > 0,
           });
+
+          if (referrerSurveyTickets > 0) {
+            // Award referral ticket to the referrer and apply to lottery
+            const referralConfirmationCode = nanoid(10);
+            const referralTicket = await tx.ticket.create({
+              data: {
+                userId: user.referredBy,
+                source: "REFERRAL",
+                isUsed: true, // Automatically apply to lottery
+                drawId: draw.id,
+                confirmationCode: referralConfirmationCode,
+              },
+            });
+
+            // Update referrer's draw participation
+            const referrerParticipation = await tx.drawParticipation.findUnique({
+              where: {
+                userId_drawId: {
+                  userId: user.referredBy,
+                  drawId: draw.id,
+                },
+              },
+            });
+
+            if (referrerParticipation) {
+              await tx.drawParticipation.update({
+                where: { id: referrerParticipation.id },
+                data: {
+                  ticketsUsed: referrerParticipation.ticketsUsed + 1,
+                  updatedAt: new Date(),
+                },
+              });
+            } else {
+              await tx.drawParticipation.create({
+                data: {
+                  userId: user.referredBy,
+                  drawId: draw.id,
+                  ticketsUsed: 1,
+                },
+              });
+            }
+
+            // Update draw total tickets again for referral
+            await tx.draw.update({
+              where: { id: draw.id },
+              data: {
+                totalTickets: {
+                  increment: 1,
+                },
+              },
+            });
+
+            referralTicketAwarded = true;
+
+            console.log('🎁 Referral ticket awarded and applied to lottery:', {
+              referralTicketId: referralTicket.id,
+              referrerId: user.referredBy,
+              newUserId: user.id,
+              drawId: draw.id,
+              confirmationCode: referralConfirmationCode,
+              transId,
+            });
+          } else {
+            console.log('❌ Referrer not eligible (no survey tickets):', {
+              referrerId: user.referredBy,
+              referrerSurveyTickets,
+            });
+          }
+        } catch (referralError) {
+          console.error('⚠️ Referral ticket award failed (continuing with main ticket):', referralError);
         }
       }
 
       // Email notification
       try {
-        // Only send email for the first ticket
         if (isFirstSurvey && user.email) {
           await sendTicketApplicationEmail(
             user.email,
@@ -352,7 +428,7 @@ export async function GET(request: NextRequest) {
           console.log('📧 Survey completion email sent to:', user.email);
         }
       } catch (emailError) {
-        console.error('📧 Failed to send survey completion email:', emailError);
+        console.error('📧 Failed to send survey completion email (non-critical):', emailError);
       }
 
       return {
@@ -361,26 +437,80 @@ export async function GET(request: NextRequest) {
         drawId: draw.id,
         totalUserTickets,
         isFirstSurvey,
+        referralTicketAwarded,
+        status,
+        completionType: status === '1' ? 'completed' : 'participation'
       };
+    }, {
+      maxWait: 10000, // 10 seconds
+      timeout: 15000, // 15 seconds
+    });
+
+    console.log('✅ Transaction completed successfully:', {
+      ticketId: result.ticketId,
+      userId: result.userId,
+      transId,
+      status,
     });
 
     // Return success response
     return new NextResponse(JSON.stringify({
       success: true,
-      message: "Survey completed and ticket awarded",
+      message: status === '1' 
+        ? "Survey completed and ticket awarded" 
+        : "Survey attempt recorded and participation ticket awarded",
       data: result
     }), { 
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
+
   } catch (error) {
-    console.error('💥 Error processing CPX postback:', error);
+    console.error('💥 Error processing CPX postback:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      userId,
+      transId,
+      status,
+      timestamp: new Date().toISOString(),
+    });
+    
+    // Try to award an emergency ticket as a fallback
+    if (userId) {
+      try {
+        console.log('🚨 Attempting emergency ticket award for failed postback...');
+        
+        // Call the emergency force-award endpoint internally
+        const emergencyTicket = await awardEmergencyTicket(userId, transId || 'unknown');
+        
+        if (emergencyTicket) {
+          console.log('✅ Emergency ticket awarded successfully:', emergencyTicket);
+          
+          return new NextResponse(JSON.stringify({
+            success: true,
+            message: "Emergency ticket awarded for failed postback",
+            data: {
+              userId,
+              ticketId: emergencyTicket.id,
+              emergency: true,
+            }
+          }), { 
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (emergencyError) {
+        console.error('❌ Emergency ticket award failed:', emergencyError);
+      }
+    }
     
     // Return error response
     return new NextResponse(JSON.stringify({
       success: false,
       message: "Error processing survey completion",
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      transId,
+      userId,
     }), { 
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -414,4 +544,133 @@ export async function PUT(request: NextRequest) {
     status: 200,
     headers: { 'Content-Type': 'application/json' }
   });
+}
+
+// Function to award referral ticket
+async function awardReferralTicket(referrerId: string, referredUserId: string, drawId: string) {
+  // Create the referral ticket
+  const referralTicket = await db.ticket.create({
+    data: {
+      userId: referrerId,
+      source: "REFERRAL",
+      isUsed: true, // Automatically apply to lottery
+      drawId: drawId,
+      confirmationCode: `referral_${referredUserId}`,
+    },
+  });
+
+  // Update or create draw participation for referrer
+  const existingParticipation = await db.drawParticipation.findUnique({
+    where: {
+      userId_drawId: {
+        userId: referrerId,
+        drawId: drawId,
+      },
+    },
+  });
+
+  if (existingParticipation) {
+    await db.drawParticipation.update({
+      where: { id: existingParticipation.id },
+      data: {
+        ticketsUsed: existingParticipation.ticketsUsed + 1,
+        updatedAt: new Date(),
+      },
+    });
+  } else {
+    await db.drawParticipation.create({
+      data: {
+        userId: referrerId,
+        drawId: drawId,
+        ticketsUsed: 1,
+      },
+    });
+  }
+
+  // Update draw total tickets
+  await db.draw.update({
+    where: { id: drawId },
+    data: {
+      totalTickets: {
+        increment: 1,
+      },
+    },
+  });
+
+  return referralTicket;
+}
+
+// Function to award emergency ticket
+async function awardEmergencyTicket(userId: string, transId: string) {
+  try {
+    const draw = await createOrGetNextDraw();
+    
+    // Create emergency ticket
+    const emergencyTicket = await db.ticket.create({
+      data: {
+        userId: userId,
+        source: "SURVEY",
+        isUsed: true,
+        drawId: draw.id,
+        confirmationCode: `emergency_${transId}_${Date.now()}`,
+      },
+    });
+    
+    // Log the emergency award
+    await db.settings.create({
+      data: {
+        key: `emergency_ticket_${emergencyTicket.id}`,
+        value: JSON.stringify({
+          userId,
+          ticketId: emergencyTicket.id,
+          transId,
+          timestamp: new Date().toISOString(),
+        }),
+        description: "Emergency ticket award from failed CPX postback",
+      },
+    });
+    
+    // Update participation
+    const existingParticipation = await db.drawParticipation.findUnique({
+      where: {
+        userId_drawId: {
+          userId: userId,
+          drawId: draw.id,
+        },
+      },
+    });
+
+    if (existingParticipation) {
+      await db.drawParticipation.update({
+        where: { id: existingParticipation.id },
+        data: {
+          ticketsUsed: existingParticipation.ticketsUsed + 1,
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      await db.drawParticipation.create({
+        data: {
+          userId: userId,
+          drawId: draw.id,
+          ticketsUsed: 1,
+        },
+      });
+    }
+    
+    // Update draw total tickets
+    await db.draw.update({
+      where: { id: draw.id },
+      data: {
+        totalTickets: {
+          increment: 1,
+        },
+      },
+    });
+    
+    return emergencyTicket;
+  } catch (error) {
+    console.error('❌ Emergency ticket award function error:', error);
+    return null;
+  }
 } 

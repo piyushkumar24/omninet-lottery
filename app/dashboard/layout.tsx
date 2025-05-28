@@ -1,12 +1,17 @@
 import { Toaster } from "react-hot-toast";
 import { Navbar } from "@/components/dashboard/navbar";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { getCurrentUser } from "@/lib/auth";
+import { CPXNotification } from "@/components/dashboard/cpx-notification";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children
 }: {
   children: React.ReactNode;
 }) {
+  // Get current user for CPX notification
+  const user = await getCurrentUser();
+  
   return (
     <div className="h-full bg-slate-100">
       <Navbar />
@@ -39,6 +44,16 @@ export default function DashboardLayout({
             },
           }}
         />
+        {user && (
+          <CPXNotification 
+            key={`cpx-notification-${user.id}`}
+            user={{
+              id: user.id,
+              name: user.name,
+              email: user.email
+            }} 
+          />
+        )}
         {children}
       </main>
     </div>

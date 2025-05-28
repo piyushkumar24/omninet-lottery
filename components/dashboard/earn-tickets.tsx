@@ -83,6 +83,12 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
     
     // Refresh the page data to show updated ticket count
     router.refresh();
+    
+    // After a small delay, verify the ticket was actually added by forcing a complete refresh
+    setTimeout(() => {
+      router.refresh();
+    }, 2000);
+    
     // Refresh user status to check if this was their first survey
     checkUserStatus();
   };
@@ -269,31 +275,94 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Method 1: Complete Survey - Now with CPX Integration */}
-          <Card className="relative overflow-hidden border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+          {/* Method 1: Complete Survey - Now with Guaranteed Ticket System */}
+          <Card className="relative overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
             <CardContent className="pt-6">
               <div className="flex items-center mb-4">
-                <div className="bg-green-100 p-3 rounded-full mr-4">
-                  <ClipboardList className="h-6 w-6 text-green-600" />
+                <div className="bg-blue-100 p-3 rounded-full mr-4">
+                  <ClipboardList className="h-6 w-6 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-lg text-green-800">Complete a Survey</h3>
-                  <p className="text-sm text-green-700">Answer a quick survey and get 1 ticket instantly</p>
+                  <h3 className="font-bold text-lg text-blue-800">Complete a Survey</h3>
+                  <p className="text-sm text-blue-700">Get 1 ticket for sharing your opinion</p>
                 </div>
               </div>
               
-              <div className="mb-4">
-                <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300">
+              <div className="mb-4 space-y-2">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
+                  🎫 1 Ticket Reward
+                </Badge>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
                   Repeatable
                 </Badge>
               </div>
               
               {userData ? (
-                <CPXSurveyModal 
-                  user={userData}
-                  onSurveyComplete={handleSurveyComplete}
-                  isLoading={loading === "SURVEY"}
-                />
+                <>
+                  <CPXSurveyModal 
+                    user={userData}
+                    onSurveyComplete={handleSurveyComplete}
+                    isLoading={loading === "SURVEY"}
+                  />
+                  
+                  {/* Emergency Fix: Force Award Button - Only show after survey completion */}
+                  {hasSurveyTicket && appliedTickets === 0 && (
+                    <div className="mt-3 pt-3 border-t border-blue-100">
+                      <button
+                        onClick={async () => {
+                          try {
+                            setLoading("FORCE_AWARD");
+                            const response = await fetch('/api/tickets/force-award', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                            });
+                            
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                              toast.success("🎫 Ticket manually awarded!", {
+                                duration: 5000,
+                                icon: "🎯",
+                                style: {
+                                  border: '2px solid #3b82f6',
+                                  padding: '16px',
+                                  fontSize: '14px',
+                                },
+                              });
+                              
+                              // Force refresh to update ticket count
+                              router.refresh();
+                              
+                              // After a delay, force another refresh
+                              setTimeout(() => {
+                                router.refresh();
+                                // Check user status
+                                checkUserStatus();
+                              }, 2000);
+                            } else {
+                              toast.error("Failed to award ticket: " + data.message, {
+                                duration: 4000,
+                              });
+                            }
+                          } catch (error) {
+                            console.error("Error with force award:", error);
+                            toast.error("Error awarding ticket", {
+                              duration: 4000,
+                            });
+                          } finally {
+                            setLoading(null);
+                          }
+                        }}
+                        disabled={loading === "FORCE_AWARD"}
+                        className="w-full py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md border border-blue-200"
+                      >
+                        {loading === "FORCE_AWARD" ? "Processing..." : "Ticket not showing? Click here"}
+                      </button>
+                    </div>
+                  )}
+                </>
               ) : (
                 <Button 
                   disabled

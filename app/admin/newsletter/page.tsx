@@ -178,7 +178,7 @@ export default async function NewsletterPage() {
 
       {/* Newsletter Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-indigo-600" />
@@ -224,31 +224,6 @@ export default async function NewsletterPage() {
                   <p className="text-2xl font-bold text-purple-700">{recentSubscribers}</p>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="p-3 bg-blue-50 rounded-lg text-center">
-              <Mail className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-blue-800">Send Newsletter</p>
-              <p className="text-xs text-blue-600 mt-1">Coming Soon</p>
-            </div>
-            
-            <div className="p-3 bg-green-50 rounded-lg text-center">
-              <Users className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-green-800">Export List</p>
-              <p className="text-xs text-green-600 mt-1">Coming Soon</p>
-            </div>
-            
-            <div className="p-3 bg-purple-50 rounded-lg text-center">
-              <TrendingUp className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-purple-800">Analytics</p>
-              <p className="text-xs text-purple-600 mt-1">View Details</p>
             </div>
           </CardContent>
         </Card>

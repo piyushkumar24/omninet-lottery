@@ -110,3 +110,20 @@ body,
     backdrop-filter: blur(8px);
   }
 }
+
+/* CPX Notification styles */
+.cpx-notification-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: block;
+  width: auto;
+  height: auto;
+}
+
+#notification {
+  display: block;
+  min-width: 50px;
+  min-height: 50px;
+}

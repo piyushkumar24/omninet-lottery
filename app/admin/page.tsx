@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { initializeDefaultSettings } from "@/lib/settings";
+import { getCurrentDrawWithAccurateTickets } from "@/lib/draw-utils";
 
 // Mark this page as dynamically rendered to avoid the headers() warning
 export const dynamic = 'force-dynamic';
@@ -45,7 +46,6 @@ export default async function AdminPage() {
       totalWinners,
       unclaimedPrizes,
       recentWinners,
-      activeDraw,
       newsletterSubscribers
     ] = await Promise.allSettled([
       // Total users
@@ -93,19 +93,6 @@ export default async function AdminPage() {
         }
       }),
       
-      // Active draw
-      db.draw.findFirst({
-        where: {
-          status: "PENDING",
-          drawDate: {
-            gte: new Date()
-          }
-        },
-        include: {
-          participants: true
-        }
-      }),
-      
       // Newsletter subscribers count
       db.user.count({
         where: {
@@ -122,8 +109,15 @@ export default async function AdminPage() {
     const totalWinnersCount = totalWinners.status === 'fulfilled' ? totalWinners.value : 0;
     const unclaimedPrizesCount = unclaimedPrizes.status === 'fulfilled' ? unclaimedPrizes.value : 0;
     const recentWinnersList = recentWinners.status === 'fulfilled' ? recentWinners.value : [];
-    const activeDrawData = activeDraw.status === 'fulfilled' ? activeDraw.value : null;
     const newsletterSubscribersCount = newsletterSubscribers.status === 'fulfilled' ? newsletterSubscribers.value : 0;
+
+    // Get active draw with accurate ticket count using the utility function
+    const activeDraw = await getCurrentDrawWithAccurateTickets();
+
+    // Get participants information
+    const participants = activeDraw ? await db.drawParticipation.findMany({
+      where: { drawId: activeDraw.id },
+    }) : [];
 
     // Calculate total prize amount with error handling
     let totalPrizeAmount = 0;
@@ -137,6 +131,12 @@ export default async function AdminPage() {
     } catch (error) {
       console.error("Error calculating total prize amount:", error);
     }
+
+    // Prepare active draw data with participants information
+    const activeDrawData = activeDraw ? {
+      ...activeDraw,
+      participants: participants
+    } : null;
 
     return (
       <div className="p-6 space-y-6">

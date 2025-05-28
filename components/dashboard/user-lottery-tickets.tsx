@@ -3,6 +3,8 @@
 import { Ticket, CheckCircle2, Trophy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { TicketDebug } from "@/components/dashboard/ticket-debug";
+import { useState, useEffect } from "react";
 
 interface UserLotteryTicketsProps {
   userId: string;
@@ -11,6 +13,7 @@ interface UserLotteryTicketsProps {
     ticketsUsed: number;
   } | null;
   drawId: string;
+  surveyCompleted?: boolean;
 }
 
 export const UserLotteryTickets = ({
@@ -18,8 +21,11 @@ export const UserLotteryTickets = ({
   appliedTickets,
   userParticipation,
   drawId,
+  surveyCompleted = false,
 }: UserLotteryTicketsProps) => {
   const participationTickets = userParticipation?.ticketsUsed || 0;
+  const [showDebug, setShowDebug] = useState(false);
+  const [hasDiscrepancy, setHasDiscrepancy] = useState(false);
 
   // Calculate win probability percentage (assuming total tickets in draw is around 100)
   // This is just an estimate for display purposes
@@ -30,6 +36,32 @@ export const UserLotteryTickets = ({
   
   // Format probability with 2 decimal places
   const formattedProbability = winProbability.toFixed(2);
+
+  // Check for ticket discrepancy if survey was just completed
+  useEffect(() => {
+    if (surveyCompleted) {
+      checkForDiscrepancy();
+    }
+  }, [surveyCompleted]);
+
+  const checkForDiscrepancy = async () => {
+    try {
+      const response = await fetch(`/api/tickets/verify-all?t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setHasDiscrepancy(data.data.hasDiscrepancy);
+        setShowDebug(data.data.hasDiscrepancy);
+      }
+    } catch (err) {
+      console.error("Error checking for ticket discrepancy:", err);
+    }
+  };
 
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
@@ -90,6 +122,23 @@ export const UserLotteryTickets = ({
             ? "You have 1 entry in this week's lottery. Good luck! 🍀"
             : `You have ${appliedTickets} entries in this week's lottery. Good luck! 🍀`}
         </div>
+        
+        {/* Show ticket debug only if needed (survey completed and has discrepancy) or manually toggled */}
+        {(showDebug || (surveyCompleted && hasDiscrepancy)) && (
+          <TicketDebug userId={userId} initialTicketCount={appliedTickets} />
+        )}
+        
+        {/* Show a "Ticket not showing?" button when survey is completed but no discrepancy detected */}
+        {surveyCompleted && !hasDiscrepancy && appliedTickets === 0 && (
+          <div className="mt-2">
+            <button 
+              onClick={() => setShowDebug(true)} 
+              className="w-full py-2 px-3 text-sm text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+            >
+              Ticket not showing? Click here
+            </button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

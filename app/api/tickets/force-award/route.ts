@@ -5,51 +5,11 @@ import { createOrGetNextDraw } from "@/data/draw";
 import { nanoid } from "nanoid";
 
 /**
- * Survey Completion Verification Endpoint
+ * Force Ticket Award Endpoint (Bypass duplicate check)
  * 
- * This endpoint can be called from the frontend to verify if a user
- * recently completed a survey (useful for showing completion messages)
- */
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getCurrentUser();
-    
-    if (!user || !user.id) {
-      return new NextResponse(
-        JSON.stringify({
-          success: false,
-          message: "Unauthorized",
-        }),
-        { status: 401 }
-      );
-    }
-
-    // This endpoint can be used for additional verification if needed
-    // For now, we'll just return success since the survey completion
-    // is handled by the CPX postback endpoint
-    
-    return NextResponse.json({
-      success: true,
-      message: "Survey completion check successful",
-    });
-  } catch (error) {
-    console.error("Error checking survey completion:", error);
-    
-    return new NextResponse(
-      JSON.stringify({
-        success: false,
-        message: "Internal error",
-      }),
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * Manual Survey Completion Handler
- * 
- * This can be used as a fallback if the postback fails
- * or for testing purposes
+ * This endpoint is specifically designed to bypass the duplicate ticket check
+ * and force award a ticket to the current user, even if they recently received one.
+ * This is useful when tickets aren't showing up in the dashboard.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -65,35 +25,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already has a recent survey ticket (within last 5 minutes)
-    const recentTicket = await db.ticket.findFirst({
-      where: {
-        userId: user.id,
-        source: "SURVEY",
-        createdAt: {
-          gte: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    if (recentTicket) {
-      console.log('Recent survey ticket already exists for user:', user.id);
-      return NextResponse.json({
-        success: true,
-        message: "Ticket already awarded recently",
-        ticketId: recentTicket.id
-      });
-    }
-
-    // Award survey completion ticket
+    // Get or create the next lottery draw
     const draw = await createOrGetNextDraw();
     const confirmationCode = nanoid(10);
     
+    // Award ticket directly without duplicate checking
     const result = await db.$transaction(async (tx) => {
-      // Create the survey ticket
+      // Create the ticket
       const newTicket = await tx.ticket.create({
         data: {
           userId: user.id,
@@ -144,6 +82,20 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Log this force award
+      await tx.settings.create({
+        data: {
+          key: `emergency_force_award_${newTicket.id}`,
+          value: JSON.stringify({
+            userId: user.id,
+            ticketId: newTicket.id,
+            reason: "manual_force_award",
+            timestamp: new Date().toISOString(),
+          }),
+          description: "Emergency forced ticket award due to ticket not showing up",
+        },
+      });
+
       return {
         ticketId: newTicket.id,
         drawId: draw.id,
@@ -151,19 +103,20 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    console.log('🎫 Manual survey completion ticket awarded:', {
+    console.log('🚨 Emergency force ticket awarded:', {
       userId: user.id,
       ticketId: result.ticketId,
       drawId: result.drawId,
+      timestamp: new Date().toISOString(),
     });
     
     return NextResponse.json({
       success: true,
-      message: "Survey completion ticket awarded",
-      data: result
+      message: "Emergency force ticket awarded successfully",
+      data: result,
     });
   } catch (error) {
-    console.error("Error processing manual survey completion:", error);
+    console.error("Error in emergency force ticket award:", error);
     
     return new NextResponse(
       JSON.stringify({

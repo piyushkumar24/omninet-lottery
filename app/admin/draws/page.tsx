@@ -7,6 +7,7 @@ import { ManualDrawForm } from "@/components/admin/manual-draw-form";
 import { ManualWinnerSelect } from "@/components/admin/manual-winner-select";
 import { Gift, Users, AlertTriangle, Calendar, Ticket } from "lucide-react";
 import { DrawStatus } from "@prisma/client";
+import { getCurrentDrawWithAccurateTickets } from "@/lib/draw-utils";
 
 export const metadata: Metadata = {
   title: "Draw Management | Admin Dashboard",
@@ -30,35 +31,26 @@ export default async function DrawsPage() {
     }
   });
 
-  // Get current active draw
-  const activeDraw = await db.draw.findFirst({
-    where: {
-      status: DrawStatus.PENDING,
-      drawDate: {
-        gte: new Date(),
-      },
-    },
+  // Get current active draw with accurate ticket count using utility function
+  const activeDraw = await getCurrentDrawWithAccurateTickets();
+
+  // Get participants for the active draw if it exists
+  const participants = activeDraw ? await db.drawParticipation.findMany({
+    where: { drawId: activeDraw.id },
     include: {
-      participants: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            },
-          },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
         },
       },
     },
-    orderBy: {
-      drawDate: 'asc',
-    },
-  });
+  }) : [];
 
   // Get participation statistics
-  const participantCount = activeDraw?.participants.length || 0;
+  const participantCount = participants.length || 0;
   const totalTicketsInDraw = activeDraw?.totalTickets || 0;
 
   // Get active tickets count (not in any draw)
@@ -82,14 +74,14 @@ export default async function DrawsPage() {
   }));
 
   // Format participants data for manual selection
-  const formattedParticipants = activeDraw?.participants.map(participant => ({
+  const formattedParticipants = participants.map(participant => ({
     id: participant.userId,
     name: participant.user.name,
     email: participant.user.email,
     image: participant.user.image,
     ticketsUsed: participant.ticketsUsed,
-    participatedAt: participant.participatedAt,
-  })) || [];
+    participatedAt: participant.createdAt,
+  }));
 
   const canRunDraw = participantCount > 0;
 

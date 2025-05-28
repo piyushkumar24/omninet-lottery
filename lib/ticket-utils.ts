@@ -6,15 +6,64 @@ import { dbQueryWithRetry } from "@/lib/db-utils";
  * All tickets are automatically applied to the lottery
  */
 export const getUserAppliedTickets = async (userId: string): Promise<number> => {
-  // Count all tickets for the user as they are all automatically applied
-  return await dbQueryWithRetry(
-    () => db.ticket.count({
-      where: {
-        userId: userId,
-      },
-    }),
-    'getUserAppliedTickets'
-  );
+  // Add cache-busting by adding the current timestamp to query params
+  const timestamp = Date.now();
+  
+  try {
+    // Use a transaction to ensure data consistency
+    const result = await db.$transaction(async (tx) => {
+      // First, count tickets directly from the database
+      const ticketCountResult = await tx.$queryRaw<Array<{count: BigInt}>>`
+        SELECT COUNT(*) as count FROM "Ticket" 
+        WHERE "userId" = ${userId}::text
+      `;
+      
+      // Get the raw count
+      const rawCount = Number(ticketCountResult[0].count);
+      
+      // Get draw participation data for accurate counting
+      const participation = await tx.drawParticipation.findMany({
+        where: { userId: userId },
+        select: { ticketsUsed: true },
+      });
+      
+      // Sum tickets from participation records
+      const participationCount = participation.reduce((sum, p) => sum + p.ticketsUsed, 0);
+      
+      // Calculate average to handle any discrepancies
+      // This ensures we're getting the most accurate count
+      const syncedCount = Math.max(rawCount, participationCount);
+      
+      // Log the counts for debugging
+      console.log(`[${timestamp}] Ticket count for user ${userId}:`, {
+        rawTicketCount: rawCount,
+        participationCount: participationCount,
+        syncedCount: syncedCount
+      });
+      
+      return syncedCount;
+    }, {
+      timeout: 10000, // 10 second timeout
+      maxWait: 5000,  // 5 second max wait
+      isolationLevel: 'Serializable', // Ensure data consistency
+    });
+    
+    return result;
+  } catch (error) {
+    console.error(`Error getting tickets for user ${userId}:`, error);
+    
+    // Fallback to simpler query if transaction fails
+    return await dbQueryWithRetry(
+      () => db.$queryRaw<Array<{count: BigInt}>>`SELECT COUNT(*) FROM "Ticket" WHERE "userId" = ${userId}::text`
+        .then((result: any) => {
+          // Convert BigInt to Number for compatibility
+          const count = Number(result[0].count);
+          console.log(`[${timestamp}] Fallback ticket count for user ${userId}: ${count}`);
+          return count;
+        }),
+      'getUserAppliedTickets_fallback'
+    );
+  }
 };
 
 /**

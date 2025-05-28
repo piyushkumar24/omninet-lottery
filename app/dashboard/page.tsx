@@ -13,17 +13,25 @@ import { UserLotteryTickets } from "@/components/dashboard/user-lottery-tickets"
 import { NextLotteryDraw } from "@/components/dashboard/next-lottery-draw";
 import { RecentWinners } from "@/components/dashboard/recent-winners";
 import { WinnerBanner } from "@/components/dashboard/winner-banner";
+import { unstable_noStore } from "next/cache";
 
 export const metadata: Metadata = {
   title: "Dashboard | 0mninet Lottery",
   description: "Your lottery dashboard",
 };
 
+// Disable caching for this page to ensure fresh ticket data
+export const dynamic = "force-dynamic";
+export const revalidate = 0; 
+
 interface DashboardPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  // Disable caching to ensure fresh data
+  unstable_noStore();
+  
   const user = await getCurrentUser();
   
   if (!user) {
@@ -61,6 +69,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     (new Date().getTime() - new Date(userWinner.drawDate).getTime()) < 7 * 24 * 60 * 60 * 1000;
 
   // If user is a winner, show 0 applied tickets, otherwise show actual count
+  // Add cache busting timestamp to ensure fresh data
   const appliedTickets = isRecentWinner ? 0 : await getUserAppliedTickets(user.id);
 
   // Get recent winners
@@ -148,6 +157,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   appliedTickets={appliedTickets}
                   userParticipation={userParticipation}
                   drawId={draw.id}
+                  surveyCompleted={surveyCompleted}
                 />
               </div>
               

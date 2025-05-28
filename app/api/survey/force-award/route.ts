@@ -5,51 +5,10 @@ import { createOrGetNextDraw } from "@/data/draw";
 import { nanoid } from "nanoid";
 
 /**
- * Survey Completion Verification Endpoint
+ * Force Ticket Award Endpoint
  * 
- * This endpoint can be called from the frontend to verify if a user
- * recently completed a survey (useful for showing completion messages)
- */
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getCurrentUser();
-    
-    if (!user || !user.id) {
-      return new NextResponse(
-        JSON.stringify({
-          success: false,
-          message: "Unauthorized",
-        }),
-        { status: 401 }
-      );
-    }
-
-    // This endpoint can be used for additional verification if needed
-    // For now, we'll just return success since the survey completion
-    // is handled by the CPX postback endpoint
-    
-    return NextResponse.json({
-      success: true,
-      message: "Survey completion check successful",
-    });
-  } catch (error) {
-    console.error("Error checking survey completion:", error);
-    
-    return new NextResponse(
-      JSON.stringify({
-        success: false,
-        message: "Internal error",
-      }),
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * Manual Survey Completion Handler
- * 
- * This can be used as a fallback if the postback fails
- * or for testing purposes
+ * This is a special endpoint for awarding tickets when surveys are not available
+ * or other award methods have failed.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -65,13 +24,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already has a recent survey ticket (within last 5 minutes)
+    // Extract reason from request if available
+    let reason = "no_surveys_available";
+    try {
+      const body = await request.json();
+      if (body && body.reason) {
+        reason = body.reason;
+      }
+    } catch (e) {
+      // If JSON parsing fails, use default reason
+    }
+
+    // Check if user already has a recent survey ticket (within last 3 minutes)
     const recentTicket = await db.ticket.findFirst({
       where: {
         userId: user.id,
         source: "SURVEY",
         createdAt: {
-          gte: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes
+          gte: new Date(Date.now() - 3 * 60 * 1000), // 3 minutes
         },
       },
       orderBy: {
@@ -84,11 +54,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Ticket already awarded recently",
-        ticketId: recentTicket.id
+        ticketId: recentTicket.id,
+        forceAward: false
       });
     }
 
-    // Award survey completion ticket
+    // Award force participation ticket
     const draw = await createOrGetNextDraw();
     const confirmationCode = nanoid(10);
     
@@ -144,26 +115,43 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Create a log entry for this force award
+      await tx.settings.create({
+        data: {
+          key: `force_award_${newTicket.id}`,
+          value: JSON.stringify({
+            userId: user.id,
+            ticketId: newTicket.id,
+            reason: reason,
+            timestamp: new Date().toISOString(),
+          }),
+          description: "Forced survey ticket award due to no surveys available",
+        },
+      });
+
       return {
         ticketId: newTicket.id,
         drawId: draw.id,
         totalUserTickets,
+        reason
       };
     });
 
-    console.log('🎫 Manual survey completion ticket awarded:', {
+    console.log('🎯 Force participation ticket awarded:', {
       userId: user.id,
       ticketId: result.ticketId,
       drawId: result.drawId,
+      reason
     });
     
     return NextResponse.json({
       success: true,
-      message: "Survey completion ticket awarded",
-      data: result
+      message: "Force participation ticket awarded",
+      data: result,
+      forceAward: true
     });
   } catch (error) {
-    console.error("Error processing manual survey completion:", error);
+    console.error("Error processing force ticket award:", error);
     
     return new NextResponse(
       JSON.stringify({
