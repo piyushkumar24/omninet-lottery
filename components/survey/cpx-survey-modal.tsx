@@ -37,7 +37,7 @@ interface CPXSurveyModalProps {
     name?: string | null;
     email?: string | null;
   };
-  onSurveyComplete?: () => void;
+  onSurveyComplete?: (success?: boolean) => void;
   isLoading?: boolean;
   disabled?: boolean;
 }
@@ -125,7 +125,7 @@ export const CPXSurveyModal = ({
         
         setTimeout(() => {
           if (onSurveyComplete) {
-            onSurveyComplete();
+            onSurveyComplete(true);
           }
           // Force refresh dashboard to show updated ticket count
           router.refresh();
@@ -160,7 +160,7 @@ export const CPXSurveyModal = ({
           
           setTimeout(() => {
             if (onSurveyComplete) {
-              onSurveyComplete();
+              onSurveyComplete(true);
             }
             router.refresh();
             
@@ -200,7 +200,7 @@ export const CPXSurveyModal = ({
           
           setTimeout(() => {
             if (onSurveyComplete) {
-              onSurveyComplete();
+              onSurveyComplete(true);
             }
             router.refresh();
             
@@ -233,17 +233,31 @@ export const CPXSurveyModal = ({
           'we could not find a survey for your profile',
           'try again in a few hours',
           'no survey available',
-          'unfortunately, you did not qualify',
           'sorry, there are no surveys'
         ];
         
-        // Check for any of the phrases
-        const foundPhrase = noSurveyPhrases.find(phrase => 
+        // Phrases that indicate survey disqualification 
+        const disqualificationPhrases = [
+          'unfortunately, you did not qualify',
+          'did not qualify for this survey',
+          'you have been disqualified',
+          'you do not qualify',
+          'screening criteria',
+          'survey was not a good match'
+        ];
+        
+        // Check for any no survey phrases
+        const noSurveyPhrase = noSurveyPhrases.find(phrase => 
           iframeContent.includes(phrase)
         );
         
-        if (foundPhrase) {
-          console.log('No surveys message detected during continuous check:', foundPhrase);
+        // Check for disqualification phrases
+        const disqualificationPhrase = disqualificationPhrases.find(phrase => 
+          iframeContent.includes(phrase)
+        );
+        
+        if (noSurveyPhrase) {
+          console.log('No surveys message detected during continuous check:', noSurveyPhrase);
           console.log('Full message context:', iframeContent.substring(0, 200) + '...');
           
           // Stop checking and show error
@@ -254,10 +268,25 @@ export const CPXSurveyModal = ({
           
           setSurveyError("no_surveys");
           
-          // Automatically award participation ticket using the special handler
+          // For no surveys, we still award a ticket since it's not user's fault
           setTimeout(() => {
             handleNoSurveysAvailable();
           }, 1000);
+        } 
+        else if (disqualificationPhrase) {
+          console.log('Disqualification message detected:', disqualificationPhrase);
+          console.log('Full message context:', iframeContent.substring(0, 200) + '...');
+          
+          // Stop checking and show disqualification error
+          if (messageCheckIntervalRef.current) {
+            clearInterval(messageCheckIntervalRef.current);
+            messageCheckIntervalRef.current = null;
+          }
+          
+          setSurveyError("disqualified");
+          
+          // For disqualification, we don't automatically award a ticket
+          // User must click the claim button manually
         }
       }
     } catch (e) {
@@ -302,7 +331,7 @@ export const CPXSurveyModal = ({
           
           // Update parent component and refresh the page
           if (onSurveyComplete) {
-            onSurveyComplete();
+            onSurveyComplete(true);
           }
           
           // Close the modal after a short delay
@@ -395,7 +424,7 @@ export const CPXSurveyModal = ({
         
         setTimeout(() => {
           if (onSurveyComplete) {
-            onSurveyComplete();
+            onSurveyComplete(true);
           }
           // Force refresh dashboard to show updated ticket count
           router.refresh();
@@ -415,7 +444,7 @@ export const CPXSurveyModal = ({
         
         setTimeout(() => {
           if (onSurveyComplete) {
-            onSurveyComplete();
+            onSurveyComplete(true);
           }
           router.refresh();
         }, 1500);
@@ -435,7 +464,7 @@ export const CPXSurveyModal = ({
       
       setTimeout(() => {
         if (onSurveyComplete) {
-          onSurveyComplete();
+          onSurveyComplete(true);
         }
         router.refresh();
       }, 1500);
@@ -443,6 +472,11 @@ export const CPXSurveyModal = ({
   };
 
   const handleClose = async () => {
+    // Ensure we mark this as a survey attempt even if modal is closed
+    if (!showTicketReward && onSurveyComplete) {
+      onSurveyComplete(false);
+    }
+    
     // Only try to award if not already showing reward
     if (!showTicketReward) {
       try {
@@ -477,7 +511,7 @@ export const CPXSurveyModal = ({
             // Second refresh after a delay to ensure UI is updated
             setTimeout(() => {
               if (onSurveyComplete) {
-                onSurveyComplete();
+                onSurveyComplete(true);
               }
             }, 1000);
           }, 2000);
@@ -510,7 +544,7 @@ export const CPXSurveyModal = ({
               
               setTimeout(() => {
                 if (onSurveyComplete) {
-                  onSurveyComplete();
+                  onSurveyComplete(true);
                 }
               }, 1000);
             }, 2000);
@@ -537,42 +571,93 @@ export const CPXSurveyModal = ({
   const handleIframeLoad = () => {
     setIframeLoading(false);
     
-    // Check if the iframe content indicates no surveys available
+    // Notify parent that a survey was attempted
+    if (onSurveyComplete) {
+      onSurveyComplete(false);
+    }
+    
+    // Check for URL parameters indicating survey completion
+    try {
+      const iframe = iframeRef.current;
+      if (iframe && iframe.contentWindow) {
+        const iframeUrl = iframe.contentWindow.location.href;
+        
+        // Check if URL contains success or completion parameters
+        if (iframeUrl.includes('survey=completed') || 
+            iframeUrl.includes('status=complete') || 
+            iframeUrl.includes('status=success')) {
+          console.log('Survey completion detected from URL parameters:', iframeUrl);
+          
+          // Award ticket on successful completion
+          awardParticipationTicket();
+          return;
+        }
+      }
+    } catch (e) {
+      // Cross-origin restrictions may prevent this check
+      console.log('Cannot check iframe URL due to cross-origin restrictions');
+    }
+    
+    // Check iframe content for survey completion or error messages
     setTimeout(() => {
       try {
         const iframe = document.querySelector('iframe[title="CPX Research Survey"]') as HTMLIFrameElement;
         if (iframe && iframe.contentDocument) {
           const iframeContent = iframe.contentDocument.body.innerText.toLowerCase();
           
-          // Enhanced detection for "no surveys available" message with exact wording
-          if (
-            iframeContent.includes('unfortunately we could not find a survey') || 
-            iframeContent.includes('we could not find a survey for your profile') ||
-            iframeContent.includes('try again in a few hours') ||
-            iframeContent.includes('no survey available') ||
-            iframeContent.includes('unfortunately, you did not qualify')
-          ) {
+          // Check for survey success messages
+          if (iframeContent.includes('thank you for completing') || 
+              iframeContent.includes('survey completed') ||
+              iframeContent.includes('successfully completed')) {
+            console.log('Survey completion detected from content:', 
+              iframeContent.substring(0, 100) + '...');
+            
+            // Award ticket on successful completion
+            awardParticipationTicket();
+            return;
+          }
+          
+          // Check for no surveys message
+          if (iframeContent.includes('unfortunately we could not find a survey') || 
+              iframeContent.includes('we could not find a survey for your profile') ||
+              iframeContent.includes('try again in a few hours') ||
+              iframeContent.includes('no survey available')) {
             console.log('No surveys available detected with message:', 
               iframeContent.substring(0, 100) + '...');
             setSurveyError("no_surveys");
             
-            // Automatically award ticket using handleNoSurveysAvailable instead of handleClaimTicket
+            // For no surveys, award ticket automatically
             setTimeout(() => {
               handleNoSurveysAvailable();
             }, 1500);
+            return;
+          }
+          
+          // Check for disqualification message
+          if (iframeContent.includes('unfortunately, you did not qualify') ||
+              iframeContent.includes('did not qualify for this survey') ||
+              iframeContent.includes('you have been disqualified')) {
+            console.log('Survey disqualification detected with message:', 
+              iframeContent.substring(0, 100) + '...');
+            setSurveyError("disqualified");
+            
+            // For disqualification, don't automatically award ticket
+            // User must click claim button manually
+            return;
           }
         }
       } catch (e) {
         // Cross-origin restrictions prevent this check, but that's okay
         console.log('Cannot check iframe content due to cross-origin restrictions');
-        
-        const noActivityTimer = setTimeout(() => {
-          console.log('No activity detected for 15 seconds, assuming no surveys available');
-          setSurveyError("no_surveys");
-        }, 15000);
-        
-        return () => clearTimeout(noActivityTimer);
       }
+      
+      // Set up a longer check for inactivity
+      const noActivityTimer = setTimeout(() => {
+        console.log('No activity detected for 15 seconds, checking survey status');
+        checkForNoSurveysMessage();
+      }, 15000);
+      
+      return () => clearTimeout(noActivityTimer);
     }, 3000);
   };
 
@@ -731,14 +816,36 @@ export const CPXSurveyModal = ({
               </div>
             )}
 
+            {surveyError === "disqualified" && (
+              <div className="absolute inset-0 bg-orange-50 z-10 flex flex-col items-center justify-center p-6">
+                <div className="text-center max-w-md">
+                  <AlertCircle className="h-12 w-12 text-orange-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-orange-800 mb-2">Survey Not Completed</h3>
+                  <p className="text-orange-700 mb-4">
+                    You didn&apos;t qualify for this survey or were screened out during the process. 
+                    This happens sometimes based on the survey&apos;s specific requirements.
+                  </p>
+                  <div className="space-y-3">
+                    <Button onClick={handleNoSurveysAvailable} className="w-full bg-green-600 hover:bg-green-700 text-white">
+                      <Ticket className="h-4 w-4 mr-2" />
+                      Still Want a Ticket? Click Here
+                    </Button>
+                    <Button onClick={handleRetry} variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Try a Different Survey
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {surveyError === "loading_failed" && (
               <div className="absolute inset-0 bg-red-50 z-10 flex flex-col items-center justify-center p-6">
                 <div className="text-center max-w-md">
                   <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-red-800 mb-2">Survey Failed to Load</h3>
                   <p className="text-red-700 mb-4">
-                    There was a problem loading the survey, but don&apos;t worry - 
-                    you&apos;ll still receive a lottery ticket for trying!
+                    There was a problem loading the survey. You can try again or claim a ticket anyway.
                   </p>
                   <div className="space-y-3">
                     <Button onClick={handleNoSurveysAvailable} className="w-full bg-green-600 hover:bg-green-700 text-white">

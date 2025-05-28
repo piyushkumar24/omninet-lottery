@@ -34,6 +34,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [socialMediaFollowed, setSocialMediaFollowed] = useState(false);
   const [hasSurveyTicket, setHasSurveyTicket] = useState(false);
+  const [surveyAttempted, setSurveyAttempted] = useState(false);
   const [referralLinkCopied, setReferralLinkCopied] = useState(false);
 
   useEffect(() => {
@@ -48,6 +49,12 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
         const data = await response.json();
         setSocialMediaFollowed(data.socialMediaFollowed || false);
         setHasSurveyTicket(data.hasSurveyTicket || false);
+        
+        const recentAttempt = localStorage.getItem('survey_attempted');
+        if ((data.hasSurveyTicket) || 
+            (recentAttempt && Date.now() - parseInt(recentAttempt) < 24 * 60 * 60 * 1000)) {
+          setSurveyAttempted(true);
+        }
       }
     } catch (error) {
       console.error("Error checking user status:", error);
@@ -68,29 +75,30 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
     }
   };
 
-  // Handler for when survey is completed (called by modal)
-  const handleSurveyComplete = () => {
-    // Show success toast
-    toast.success("🎉 Ticket added to your account!", {
-      duration: 5000,
-      icon: "🎫",
-      style: {
-        border: '2px solid #22c55e',
-        padding: '16px',
-        fontSize: '14px',
-      },
-    });
+  const handleSurveyComplete = (success = true) => {
+    setSurveyAttempted(true);
+    localStorage.setItem('survey_attempted', Date.now().toString());
     
-    // Refresh the page data to show updated ticket count
+    if (success) {
+      setHasSurveyTicket(true);
+      
+      toast.success("🎉 Ticket added to your account!", {
+        duration: 5000,
+        icon: "🎫",
+        style: {
+          border: '2px solid #22c55e',
+          padding: '16px',
+          fontSize: '14px',
+        },
+      });
+    }
+    
     router.refresh();
     
-    // After a small delay, verify the ticket was actually added by forcing a complete refresh
     setTimeout(() => {
       router.refresh();
+      checkUserStatus();
     }, 2000);
-    
-    // Refresh user status to check if this was their first survey
-    checkUserStatus();
   };
 
   const handleReferralClick = async () => {
@@ -213,7 +221,6 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
         setSocialMediaFollowed(true);
         router.refresh();
       } else {
-        // Handle different error types with custom styling
         if (data.message.includes("already") || data.message.includes("only earn 1")) {
           toast.error(data.message, {
             duration: 4000,
@@ -259,7 +266,6 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
     return "Great! Keep going — every new ticket increases your chance to win!";
   };
 
-  // Get user data for CPX Survey Modal
   const userData = session?.user ? {
     id: session.user.id as string,
     name: session.user.name,
@@ -305,8 +311,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                     isLoading={loading === "SURVEY"}
                   />
                   
-                  {/* Emergency Fix: Force Award Button - Only show after survey completion */}
-                  {hasSurveyTicket && appliedTickets === 0 && (
+                  {surveyAttempted && appliedTickets === 0 && !hasSurveyTicket && (
                     <div className="mt-3 pt-3 border-t border-blue-100">
                       <button
                         onClick={async () => {
@@ -322,6 +327,8 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                             const data = await response.json();
                             
                             if (data.success) {
+                              setHasSurveyTicket(true);
+                              
                               toast.success("🎫 Ticket manually awarded!", {
                                 duration: 5000,
                                 icon: "🎯",
@@ -332,13 +339,10 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                                 },
                               });
                               
-                              // Force refresh to update ticket count
                               router.refresh();
                               
-                              // After a delay, force another refresh
                               setTimeout(() => {
                                 router.refresh();
-                                // Check user status
                                 checkUserStatus();
                               }, 2000);
                             } else {

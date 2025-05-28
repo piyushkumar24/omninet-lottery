@@ -4,6 +4,13 @@ import { useEffect, useRef } from "react";
 import { generateCPXNotificationScript } from "@/lib/cpx-utils";
 import Script from "next/script";
 
+// Add global type declaration for CPX
+declare global {
+  interface Window {
+    config?: any;
+  }
+}
+
 interface CPXNotificationProps {
   user: {
     id: string;
@@ -22,22 +29,25 @@ export const CPXNotification = ({ user }: CPXNotificationProps) => {
   useEffect(() => {
     if (!containerRef.current) return;
     
-    // Clear previous scripts in document with our IDs to avoid duplicates
-    const existingScript = document.getElementById('cpx-notification-script');
-    if (existingScript) {
-      existingScript.remove();
-    }
+    // Create a cleanup function to remove all CPX-related scripts and elements
+    const cleanup = () => {
+      // Remove any existing scripts
+      const existingScripts = document.querySelectorAll('[id^="cpx-"]');
+      existingScripts.forEach(script => script.remove());
+      
+      // Clear notification container
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
+      }
+      
+      // Remove any global CPX variables
+      if (window.config) {
+        delete window.config;
+      }
+    };
     
-    const existingCpxScript = document.getElementById('cpx-external-script');
-    if (existingCpxScript) {
-      existingCpxScript.remove();
-    }
-    
-    // Generate script content
-    const notificationScript = generateCPXNotificationScript(user);
-    
-    // Clear previous content in our container
-    containerRef.current.innerHTML = "";
+    // Clean up first
+    cleanup();
     
     // Create notification container
     const notificationDiv = document.createElement('div');
@@ -45,35 +55,43 @@ export const CPXNotification = ({ user }: CPXNotificationProps) => {
     notificationDiv.className = 'cpx-notification';
     containerRef.current.appendChild(notificationDiv);
     
-    // Add script element with a unique ID
-    const scriptEl = document.createElement('script');
-    scriptEl.id = 'cpx-notification-script';
-    scriptEl.innerHTML = notificationScript;
-    document.head.appendChild(scriptEl); // Append to head instead of container
+    // Generate script content
+    const notificationScript = generateCPXNotificationScript(user);
     
-    // Add CPX library script
-    const cpxScriptEl = document.createElement('script');
-    cpxScriptEl.id = 'cpx-external-script';
-    cpxScriptEl.type = 'text/javascript';
-    cpxScriptEl.src = 'https://cdn.cpx-research.com/assets/js/script_tag_v1.1.js';
-    document.head.appendChild(cpxScriptEl); // Append to head instead of container
+    // Create a safer script execution method using Function constructor
+    // This avoids variable redeclaration issues
+    try {
+      const scriptWrapper = `
+        (function() {
+          // Remove any existing CPX config to prevent conflicts
+          if (window.config) {
+            delete window.config;
+          }
+          
+          ${notificationScript}
+        })();
+      `;
+      
+      // Create and append script element
+      const scriptEl = document.createElement('script');
+      scriptEl.id = `cpx-notification-script-${user.id.substring(0, 8)}`;
+      scriptEl.text = scriptWrapper;
+      document.head.appendChild(scriptEl);
+      
+      // Add CPX library script only if it doesn't exist
+      if (!document.getElementById('cpx-external-script')) {
+        const cpxScriptEl = document.createElement('script');
+        cpxScriptEl.id = 'cpx-external-script';
+        cpxScriptEl.type = 'text/javascript';
+        cpxScriptEl.src = 'https://cdn.cpx-research.com/assets/js/script_tag_v1.1.js';
+        document.head.appendChild(cpxScriptEl);
+      }
+    } catch (error) {
+      console.error('Error initializing CPX notification:', error);
+    }
     
-    return () => {
-      // Clean up scripts when component unmounts
-      const notificationScript = document.getElementById('cpx-notification-script');
-      if (notificationScript) {
-        notificationScript.remove();
-      }
-      
-      const externalScript = document.getElementById('cpx-external-script');
-      if (externalScript) {
-        externalScript.remove();
-      }
-      
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
-      }
-    };
+    // Clean up on unmount
+    return cleanup;
   }, [user]);
 
   return <div ref={containerRef} className="cpx-notification-container" id={uniqueId}></div>;

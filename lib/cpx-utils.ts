@@ -220,66 +220,71 @@ export function generateCPXNotificationScript(user: {
   const uniqueScriptId = user.id.substring(0, 8); // Use first 8 chars of user ID instead of random
   
   return `
-// Use a unique variable name with user ID to prevent conflicts
-const cpxNotificationConfig_${uniqueScriptId} = {
+// Clean up any existing window.config first
+if (window.config) {
+  delete window.config;
+}
+
+// Use a function to create a local scope and avoid global variable leaks
+(function createCPXConfig() {
+  const notificationConfig = {
     div_id: "notification",
     theme_style: 4,
     position: 5, // 5 = bottom right
     text: "",
     link: "https://offers.cpx-research.com/index.php?app_id=${CPX_APP_ID}&ext_user_id=${user.id}&username=${username}&email=${email}",
     newtab: true
-};
+  };
 
-// Use unique config variable
-const config = {
+  // Create config as a local variable first
+  const configObject = {
     general_config: {
-        app_id: ${CPX_APP_ID},
-        ext_user_id: "${user.id}",
-        email: "${email}",
-        username: "${username}",
-        subid_1: "",
-        subid_2: "",
+      app_id: ${CPX_APP_ID},
+      ext_user_id: "${user.id}",
+      email: "${email}",
+      username: "${username}",
+      subid_1: "",
+      subid_2: "",
     },
     style_config: {
-        text_color: "#ffffff",
-        background_color: "${OMNINET_BLUE}",
-        survey_box: {
-            topbar_background_color: "${OMNINET_BLUE}",
-            topbar_text_color: "#ffffff",
-            box_background_color: "white",
-            box_text_color: "#1f2937",
-            rounded_borders: true,
-            stars_filled: "${OMNINET_BLUE}",
-            stars_empty: "#e5e7eb",
-            custom_banner_url: "/main-logo.png",
-            banner_background_color: "${OMNINET_BLUE}",
-            banner_text_color: "#ffffff",
-            company_name: "0MNINET",
-        },
-        custom_css: \`
-            .survey-unit {
-                display: none !important;
-            }
-            .survey-value::after {
-                content: " ticket" !important;
-            }
-            .survey-value::before {
-                content: "1" !important;
-                display: inline !important;
-            }
-            .survey-value {
-                font-size: 0 !important;
-            }
-        \`,
+      text_color: "#ffffff",
+      background_color: "${OMNINET_BLUE}",
+      survey_box: {
+        topbar_background_color: "${OMNINET_BLUE}",
+        topbar_text_color: "#ffffff",
+        box_background_color: "white",
+        box_text_color: "#1f2937",
+        rounded_borders: true,
+        stars_filled: "${OMNINET_BLUE}",
+        stars_empty: "#e5e7eb",
+        custom_banner_url: "/main-logo.png",
+        banner_background_color: "${OMNINET_BLUE}",
+        banner_text_color: "#ffffff",
+        company_name: "0MNINET",
+      },
+      custom_css: \`
+        .survey-unit {
+          display: none !important;
+        }
+        .survey-value::after {
+          content: " ticket" !important;
+        }
+        .survey-value::before {
+          content: "1" !important;
+          display: inline !important;
+        }
+        .survey-value {
+          font-size: 0 !important;
+        }
+      \`,
     },
-    script_config: [cpxNotificationConfig_${uniqueScriptId}],
+    script_config: [notificationConfig],
     debug: false,
-};
+  };
 
-// Define window config only if not already defined
-if (!window.config) {
-  window.config = config;
-}
+  // Only set window.config if it doesn't exist
+  window.config = configObject;
+})();
 `;
 }
 
