@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,8 +74,8 @@ export const CPXSurveyModal = ({
 
   // Setup continuous monitoring for "no surveys" message
   useEffect(() => {
-    if (isOpen && !surveyError && !showTicketReward) {
-      // Clear any existing interval
+    if (isOpen && !surveyError && !showTicketReward && surveyUrl) {
+      // Cleanup any existing interval first
       if (messageCheckIntervalRef.current) {
         clearInterval(messageCheckIntervalRef.current);
       }
@@ -93,10 +93,10 @@ export const CPXSurveyModal = ({
         messageCheckIntervalRef.current = null;
       }
     };
-  }, [isOpen, surveyError, showTicketReward]);
+  }, [isOpen, surveyError, showTicketReward, surveyUrl, checkForNoSurveysMessage]);
 
   // Special handler for when no surveys are available
-  const handleNoSurveysAvailable = async () => {
+  const handleNoSurveysAvailable = useCallback(async () => {
     try {
       console.log('🔍 No surveys available, forcing ticket award...');
       
@@ -218,10 +218,10 @@ export const CPXSurveyModal = ({
       // Fall back to regular ticket award as last resort
       await awardParticipationTicket();
     }
-  };
+  }, [awardParticipationTicket, onSurveyComplete, router]);
 
   // Check for "no surveys available" messages continuously
-  const checkForNoSurveysMessage = () => {
+  const checkForNoSurveysMessage = useCallback(() => {
     try {
       const iframe = iframeRef.current;
       if (iframe && iframe.contentDocument) {
@@ -292,7 +292,7 @@ export const CPXSurveyModal = ({
     } catch (e) {
       // Silently fail - cross-origin restrictions likely in effect
     }
-  };
+  }, [handleNoSurveysAvailable]);
 
   // Verify ticket was awarded 5 seconds after showing success
   useEffect(() => {
@@ -307,9 +307,9 @@ export const CPXSurveyModal = ({
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [showTicketReward, verifyingTicket]);
+  }, [showTicketReward, verifyingTicket, verifyTicketAwarded]);
 
-  const verifyTicketAwarded = async () => {
+  const verifyTicketAwarded = useCallback(async () => {
     try {
       setVerifyingTicket(true);
       
@@ -353,32 +353,43 @@ export const CPXSurveyModal = ({
     } finally {
       setVerifyingTicket(false);
     }
-  };
+  }, [awardFallbackTicket]);
 
-  const awardFallbackTicket = async () => {
+  const awardFallbackTicket = useCallback(async () => {
     try {
-      console.log('🔄 Attempting to award fallback ticket...');
-      // Call the fallback endpoint to award a ticket
-      const response = await axios.post('/api/tickets/verify');
+      console.log('🔄 Trying fallback ticket award...');
+      setVerifyingTicket(true);
       
-      if (response.data.success) {
-        console.log('✅ Fallback ticket successfully awarded:', response.data.data);
-        setTicketAwarded(true);
-        setTicketId(response.data.data.ticketId);
+      const fallbackResponse = await fetch('/api/tickets/force-award', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        console.log('✅ Fallback ticket award successful:', fallbackData);
         
-        toast.success("Ticket awarded through fallback system!", {
-          duration: 3000,
-        });
+        setTicketAwarded(true);
+        setTicketId(fallbackData.data?.ticketId);
+        
+        setTimeout(() => {
+          router.refresh();
+        }, 1000);
+        
+        return true;
       } else {
-        console.error('Failed to award fallback ticket:', response.data.message);
-        toast.error("We'll make sure your ticket is awarded!", {
-          duration: 3000,
-        });
+        console.error('❌ Fallback ticket award failed');
+        return false;
       }
     } catch (error) {
-      console.error('Error awarding fallback ticket:', error);
+      console.error('❌ Error in fallback ticket award:', error);
+      return false;
+    } finally {
+      setVerifyingTicket(false);
     }
-  };
+  }, [router]);
 
   const handleOpenInNewTab = () => {
     if (surveyUrl) {

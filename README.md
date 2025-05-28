@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Auth V5 - Social Lottery
 
 > Next Auth V5 Advanced guide with Social Lottery implementation
@@ -79,3 +80,5 @@ For optimal user experience, add a video file:
 - Clear CTA buttons throughout the page
 - Responsive design for all device sizes
 
+=======
+>>>>>>> c2fed4e (Add Docker support and enhance deployment configurations)

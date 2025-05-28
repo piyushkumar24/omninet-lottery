@@ -111,7 +111,7 @@ export const TicketDebug = ({ userId, initialTicketCount }: TicketDebugProps) =>
     
     // Initial refresh of ticket count
     refreshTicketCount();
-  }, []);
+  }, [refreshTicketCount]);
 
   return (
     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
@@ -188,7 +188,7 @@ export const TicketDebug = ({ userId, initialTicketCount }: TicketDebugProps) =>
             Discrepancy detected between database and admin panel
           </p>
           <p className="mt-1">
-            Click "Fix Issues" to synchronize ticket counts and repair any inconsistencies.
+            Click &quot;Fix Issues&quot; to synchronize ticket counts and repair any inconsistencies.
           </p>
         </div>
       )}
