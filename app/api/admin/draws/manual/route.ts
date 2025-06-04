@@ -3,7 +3,7 @@ import { isAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DrawStatus } from "@prisma/client";
 import { sendNonWinnerEmail } from "@/lib/mail";
-import { resetUserTicketsForNextLottery } from "@/lib/ticket-utils";
+import { resetUserTicketsForNextLottery, resetWinnerTickets } from "@/lib/ticket-utils";
 
 export async function POST() {
   try {
@@ -135,6 +135,15 @@ export async function POST() {
         winnerId: winningTicket.userId,
       };
     });
+
+    // Reset ALL tickets for the winner (mark them as used)
+    try {
+      console.log(`Resetting ALL tickets for winner ${result.winnerId}`);
+      const resetCount = await resetWinnerTickets(result.winnerId);
+      console.log(`Reset ${resetCount} tickets for winner ${result.winnerId}`);
+    } catch (resetError) {
+      console.error(`Failed to reset tickets for winner ${result.winnerId}:`, resetError);
+    }
 
     // Reset tickets for non-winners so they can participate in the next lottery
     try {

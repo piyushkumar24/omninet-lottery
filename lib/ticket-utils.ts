@@ -147,14 +147,38 @@ export const resetUserTicketsForNextLottery = async (userId: string): Promise<nu
         isUsed: true,
       },
       data: {
-        isUsed: true,
-        drawId: null
+        isUsed: true, // Keep them as used
+        drawId: null  // But remove the draw association
       }
     });
     
     return result.count;
   } catch (error) {
     console.error(`Error resetting tickets for user ${userId}:`, error);
+    return 0;
+  }
+};
+
+/**
+ * Reset tickets for a lottery winner
+ * This will mark ALL tickets as used, regardless of current status
+ * so they don't appear in the next lottery
+ */
+export const resetWinnerTickets = async (userId: string): Promise<number> => {
+  try {
+    const result = await db.ticket.updateMany({
+      where: {
+        userId: userId,
+      },
+      data: {
+        isUsed: true, // Mark all tickets as used
+        drawId: null  // Remove the draw association
+      }
+    });
+    
+    return result.count;
+  } catch (error) {
+    console.error(`Error resetting winner tickets for user ${userId}:`, error);
     return 0;
   }
 };
