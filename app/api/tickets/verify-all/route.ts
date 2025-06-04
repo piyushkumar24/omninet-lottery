@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     // Query the database directly for accurate count
     const rawTicketCount = await db.$queryRaw`
-      SELECT COUNT(*) as count FROM "Ticket" WHERE "userId" = ${user.id}::text
+      SELECT COUNT(*) as count FROM "Ticket" WHERE "userId" = ${user.id}::text AND "isUsed" = false
     ` as { count: bigint }[];
     
     // Get draw participation counts for this user
@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
     const recentTickets = await db.ticket.findMany({
       where: {
         userId: user.id,
+        isUsed: false, // Only get unused tickets
       },
       orderBy: {
         createdAt: 'desc',
@@ -89,6 +90,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId: user.id,
         source: "SURVEY",
+        isUsed: false, // Only count unused tickets
       },
     });
 
@@ -96,6 +98,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId: user.id,
         source: "REFERRAL",
+        isUsed: false, // Only count unused tickets
       },
     });
 
@@ -103,6 +106,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId: user.id,
         source: "SOCIAL",
+        isUsed: false, // Only count unused tickets
       },
     });
 

@@ -68,8 +68,8 @@ export async function POST() {
         data: {
           userId: user.id,
           source: "SOCIAL",
-          isUsed: true, // Automatically mark as used since we're applying to lottery
-          drawId: draw.id,
+          isUsed: false, // Set to false so it shows up on dashboard
+          drawId: null, // Don't assign to a draw yet
           confirmationCode: confirmationCode,
         },
       });

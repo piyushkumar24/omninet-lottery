@@ -7,7 +7,7 @@ interface AdminStatsProps {
   totalUsers: number;
   activeUsers: number;
   totalTickets: number;
-  unusedTickets: number;
+  availableTickets: number;
   totalWinners: number;
   unclaimedPrizes: number;
 }
@@ -16,7 +16,7 @@ export const AdminStats = ({
   totalUsers,
   activeUsers,
   totalTickets,
-  unusedTickets,
+  availableTickets,
   totalWinners,
   unclaimedPrizes,
 }: AdminStatsProps) => {
@@ -49,7 +49,7 @@ export const AdminStats = ({
               <p className="text-sm text-slate-500">Total Tickets</p>
               <div className="flex items-baseline gap-2">
                 <h3 className="text-2xl font-bold">{totalTickets}</h3>
-                <span className="text-xs text-green-600">{unusedTickets} unused</span>
+                <span className="text-xs text-green-600">{availableTickets} available</span>
               </div>
             </div>
           </div>

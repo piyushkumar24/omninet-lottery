@@ -56,6 +56,7 @@ interface User {
   isBlocked: boolean;
   createdAt: Date;
   ticketCount: number;
+  totalTicketsEarned: number;
 }
 
 interface UsersTableProps {
@@ -180,7 +181,7 @@ export const UsersTable = ({ users }: UsersTableProps) => {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-blue-50 rounded-lg p-3 text-center">
           <p className="text-2xl font-bold text-blue-700">{sortedUsers.length}</p>
           <p className="text-sm text-blue-600">Total Users</p>
@@ -201,7 +202,13 @@ export const UsersTable = ({ users }: UsersTableProps) => {
           <p className="text-2xl font-bold text-purple-700">
             {sortedUsers.reduce((sum, user) => sum + user.ticketCount, 0)}
           </p>
-          <p className="text-sm text-purple-600">Total Applied Tickets</p>
+          <p className="text-sm text-purple-600">Available Tickets</p>
+        </div>
+        <div className="bg-indigo-50 rounded-lg p-3 text-center">
+          <p className="text-2xl font-bold text-indigo-700">
+            {sortedUsers.reduce((sum, user) => sum + user.totalTicketsEarned, 0)}
+          </p>
+          <p className="text-sm text-indigo-600">Total Earned</p>
         </div>
       </div>
 
@@ -245,7 +252,13 @@ export const UsersTable = ({ users }: UsersTableProps) => {
               >
                 <div className="flex items-center gap-2">
                   <Ticket className="h-4 w-4" />
-                  Applied Tickets {getSortIcon("ticketCount")}
+                  Available Tickets {getSortIcon("ticketCount")}
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  <Ticket className="h-4 w-4" />
+                  Total Earned
                 </div>
               </TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -297,8 +310,17 @@ export const UsersTable = ({ users }: UsersTableProps) => {
                   </div>
                 </TableCell>
                 <TableCell>
+                  <Badge variant={user.ticketCount > 0 ? "outline" : "secondary"} className={
+                    user.ticketCount > 0 
+                      ? "bg-green-50 text-green-700 border-green-200" 
+                      : "bg-slate-100 text-slate-500"
+                  }>
+                    {user.ticketCount}
+                  </Badge>
+                </TableCell>
+                <TableCell>
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    {user.ticketCount} tickets
+                    {user.totalTicketsEarned}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">

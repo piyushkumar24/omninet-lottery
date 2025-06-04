@@ -189,8 +189,8 @@ export async function GET(request: NextRequest) {
         data: {
           userId: user.id,
           source: "SURVEY",
-          isUsed: true, // Automatically mark as used since we're applying to lottery
-          drawId: draw.id,
+          isUsed: false, // Set to false so it shows up on dashboard
+          drawId: null, // Don't assign to a draw yet
           confirmationCode: confirmationCode,
         },
       });
@@ -349,8 +349,8 @@ export async function GET(request: NextRequest) {
               data: {
                 userId: user.referredBy,
                 source: "REFERRAL",
-                isUsed: true, // Automatically apply to lottery
-                drawId: draw.id,
+                isUsed: false, // Set to false so it shows up on dashboard
+                drawId: null, // Don't assign to a draw yet
                 confirmationCode: referralConfirmationCode,
               },
             });
@@ -553,8 +553,8 @@ async function awardReferralTicket(referrerId: string, referredUserId: string, d
     data: {
       userId: referrerId,
       source: "REFERRAL",
-      isUsed: true, // Automatically apply to lottery
-      drawId: drawId,
+      isUsed: false, // Set to false so it shows up on dashboard
+      drawId: null, // Don't assign to a draw yet
       confirmationCode: `referral_${referredUserId}`,
     },
   });
@@ -610,8 +610,8 @@ async function awardEmergencyTicket(userId: string, transId: string) {
       data: {
         userId: userId,
         source: "SURVEY",
-        isUsed: true,
-        drawId: draw.id,
+        isUsed: false, // Set to false so it shows up on dashboard
+        drawId: null, // Don't assign to a draw yet
         confirmationCode: `emergency_${transId}_${Date.now()}`,
       },
     });

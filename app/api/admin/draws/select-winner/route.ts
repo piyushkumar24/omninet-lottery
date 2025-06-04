@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DrawStatus } from "@prisma/client";
+import { sendNonWinnerEmail } from "@/lib/mail";
 
 export async function POST(req: Request) {
   try {
@@ -121,8 +122,39 @@ export async function POST(req: Request) {
         winnerUser: selectedUser,
         participantCount: activeDraw.participants.length,
         totalTicketsInDraw: activeDraw.totalTickets,
+        winnerId: selectedUser.id,
       };
     });
+
+    // Send non-winner emails to all participants who didn't win
+    try {
+      const nonWinners = activeDraw.participants.filter(
+        p => p.userId !== result.winnerId && p.user.email
+      );
+      
+      console.log(`Sending non-winner emails to ${nonWinners.length} participants`);
+      
+      // Send emails in parallel (don't wait for all to complete)
+      const emailPromises = nonWinners.map(async (participant) => {
+        try {
+          await sendNonWinnerEmail(
+            participant.user.email!,
+            participant.user.name || "User",
+            activeDraw.drawDate,
+            participant.userId
+          );
+          console.log(`Non-winner email sent to ${participant.user.email}`);
+        } catch (emailError) {
+          console.error(`Failed to send non-winner email to ${participant.user.email}:`, emailError);
+        }
+      });
+      
+      // Don't await all emails - let them send in background
+      Promise.allSettled(emailPromises);
+    } catch (error) {
+      console.error("Error sending non-winner emails:", error);
+      // Don't fail the entire operation if emails fail
+    }
 
     return NextResponse.json({
       success: true,

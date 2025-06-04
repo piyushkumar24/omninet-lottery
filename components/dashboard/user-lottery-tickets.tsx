@@ -1,10 +1,11 @@
 "use client";
 
-import { Ticket, CheckCircle2, Trophy } from "lucide-react";
+import { Ticket, CheckCircle2, Trophy, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TicketDebug } from "@/components/dashboard/ticket-debug";
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 interface UserLotteryTicketsProps {
   userId: string;
@@ -26,12 +27,19 @@ export const UserLotteryTickets = ({
   const participationTickets = userParticipation?.ticketsUsed || 0;
   const [showDebug, setShowDebug] = useState(false);
   const [hasDiscrepancy, setHasDiscrepancy] = useState(false);
+  const [localTicketCount, setLocalTicketCount] = useState(appliedTickets);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Update local ticket count when props change
+  useEffect(() => {
+    setLocalTicketCount(appliedTickets);
+  }, [appliedTickets]);
 
   // Calculate win probability percentage (assuming total tickets in draw is around 100)
   // This is just an estimate for display purposes
   const estimatedTotalTickets = 100;
-  const winProbability = appliedTickets > 0 
-    ? (appliedTickets / estimatedTotalTickets) * 100 
+  const winProbability = localTicketCount > 0 
+    ? (localTicketCount / estimatedTotalTickets) * 100 
     : 0;
   
   // Format probability with 2 decimal places
@@ -43,6 +51,18 @@ export const UserLotteryTickets = ({
       checkForDiscrepancy();
     }
   }, [surveyCompleted]);
+
+  // Refresh tickets data every 10 seconds
+  useEffect(() => {
+    // Initial fetch
+    refreshTicketData(false);
+    
+    const interval = setInterval(() => {
+      refreshTicketData(false);
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [userId]);
 
   const checkForDiscrepancy = async () => {
     try {
@@ -63,20 +83,57 @@ export const UserLotteryTickets = ({
     }
   };
 
+  const refreshTicketData = async (showRefreshing = true) => {
+    if (showRefreshing) {
+      setIsRefreshing(true);
+    }
+    
+    try {
+      const response = await fetch(`/api/tickets/verify-all?t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLocalTicketCount(data.data.totalTickets);
+      }
+    } catch (err) {
+      console.error("Error refreshing ticket data:", err);
+    } finally {
+      if (showRefreshing) {
+        setTimeout(() => setIsRefreshing(false), 500);
+      }
+    }
+  };
+
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
         <CardTitle className="text-lg font-semibold text-blue-800">Your Lottery Tickets</CardTitle>
-        <div className="p-2 bg-blue-100 rounded-lg">
-          <Ticket className="w-5 h-5 text-blue-600" />
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 rounded-full bg-blue-100 hover:bg-blue-200"
+            onClick={() => refreshTicketData()}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`w-4 h-4 text-blue-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <Ticket className="w-5 h-5 text-blue-600" />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Applied Tickets Display */}
         <div className="text-center p-4 bg-white/70 rounded-xl border border-blue-200">
-          <div className="text-4xl font-bold text-blue-900 mb-1">{appliedTickets}</div>
+          <div className="text-4xl font-bold text-blue-900 mb-1">{localTicketCount}</div>
           <p className="text-sm font-medium text-blue-700">
-            {appliedTickets === 1 ? "Ticket Applied" : "Tickets Applied"}
+            {localTicketCount === 1 ? "Ticket Applied" : "Tickets Applied"}
           </p>
           <p className="text-xs text-blue-600 mt-1">
             to this week&apos;s lottery
@@ -84,7 +141,7 @@ export const UserLotteryTickets = ({
         </div>
 
         {/* Win Probability Information */}
-        {appliedTickets > 0 && (
+        {localTicketCount > 0 && (
           <div className="bg-green-50/70 rounded-xl p-3 border border-green-200">
             <div className="flex items-center justify-center mb-1">
               <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 px-3 py-1 gap-1">
@@ -116,20 +173,20 @@ export const UserLotteryTickets = ({
 
         {/* Status Message */}
         <div className="text-xs text-blue-600 text-center">
-          {appliedTickets === 0 
-            ? "Complete surveys to earn tickets!" 
-            : appliedTickets === 1
+          {localTicketCount === 0 
+            ? "Complete surveys or invite friends to earn tickets!" 
+            : localTicketCount === 1
             ? "You have 1 entry in this week's lottery. Good luck! 🍀"
-            : `You have ${appliedTickets} entries in this week's lottery. Good luck! 🍀`}
+            : `You have ${localTicketCount} entries in this week's lottery. Good luck! 🍀`}
         </div>
         
         {/* Show ticket debug only if needed (survey completed and has discrepancy) or manually toggled */}
         {(showDebug || (surveyCompleted && hasDiscrepancy)) && (
-          <TicketDebug userId={userId} initialTicketCount={appliedTickets} />
+          <TicketDebug userId={userId} initialTicketCount={localTicketCount} />
         )}
         
         {/* Show a "Ticket not showing?" button when survey is completed but no discrepancy detected */}
-        {surveyCompleted && !hasDiscrepancy && appliedTickets === 0 && (
+        {surveyCompleted && !hasDiscrepancy && localTicketCount === 0 && (
           <div className="mt-2">
             <button 
               onClick={() => setShowDebug(true)} 

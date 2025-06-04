@@ -9,29 +9,40 @@ export const metadata: Metadata = {
 };
 
 export default async function UsersPage() {
-  // Get all users with their ticket counts
+  // Get all users
   const users = await db.user.findMany({
     orderBy: {
       createdAt: "desc"
-    },
-    include: {
-      _count: {
-        select: {
-          tickets: true // Count all tickets as they are all applied
-        }
-      }
     }
   });
 
-  // Format user data for the table
-  const formattedUsers = users.map(user => ({
-    id: user.id,
-    name: user.name || "No Name",
-    email: user.email || "No Email",
-    role: user.role,
-    isBlocked: user.isBlocked,
-    createdAt: user.createdAt,
-    ticketCount: user._count.tickets
+  // Get available tickets for each user (tickets that can be applied to next lottery)
+  const formattedUsers = await Promise.all(users.map(async (user) => {
+    // Count available tickets (not used in any draw)
+    const availableTickets = await db.ticket.count({
+      where: {
+        userId: user.id,
+        isUsed: false
+      }
+    });
+    
+    // Count total tickets (for historical reference)
+    const totalTickets = await db.ticket.count({
+      where: {
+        userId: user.id
+      }
+    });
+    
+    return {
+      id: user.id,
+      name: user.name || "No Name",
+      email: user.email || "No Email",
+      role: user.role,
+      isBlocked: user.isBlocked,
+      createdAt: user.createdAt,
+      ticketCount: availableTickets,
+      totalTicketsEarned: totalTickets
+    };
   }));
 
   return (

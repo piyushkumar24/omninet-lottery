@@ -149,6 +149,9 @@ export const ManualDrawForm = ({
                   Randomly selecting from {participantCount} participant{participantCount !== 1 ? 's' : ''} 
                   with {totalTicketsInDraw} ticket{totalTicketsInDraw !== 1 ? 's' : ''}
                 </p>
+                <p className="text-sm text-indigo-500 mt-2">
+                  Non-winners' tickets will be reset for the next lottery
+                </p>
                 
                 {/* Confetti/dots animation */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -234,6 +237,10 @@ export const ManualDrawForm = ({
                           </p>
                         </div>
                       </div>
+                      
+                      <p className="text-sm text-indigo-600 mt-4 bg-indigo-50 p-2 rounded-md">
+                        Non-winners' tickets have been reset for the next lottery
+                      </p>
                     </div>
                   </div>
                   
@@ -248,11 +255,11 @@ export const ManualDrawForm = ({
             )}
             
             {/* Close button */}
-            <button 
+            <button
               onClick={closeWinnerDialog}
-              className="absolute top-4 right-4 p-1 rounded-full bg-white/50 hover:bg-white text-gray-700 hover:text-gray-900 transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/80 hover:bg-white text-gray-500 hover:text-gray-700 transition-colors"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         </DialogContent>

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { DrawStatus } from "@prisma/client";
+import { sendNonWinnerEmail } from "@/lib/mail";
+import { resetUserTicketsForNextLottery } from "@/lib/ticket-utils";
 
 export async function POST(req: Request) {
   try {
@@ -143,8 +145,66 @@ export async function POST(req: Request) {
         winnerUser: winningTicket.user,
         participantCount: activeDraw.participants.length,
         totalTicketsInDraw: activeDraw.totalTickets,
+        winnerId: winningTicket.userId,
       };
     });
+    
+    // Reset tickets for non-winners so they can participate in the next lottery
+    try {
+      const nonWinnerUserIds = activeDraw.participants
+        .filter(p => p.userId !== result.winnerId)
+        .map(p => p.userId);
+      
+      console.log(`Resetting tickets for ${nonWinnerUserIds.length} non-winners`);
+      
+      // Process in parallel
+      const resetPromises = nonWinnerUserIds.map(async (userId) => {
+        try {
+          const resetCount = await resetUserTicketsForNextLottery(userId);
+          console.log(`Reset ${resetCount} tickets for user ${userId}`);
+          return resetCount;
+        } catch (resetError) {
+          console.error(`Failed to reset tickets for user ${userId}:`, resetError);
+          return 0;
+        }
+      });
+      
+      // Wait for all resets to complete
+      await Promise.all(resetPromises);
+    } catch (error) {
+      console.error("Error resetting non-winner tickets:", error);
+      // Don't fail the entire operation if ticket reset fails
+    }
+    
+    // Send non-winner emails to all participants who didn't win
+    try {
+      const nonWinners = activeDraw.participants.filter(
+        p => p.userId !== result.winnerId && p.user.email
+      );
+      
+      console.log(`Sending non-winner emails to ${nonWinners.length} participants`);
+      
+      // Send emails in parallel (don't wait for all to complete)
+      const emailPromises = nonWinners.map(async (participant) => {
+        try {
+          await sendNonWinnerEmail(
+            participant.user.email!,
+            participant.user.name || "User",
+            activeDraw.drawDate,
+            participant.userId
+          );
+          console.log(`Non-winner email sent to ${participant.user.email}`);
+        } catch (emailError) {
+          console.error(`Failed to send non-winner email to ${participant.user.email}:`, emailError);
+        }
+      });
+      
+      // Don't await all emails - let them send in background
+      Promise.allSettled(emailPromises);
+    } catch (error) {
+      console.error("Error sending non-winner emails:", error);
+      // Don't fail the entire operation if emails fail
+    }
     
     return NextResponse.json({
       success: true,

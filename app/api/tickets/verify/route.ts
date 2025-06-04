@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const recentTickets = await db.ticket.findMany({
       where: {
         userId: user.id,
+        isUsed: false,
         createdAt: {
           gte: new Date(Date.now() - 30 * 60 * 1000), // Last 30 minutes
         },
@@ -37,8 +38,45 @@ export async function GET(request: NextRequest) {
       take: 5,
     });
 
+    // Get all user tickets
+    const allTickets = await db.ticket.findMany({
+      where: {
+        userId: user.id,
+        isUsed: false,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 10,
+    });
+
     // Get total ticket count
     const totalTickets = await getUserAppliedTickets(user.id);
+
+    // Get ticket counts by source
+    const surveyTickets = await db.ticket.count({
+      where: {
+        userId: user.id,
+        source: "SURVEY",
+        isUsed: false,
+      },
+    });
+
+    const referralTickets = await db.ticket.count({
+      where: {
+        userId: user.id,
+        source: "REFERRAL",
+        isUsed: false,
+      },
+    });
+
+    const socialTickets = await db.ticket.count({
+      where: {
+        userId: user.id,
+        source: "SOCIAL",
+        isUsed: false,
+      },
+    });
 
     // Get active draw information
     const activeDraw = await db.draw.findFirst({
@@ -69,12 +107,25 @@ export async function GET(request: NextRequest) {
       data: {
         userId: user.id,
         totalTickets,
+        surveyTickets,
+        referralTickets,
+        socialTickets,
         recentTickets: recentTickets.map(ticket => ({
           id: ticket.id,
           source: ticket.source,
           createdAt: ticket.createdAt,
           isUsed: ticket.isUsed,
           drawId: ticket.drawId,
+          confirmationCode: ticket.confirmationCode,
+          timeAgo: `${Math.round((Date.now() - ticket.createdAt.getTime()) / 1000 / 60)} minutes ago`,
+        })),
+        allTickets: allTickets.map(ticket => ({
+          id: ticket.id,
+          source: ticket.source,
+          createdAt: ticket.createdAt,
+          isUsed: ticket.isUsed,
+          drawId: ticket.drawId,
+          confirmationCode: ticket.confirmationCode,
           timeAgo: `${Math.round((Date.now() - ticket.createdAt.getTime()) / 1000 / 60)} minutes ago`,
         })),
         activeDraw: activeDraw ? {

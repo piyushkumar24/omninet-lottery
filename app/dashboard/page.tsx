@@ -8,7 +8,7 @@ import { NewsletterSection } from "@/components/dashboard/newsletter-cta";
 import { DashboardWrapper } from "@/components/dashboard/dashboard-wrapper";
 import { createOrGetNextDraw, getUserParticipationInDraw } from "@/data/draw";
 import { getUserAppliedTickets } from "@/lib/ticket-utils";
-import { SurveyCompletionAlert } from "@/components/dashboard/survey-completion-alert";
+import { SurveyCompletionAlert, NonWinnerBonusAlert } from "@/components/dashboard/survey-completion-alert";
 import { UserLotteryTickets } from "@/components/dashboard/user-lottery-tickets";
 import { NextLotteryDraw } from "@/components/dashboard/next-lottery-draw";
 import { RecentWinners } from "@/components/dashboard/recent-winners";
@@ -25,7 +25,11 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0; 
 
 interface DashboardPageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<{
+    survey_completed?: string;
+    source?: string;
+    token?: string;
+  }>
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -42,11 +46,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return redirect("/auth/blocked");
   }
 
-  // Await searchParams to fix NextJS 15 error
-  const resolvedSearchParams = await searchParams;
+  // Await searchParams for Next.js 15 compatibility
+  const params = await searchParams;
 
-  // Check if user just completed a survey
-  const surveyCompleted = resolvedSearchParams?.survey === 'completed';
+  // Check if user arrived from survey completion
+  const surveyCompleted = params.survey_completed === "true";
+  
+  // Check if user arrived from non-winner email
+  const fromNonWinnerEmail = params.source === "non_winner_email";
+  const nonWinnerToken = params.token;
 
   // Get or create next lottery draw
   const draw = await createOrGetNextDraw();
@@ -68,9 +76,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const isRecentWinner = !!userWinner && 
     (new Date().getTime() - new Date(userWinner.drawDate).getTime()) < 7 * 24 * 60 * 60 * 1000;
 
-  // If user is a winner, show 0 applied tickets, otherwise show actual count
-  // Add cache busting timestamp to ensure fresh data
-  const appliedTickets = isRecentWinner ? 0 : await getUserAppliedTickets(user.id);
+  // Get available tickets (not used in any draw)
+  // Add a timestamp to prevent caching
+  const timestamp = Date.now();
+  const availableTickets = await getUserAppliedTickets(user.id);
+
+  console.log(`[${timestamp}] Dashboard - Available tickets for user ${user.id}: ${availableTickets}`);
 
   // Get recent winners
   const recentWinners = await db.winner.findMany({
@@ -103,6 +114,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
         {/* Survey Completion Alert */}
         {surveyCompleted && <SurveyCompletionAlert />}
+
+        {/* Non-Winner Bonus Alert */}
+        {fromNonWinnerEmail && nonWinnerToken && (
+          <NonWinnerBonusAlert token={nonWinnerToken} />
+        )}
 
         {/* Header */}
         <div className="mb-6">
@@ -154,7 +170,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <div className="lg:col-span-1">
                 <UserLotteryTickets 
                   userId={user.id}
-                  appliedTickets={appliedTickets}
+                  appliedTickets={availableTickets}
                   userParticipation={userParticipation}
                   drawId={draw.id}
                   surveyCompleted={surveyCompleted}
@@ -171,7 +187,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     totalTickets: draw.totalTickets,
                     status: draw.status,
                   }}
-                  userTickets={appliedTickets}
+                  userTickets={availableTickets}
                   isWinner={isRecentWinner}
                 />
               </div>
@@ -186,7 +202,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         
         {/* Earn Tickets Section */}
         <div className="mt-8">
-          <EarnTickets userId={user.id} appliedTickets={appliedTickets} />
+          <EarnTickets userId={user.id} appliedTickets={availableTickets} />
         </div>
 
         {/* Newsletter Section */}

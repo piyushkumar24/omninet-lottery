@@ -19,13 +19,16 @@ export const TicketDebug = ({ userId, initialTicketCount }: TicketDebugProps) =>
   const [error, setError] = useState<string | null>(null);
   const [fixingTickets, setFixingTickets] = useState(false);
   const [fixResult, setFixResult] = useState<any>(null);
+  const [recentTickets, setRecentTickets] = useState<any[]>([]);
 
   const refreshTicketCount = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`/api/tickets/verify-all?t=${Date.now()}`, {
+      // Add a timestamp to prevent caching
+      const timestamp = Date.now();
+      const response = await fetch(`/api/tickets/verify-all?t=${timestamp}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -40,9 +43,10 @@ export const TicketDebug = ({ userId, initialTicketCount }: TicketDebugProps) =>
         setParticipationCount(data.data.participationTotal);
         setHasDiscrepancy(data.data.hasDiscrepancy);
         setRefreshTime(new Date().toLocaleTimeString());
+        setRecentTickets(data.data.recentTickets || []);
         
         if (data.data.totalTickets !== initialTicketCount) {
-          console.log('Ticket count changed:', {
+          console.log(`[${timestamp}] Ticket count changed:`, {
             before: initialTicketCount, 
             after: data.data.totalTickets
           });
@@ -68,7 +72,9 @@ export const TicketDebug = ({ userId, initialTicketCount }: TicketDebugProps) =>
       setFixingTickets(true);
       setError(null);
       
-      const response = await fetch(`/api/tickets/verify-all`, {
+      // Add a timestamp to prevent caching
+      const timestamp = Date.now();
+      const response = await fetch(`/api/tickets/verify-all?t=${timestamp}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,7 +90,7 @@ export const TicketDebug = ({ userId, initialTicketCount }: TicketDebugProps) =>
         await refreshTicketCount();
         
         // If any fixes were made, we show a success message
-        if (data.data.fixedDraws?.length > 0) {
+        if (data.data.fixedDraws?.length > 0 || data.data.fixedTickets?.length > 0) {
           setError("Fixed ticket issues. The page will now reload to see updated count.");
           
           // Auto-reload the page after 3 seconds to ensure everything is updated
@@ -95,10 +101,50 @@ export const TicketDebug = ({ userId, initialTicketCount }: TicketDebugProps) =>
           setError(null);
         }
       } else {
-        setError("Failed to fix tickets");
+        const errorData = await response.json();
+        setError(errorData.message || "Failed to fix tickets");
       }
     } catch (err) {
       setError("Error fixing tickets");
+      console.error(err);
+    } finally {
+      setFixingTickets(false);
+    }
+  };
+
+  const forceAwardTicket = async () => {
+    try {
+      setFixingTickets(true);
+      setError(null);
+      
+      // Add a timestamp to prevent caching
+      const timestamp = Date.now();
+      const response = await fetch(`/api/tickets/verify?t=${timestamp}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Refresh ticket count after awarding
+        await refreshTicketCount();
+        
+        setError("Emergency ticket awarded. The page will now reload to see updated count.");
+        
+        // Auto-reload the page after 3 seconds to ensure everything is updated
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || "Failed to award emergency ticket");
+      }
+    } catch (err) {
+      setError("Error awarding emergency ticket");
       console.error(err);
     } finally {
       setFixingTickets(false);
@@ -111,7 +157,7 @@ export const TicketDebug = ({ userId, initialTicketCount }: TicketDebugProps) =>
     
     // Initial refresh of ticket count
     refreshTicketCount();
-  }, [refreshTicketCount]);
+  }, []);
 
   return (
     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
@@ -193,26 +239,62 @@ export const TicketDebug = ({ userId, initialTicketCount }: TicketDebugProps) =>
         </div>
       )}
       
+      {ticketCount === 0 && (
+        <div className="mt-2">
+          <Button 
+            size="sm" 
+            variant="default"
+            onClick={forceAwardTicket}
+            disabled={fixingTickets}
+            className="w-full h-8 px-2 py-0 text-xs bg-green-600 hover:bg-green-700"
+          >
+            Award Emergency Ticket
+          </Button>
+        </div>
+      )}
+      
       {error && !hasDiscrepancy && (
         <p className="text-xs text-amber-600 mt-1">{error}</p>
       )}
       
-      {fixResult && fixResult.data.fixedDraws.length > 0 && (
+      {fixResult && (fixResult.data.fixedDraws?.length > 0 || fixResult.data.fixedTickets?.length > 0) && (
         <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md text-xs text-green-700">
           <p className="font-medium">Fixes applied:</p>
           <ul className="list-disc list-inside mt-1">
-            {fixResult.data.fixedDraws.map((fix: any, index: number) => (
-              <li key={index}>
+            {fixResult.data.fixedDraws?.map((fix: any, index: number) => (
+              <li key={`draw-${index}`}>
                 {fix.action === 'created' && `Created participation with ${fix.ticketCount} tickets`}
                 {fix.action === 'updated' && `Updated ticket count from ${fix.oldCount} to ${fix.newCount}`}
                 {fix.action === 'deleted_orphaned' && `Removed orphaned participation with ${fix.oldCount} tickets`}
                 {fix.action === 'emergency_ticket_awarded' && 'Awarded emergency ticket'}
               </li>
             ))}
+            {fixResult.data.fixedTickets?.map((fix: any, index: number) => (
+              <li key={`ticket-${index}`}>
+                {fix.action === 'reset_ticket' && `Reset ticket ${fix.ticketId.substring(0, 8)}...`}
+                {fix.action === 'applied_ticket' && `Applied ticket ${fix.ticketId.substring(0, 8)}... to current draw`}
+              </li>
+            ))}
           </ul>
           <p className="mt-2 text-green-600 font-medium">
             The page will reload in 3 seconds to apply changes...
           </p>
+        </div>
+      )}
+      
+      {recentTickets.length > 0 && (
+        <div className="mt-3">
+          <h4 className="text-xs font-medium text-blue-800 mb-1">Recent Tickets:</h4>
+          <div className="max-h-24 overflow-y-auto bg-white/70 rounded-md border border-blue-200 p-1">
+            {recentTickets.map((ticket, index) => (
+              <div key={ticket.id} className="text-xs p-1 flex justify-between items-center">
+                <span className="text-blue-700">
+                  {ticket.source} ticket {ticket.isUsed ? "(used)" : "(available)"}
+                </span>
+                <span className="text-gray-500">{ticket.timeAgo}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

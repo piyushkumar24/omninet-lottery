@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
  * Manual Survey Completion Handler
  * 
  * This can be used as a fallback if the postback fails
- * or for testing purposes
+ * or for testing purposes. Now includes bonus ticket logic for non-winner emails.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -63,6 +63,36 @@ export async function POST(request: NextRequest) {
         }),
         { status: 401 }
       );
+    }
+
+    // Check for non-winner email tracking token
+    const { searchParams } = new URL(request.url);
+    const nonWinnerToken = searchParams.get('token');
+    let isNonWinnerBonus = false;
+    let bonusTicketsToAward = 1; // Default: 1 ticket for regular survey completion
+    let trackingRecord = null;
+
+    if (nonWinnerToken && nonWinnerToken.startsWith('nw_')) {
+      // Verify the non-winner token
+      try {
+        trackingRecord = await db.settings.findUnique({
+          where: { key: `non_winner_email_${nonWinnerToken}` }
+        });
+
+        if (trackingRecord) {
+          const trackingData = JSON.parse(trackingRecord.value);
+          
+          // Verify the token belongs to this user and hasn't been used
+          if (trackingData.userId === user.id && !trackingData.bonusTicketsAwarded) {
+            isNonWinnerBonus = true;
+            bonusTicketsToAward = 2; // Award 2 bonus tickets for non-winner email flow
+            
+            console.log(`🎫 Non-winner bonus flow detected for user ${user.id}, awarding ${bonusTicketsToAward} tickets`);
+          }
+        }
+      } catch (error) {
+        console.error('Error verifying non-winner token:', error);
+      }
     }
 
     // Check if user already has a recent survey ticket (within last 5 minutes)
@@ -79,7 +109,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (recentTicket) {
+    if (recentTicket && !isNonWinnerBonus) {
       console.log('Recent survey ticket already exists for user:', user.id);
       return NextResponse.json({
         success: true,
@@ -88,21 +118,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Award survey completion ticket
+    // Award survey completion tickets
     const draw = await createOrGetNextDraw();
-    const confirmationCode = nanoid(10);
     
     const result = await db.$transaction(async (tx) => {
-      // Create the survey ticket - always just ONE ticket
-      const newTicket = await tx.ticket.create({
-        data: {
-          userId: user.id,
-          source: "SURVEY",
-          isUsed: true, // Automatically apply to lottery
-          drawId: draw.id,
-          confirmationCode: confirmationCode,
-        },
-      });
+      const ticketIds = [];
+      let totalUserTickets = 0;
+
+      // Create the survey tickets
+      for (let i = 0; i < bonusTicketsToAward; i++) {
+        const confirmationCode = nanoid(10);
+        const newTicket = await tx.ticket.create({
+          data: {
+            userId: user.id,
+            source: "SURVEY",
+            isUsed: false, // Set to false so it shows up on dashboard
+            drawId: null, // Don't assign to a draw yet
+            confirmationCode: confirmationCode,
+          },
+        });
+        ticketIds.push(newTicket.id);
+      }
 
       // Update or create draw participation
       const existingParticipation = await tx.drawParticipation.findUnique({
@@ -114,10 +150,8 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Always increment participation by exactly 1 ticket
-      let totalUserTickets = 1;
       if (existingParticipation) {
-        totalUserTickets = existingParticipation.ticketsUsed + 1;
+        totalUserTickets = existingParticipation.ticketsUsed + bonusTicketsToAward;
         await tx.drawParticipation.update({
           where: { id: existingParticipation.id },
           data: {
@@ -126,57 +160,83 @@ export async function POST(request: NextRequest) {
           },
         });
       } else {
+        totalUserTickets = bonusTicketsToAward;
         await tx.drawParticipation.create({
           data: {
             userId: user.id,
             drawId: draw.id,
-            ticketsUsed: 1,
+            ticketsUsed: bonusTicketsToAward,
           },
         });
       }
 
-      // Update draw total tickets - always increment by 1
+      // Update draw total tickets
       await tx.draw.update({
         where: { id: draw.id },
         data: {
           totalTickets: {
-            increment: 1,
+            increment: bonusTicketsToAward,
           },
         },
       });
 
+      // Mark non-winner token as used if applicable
+      if (isNonWinnerBonus && nonWinnerToken && trackingRecord) {
+        await tx.settings.update({
+          where: { key: `non_winner_email_${nonWinnerToken}` },
+          data: {
+            value: JSON.stringify({
+              ...JSON.parse(trackingRecord.value),
+              bonusTicketsAwarded: true,
+              bonusAwardedAt: new Date().toISOString(),
+              ticketsAwarded: bonusTicketsToAward
+            }),
+            updatedAt: new Date(),
+          },
+        });
+      }
+
       // Log the exact award amount
       await tx.settings.create({
         data: {
-          key: `survey_ticket_${newTicket.id}`,
+          key: `survey_ticket_${ticketIds[0]}`,
           value: JSON.stringify({
             userId: user.id,
-            ticketId: newTicket.id,
-            ticketCount: 1, // Always exactly 1
+            ticketIds,
+            ticketCount: bonusTicketsToAward,
+            isNonWinnerBonus,
             timestamp: new Date().toISOString(),
           }),
-          description: "Survey completion ticket awarded - guaranteed 1 ticket",
+          description: `Survey completion ticket${bonusTicketsToAward > 1 ? 's' : ''} awarded - ${bonusTicketsToAward} ticket${bonusTicketsToAward > 1 ? 's' : ''}`,
         },
       });
 
       return {
-        ticketId: newTicket.id,
+        ticketIds,
         drawId: draw.id,
         totalUserTickets,
+        bonusTicketsToAward,
+        isNonWinnerBonus,
       };
     });
 
-    console.log('🎫 Survey completion ticket awarded:', {
+    const message = isNonWinnerBonus 
+      ? `🎉 Bonus tickets awarded! You received ${bonusTicketsToAward} lottery tickets for completing the survey after the non-winner email.`
+      : `Survey completion ticket awarded - ${bonusTicketsToAward} ticket${bonusTicketsToAward > 1 ? 's' : ''}`;
+
+    console.log('🎫 Survey completion tickets awarded:', {
       userId: user.id,
-      ticketId: result.ticketId,
+      ticketIds: result.ticketIds,
       drawId: result.drawId,
-      ticketCount: 1 // Always exactly 1
+      ticketCount: bonusTicketsToAward,
+      isNonWinnerBonus,
     });
     
     return NextResponse.json({
       success: true,
-      message: "Survey completion ticket awarded - 1 ticket",
-      data: result
+      message,
+      data: result,
+      bonusTickets: isNonWinnerBonus,
     });
   } catch (error) {
     console.error("Error processing survey completion:", error);

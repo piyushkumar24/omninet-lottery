@@ -42,7 +42,7 @@ export default async function AdminPage() {
       totalUsers,
       activeUsers,
       totalTickets,
-      appliedTickets,
+      availableTickets,
       totalWinners,
       unclaimedPrizes,
       recentWinners,
@@ -63,8 +63,12 @@ export default async function AdminPage() {
       // Total tickets
       db.ticket.count(),
       
-      // Applied tickets (all tickets since they're all applied)
-      db.ticket.count(),
+      // Available tickets (not used in any draw)
+      db.ticket.count({
+        where: {
+          isUsed: false
+        }
+      }),
       
       // Total winners
       db.winner.count(),
@@ -105,7 +109,7 @@ export default async function AdminPage() {
     const totalUsersCount = totalUsers.status === 'fulfilled' ? totalUsers.value : 0;
     const activeUsersCount = activeUsers.status === 'fulfilled' ? activeUsers.value : 0;
     const totalTicketsCount = totalTickets.status === 'fulfilled' ? totalTickets.value : 0;
-    const appliedTicketsCount = appliedTickets.status === 'fulfilled' ? appliedTickets.value : 0;
+    const availableTicketsCount = availableTickets.status === 'fulfilled' ? availableTickets.value : 0;
     const totalWinnersCount = totalWinners.status === 'fulfilled' ? totalWinners.value : 0;
     const unclaimedPrizesCount = unclaimedPrizes.status === 'fulfilled' ? unclaimedPrizes.value : 0;
     const recentWinnersList = recentWinners.status === 'fulfilled' ? recentWinners.value : [];
@@ -181,7 +185,7 @@ export default async function AdminPage() {
             totalUsers={totalUsersCount}
             activeUsers={activeUsersCount}
             totalTickets={totalTicketsCount}
-            unusedTickets={appliedTicketsCount}
+            availableTickets={availableTicketsCount}
             totalWinners={totalWinnersCount}
             unclaimedPrizes={unclaimedPrizesCount}
           />
@@ -335,8 +339,8 @@ export default async function AdminPage() {
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <Ticket className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-700">{appliedTicketsCount}</p>
-                <p className="text-sm text-green-600">Applied Tickets</p>
+                <p className="text-2xl font-bold text-green-700">{availableTicketsCount}</p>
+                <p className="text-sm text-green-600">Available Tickets</p>
               </div>
               <div className="text-center p-4 bg-yellow-50 rounded-lg">
                 <Gift className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
