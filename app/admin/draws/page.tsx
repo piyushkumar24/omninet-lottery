@@ -7,7 +7,7 @@ import { ManualDrawForm } from "@/components/admin/manual-draw-form";
 import { ManualWinnerSelect } from "@/components/admin/manual-winner-select";
 import { Gift, Users, AlertTriangle, Calendar, Ticket } from "lucide-react";
 import { DrawStatus } from "@prisma/client";
-import { getCurrentDrawWithAccurateTickets } from "@/lib/draw-utils";
+import { getUserAppliedTickets } from "@/lib/ticket-utils";
 
 export const metadata: Metadata = {
   title: "Draw Management | Admin Dashboard",
@@ -31,8 +31,18 @@ export default async function DrawsPage() {
     }
   });
 
-  // Get current active draw with accurate ticket count using utility function
-  const activeDraw = await getCurrentDrawWithAccurateTickets();
+  // Get current active draw
+  const activeDraw = await db.draw.findFirst({
+    where: {
+      status: DrawStatus.PENDING,
+      drawDate: {
+        gte: new Date(),
+      },
+    },
+    orderBy: {
+      drawDate: 'asc',
+    },
+  });
 
   // Get participants for the active draw if it exists
   const participants = activeDraw ? await db.drawParticipation.findMany({
@@ -51,12 +61,34 @@ export default async function DrawsPage() {
 
   // Get participation statistics
   const participantCount = participants.length || 0;
-  const totalTicketsInDraw = activeDraw?.totalTickets || 0;
+  
+  // Calculate total tickets in draw from participation records (more accurate)
+  let totalTicketsInDraw = 0;
+  if (participants.length > 0) {
+    // Sum up all ticketsUsed from participation records
+    totalTicketsInDraw = participants.reduce((total, participant) => {
+      return total + participant.ticketsUsed;
+    }, 0);
+  }
 
-  // Get active tickets count (not in any draw)
+  // Get active tickets count (not in any draw and not used)
+  // These are tickets that can be applied to the next lottery
   const unusedTickets = await db.ticket.count({
     where: {
-      isUsed: false
+      isUsed: false,
+      drawId: null
+    }
+  });
+
+  // Get the total number of users with available tickets
+  const usersWithTickets = await db.user.count({
+    where: {
+      tickets: {
+        some: {
+          isUsed: false,
+          drawId: null
+        }
+      }
     }
   });
 
@@ -124,9 +156,9 @@ export default async function DrawsPage() {
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <Ticket className="h-8 w-8 text-gray-600" />
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Unused Tickets</p>
+                  <p className="text-sm font-medium text-gray-700">Available Tickets</p>
                   <p className="text-2xl font-bold text-gray-900">{unusedTickets}</p>
-                  <p className="text-xs text-gray-500">Not in any draw</p>
+                  <p className="text-xs text-gray-500">From {usersWithTickets} users</p>
                 </div>
               </div>
             </div>

@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
         data: {
           userId: referrerId,
           source: "REFERRAL",
-          isUsed: true, // Automatically apply to lottery
-          drawId: draw.id,
+          isUsed: false, // Set to false so it shows up on dashboard
+          drawId: null, // Don't assign to a draw yet
           confirmationCode: confirmationCode,
         },
       });

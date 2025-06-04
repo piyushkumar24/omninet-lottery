@@ -2,17 +2,17 @@ import { db } from "@/lib/db";
 import { Draw } from "@prisma/client";
 
 /**
- * Gets the accurate ticket count for a draw by calculating from participation records
- * and updates the draw record if needed
+ * Gets the accurate ticket count for a draw by directly counting tickets assigned to the draw
  */
 export async function getAccurateDrawTicketCount(drawId: string): Promise<number> {
   try {
-    // Get the sum of all tickets from draw participations
-    const participationTickets = await db.$queryRaw<Array<{total: bigint | null}>>`
-      SELECT SUM("ticketsUsed") as total 
-      FROM "DrawParticipation" 
-      WHERE "drawId" = ${drawId}
-    `;
+    // Count tickets directly assigned to this draw
+    const ticketCount = await db.ticket.count({
+      where: {
+        drawId: drawId,
+        isUsed: true
+      }
+    });
     
     // Get the current draw record
     const draw = await db.draw.findUnique({
@@ -23,25 +23,20 @@ export async function getAccurateDrawTicketCount(drawId: string): Promise<number
       return 0;
     }
     
-    // Convert from BigInt if needed
-    const correctTotalTickets = participationTickets[0]?.total 
-      ? Number(participationTickets[0].total) 
-      : draw.totalTickets;
-    
     // Update the draw's totalTickets if they don't match
-    if (correctTotalTickets !== draw.totalTickets) {
+    if (ticketCount !== draw.totalTickets) {
       try {
         await db.draw.update({
           where: { id: drawId },
-          data: { totalTickets: correctTotalTickets }
+          data: { totalTickets: ticketCount }
         });
-        console.log(`Updated draw ${drawId} total tickets from ${draw.totalTickets} to ${correctTotalTickets}`);
+        console.log(`Updated draw ${drawId} total tickets from ${draw.totalTickets} to ${ticketCount}`);
       } catch (err) {
         console.error("Error updating draw total tickets:", err);
       }
     }
     
-    return correctTotalTickets;
+    return ticketCount;
   } catch (error) {
     console.error("Error calculating accurate draw ticket count:", error);
     // In case of error, fall back to the original value or 0

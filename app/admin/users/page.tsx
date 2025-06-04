@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+import { UserRole, DrawStatus } from "@prisma/client";
 import { UsersTable } from "@/components/admin/users-table";
 
 export const metadata: Metadata = {
@@ -16,13 +16,49 @@ export default async function UsersPage() {
     }
   });
 
-  // Get available tickets for each user (tickets that can be applied to next lottery)
+  // Get the date of the most recent completed draw
+  const mostRecentDraw = await db.draw.findFirst({
+    where: {
+      status: DrawStatus.COMPLETED
+    },
+    orderBy: {
+      drawDate: "desc"
+    },
+    select: {
+      id: true,
+      drawDate: true
+    }
+  });
+
+  // Get the next upcoming draw
+  const nextDraw = await db.draw.findFirst({
+    where: {
+      status: DrawStatus.PENDING
+    },
+    orderBy: {
+      drawDate: "asc"
+    },
+    select: {
+      id: true,
+      drawDate: true
+    }
+  });
+
+  // Get the cutoff date - either the most recent draw date or a week ago if no draws
+  const cutoffDate = mostRecentDraw 
+    ? new Date(mostRecentDraw.drawDate) 
+    : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago as fallback
+
+  // Format users with correct ticket counts
   const formattedUsers = await Promise.all(users.map(async (user) => {
-    // Count available tickets (not used in any draw)
+    // Count available tickets (not used AND earned after the most recent draw)
     const availableTickets = await db.ticket.count({
       where: {
         userId: user.id,
-        isUsed: false
+        isUsed: false,
+        createdAt: {
+          gt: cutoffDate // Only count tickets earned after the most recent draw
+        }
       }
     });
     
@@ -33,6 +69,14 @@ export default async function UsersPage() {
       }
     });
     
+    // Check if user has won any lottery
+    const hasWon = user.hasWon;
+    
+    // Don't show users with no available tickets and who haven't won unless they're admins
+    if (availableTickets === 0 && !hasWon && user.role !== UserRole.ADMIN) {
+      return null;
+    }
+    
     return {
       id: user.id,
       name: user.name || "No Name",
@@ -41,9 +85,13 @@ export default async function UsersPage() {
       isBlocked: user.isBlocked,
       createdAt: user.createdAt,
       ticketCount: availableTickets,
-      totalTicketsEarned: totalTickets
+      totalTicketsEarned: totalTickets,
+      hasWon: hasWon
     };
   }));
+
+  // Filter out null entries (users with no tickets and not winners)
+  const filteredUsers = formattedUsers.filter(user => user !== null);
 
   return (
     <div className="p-6 space-y-6">
@@ -51,7 +99,7 @@ export default async function UsersPage() {
         <h1 className="text-3xl font-bold tracking-tight">Users Management</h1>
       </div>
       
-      <UsersTable users={formattedUsers} />
+      <UsersTable users={filteredUsers} />
     </div>
   );
 } 
