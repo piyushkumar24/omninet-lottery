@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { DrawLogsTable } from "@/components/admin/draw-logs-table";
 import { ManualDrawForm } from "@/components/admin/manual-draw-form";
 import { ManualWinnerSelect } from "@/components/admin/manual-winner-select";
-import { Gift, Users, AlertTriangle, Calendar, Ticket } from "lucide-react";
+import { Gift, Users, AlertTriangle, Calendar, Ticket, Info } from "lucide-react";
 import { DrawStatus } from "@prisma/client";
 import { getUserAppliedTickets } from "@/lib/ticket-utils";
 
@@ -54,6 +54,8 @@ export default async function DrawsPage() {
           name: true,
           email: true,
           image: true,
+          availableTickets: true,
+          totalTicketsEarned: true,
         },
       },
     },
@@ -71,26 +73,34 @@ export default async function DrawsPage() {
     }, 0);
   }
 
-  // Get active tickets count (not in any draw and not used)
-  // These are tickets that can be applied to the next lottery
-  const unusedTickets = await db.ticket.count({
+  // Get all users with available tickets (tickets that can be applied to the lottery)
+  const usersWithAvailableTickets = await db.user.findMany({
     where: {
-      isUsed: false,
-      drawId: null
+      availableTickets: {
+        gt: 0
+      }
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      availableTickets: true,
     }
   });
 
-  // Get the total number of users with available tickets
-  const usersWithTickets = await db.user.count({
-    where: {
-      tickets: {
-        some: {
-          isUsed: false,
-          drawId: null
-        }
-      }
+  // Calculate total available tickets across all users
+  const totalAvailableTickets = usersWithAvailableTickets.reduce((total, user) => {
+    return total + user.availableTickets;
+  }, 0);
+
+  // Get total tickets earned across all users (lifetime)
+  const totalTicketsStats = await db.user.aggregate({
+    _sum: {
+      totalTicketsEarned: true
     }
   });
+  
+  const totalTicketsEarnedAllTime = totalTicketsStats._sum.totalTicketsEarned || 0;
 
   // Format draws data for the table
   const formattedDraws = winners.map(winner => ({
@@ -153,12 +163,31 @@ export default async function DrawsPage() {
                 </div>
               </div>
               
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <Ticket className="h-8 w-8 text-gray-600" />
+              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                <Ticket className="h-8 w-8 text-green-600" />
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Available Tickets</p>
-                  <p className="text-2xl font-bold text-gray-900">{unusedTickets}</p>
-                  <p className="text-xs text-gray-500">From {usersWithTickets} users</p>
+                  <p className="text-sm font-medium text-green-700">Available Tickets</p>
+                  <p className="text-2xl font-bold text-green-900">{totalAvailableTickets}</p>
+                  <p className="text-xs text-green-500">From {usersWithAvailableTickets.length} users</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
+                <Info className="h-8 w-8 text-amber-600" />
+                <div>
+                  <p className="text-sm font-medium text-amber-700">Total Tickets Earned (All Time)</p>
+                  <p className="text-2xl font-bold text-amber-900">{totalTicketsEarnedAllTime}</p>
+                  <p className="text-xs text-amber-500">Lifetime tickets across all users</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg">
+                <Gift className="h-8 w-8 text-indigo-600" />
+                <div>
+                  <p className="text-sm font-medium text-indigo-700">Prize Amount</p>
+                  <p className="text-2xl font-bold text-indigo-900">${activeDraw.prizeAmount.toFixed(2)}</p>
                 </div>
               </div>
             </div>

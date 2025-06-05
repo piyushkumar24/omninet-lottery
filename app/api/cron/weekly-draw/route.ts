@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { DrawStatus } from "@prisma/client";
 import { sendNonWinnerEmail } from "@/lib/mail";
-import { resetUserTicketsForNextLottery, resetWinnerTickets } from "@/lib/ticket-utils";
+import { resetAllAvailableTickets } from "@/lib/ticket-utils";
 
 export async function POST(req: Request) {
   try {
@@ -86,103 +86,105 @@ export async function POST(req: Request) {
       },
     });
 
+    // If no tickets are found, use draw participation to create virtual tickets
+    let allEligibleTickets = [];
+    
     if (participationTickets.length === 0) {
-      // Mark draw as cancelled if no valid tickets
-      await db.draw.update({
-        where: { id: activeDraw.id },
-        data: { status: DrawStatus.CANCELLED },
-      });
+      // Create virtual tickets based on draw participation
+      for (const participant of activeDraw.participants) {
+        for (let i = 0; i < participant.ticketsUsed; i++) {
+          allEligibleTickets.push({
+            userId: participant.userId,
+            user: participant.user,
+          });
+        }
+      }
+      console.log(`Using ${allEligibleTickets.length} virtual tickets from ${activeDraw.participants.length} participants`);
+    } else {
+      allEligibleTickets = participationTickets;
+      console.log(`Using ${allEligibleTickets.length} actual tickets from database`);
+    }
 
+    if (allEligibleTickets.length === 0) {
       return NextResponse.json({
         success: false,
-        message: "Draw cancelled: No valid participation tickets found",
+        message: "No valid tickets found for this draw. Cannot proceed with lottery.",
       });
     }
 
-    // Use database transaction to ensure atomicity
-    const result = await db.$transaction(async (tx) => {
-      // Select a random winning ticket from participation tickets only
-      const winningTicketIndex = Math.floor(Math.random() * participationTickets.length);
-      const winningTicket = participationTickets[winningTicketIndex];
-      
-      // Get the winning user's participation details
-      const winnerParticipation = activeDraw.participants.find(
-        p => p.userId === winningTicket.userId
-      );
+    // Select a random winning ticket
+    const randomIndex = Math.floor(Math.random() * allEligibleTickets.length);
+    const winningTicketInfo = allEligibleTickets[randomIndex];
+    const winnerId = winningTicketInfo.userId;
 
-      if (!winnerParticipation) {
-        throw new Error("Winner participation not found");
+    // Run the lottery draw in a transaction
+    const result = await db.$transaction(
+      async (tx) => {
+        // Create a winner record
+        const winner = await tx.winner.create({
+          data: {
+            userId: winnerId,
+            ticketCount: activeDraw.participants.find(p => p.userId === winnerId)?.ticketsUsed || 1,
+            prizeAmount: activeDraw.prizeAmount,
+            drawDate: new Date(),
+            claimed: false,
+          },
+        });
+
+        // Update the winner's participation record
+        await tx.drawParticipation.updateMany({
+          where: {
+            userId: winnerId,
+            drawId: activeDraw.id,
+          },
+          data: { isWinner: true },
+        });
+
+        // Mark the draw as completed
+        await tx.draw.update({
+          where: { id: activeDraw.id },
+          data: { 
+            status: DrawStatus.COMPLETED,
+            winnerId: winnerId,
+          },
+        });
+
+        // Update winner user record
+        await tx.user.update({
+          where: { id: winnerId },
+          data: {
+            hasWon: true,
+            lastWinDate: new Date(),
+          },
+        });
+
+        const winnerUser = await tx.user.findUnique({
+          where: { id: winnerId },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        });
+
+        return {
+          winner,
+          winnerUser,
+          participantCount: activeDraw.participants.length,
+          totalTicketsInDraw: activeDraw.totalTickets,
+          winnerId: winnerId,
+        };
       }
-
-      // Create a winner record
-      const winner = await tx.winner.create({
-        data: {
-          userId: winningTicket.userId,
-          ticketCount: winnerParticipation.ticketsUsed,
-          prizeAmount: activeDraw.prizeAmount,
-          drawDate: new Date(),
-          claimed: false,
-        },
-      });
-
-      // Update the winner's participation record
-      await tx.drawParticipation.update({
-        where: { id: winnerParticipation.id },
-        data: { isWinner: true },
-      });
-
-      // Mark the draw as completed
-      await tx.draw.update({
-        where: { id: activeDraw.id },
-        data: { 
-          status: DrawStatus.COMPLETED,
-          winnerId: winningTicket.userId,
-        },
-      });
-
-      return {
-        winner,
-        winnerUser: winningTicket.user,
-        participantCount: activeDraw.participants.length,
-        totalTicketsInDraw: activeDraw.totalTickets,
-        winnerId: winningTicket.userId,
-      };
-    });
+    );
     
-    // Reset ALL tickets for the winner (mark them as used)
+    // Reset ALL users' available tickets to 0 (new system)
     try {
-      console.log(`Resetting ALL tickets for winner ${result.winnerId}`);
-      const resetCount = await resetWinnerTickets(result.winnerId);
-      console.log(`Reset ${resetCount} tickets for winner ${result.winnerId}`);
+      console.log(`Resetting all users' available tickets after lottery draw`);
+      const resetCount = await resetAllAvailableTickets();
+      console.log(`Reset available tickets for ${resetCount} users`);
     } catch (resetError) {
-      console.error(`Failed to reset tickets for winner ${result.winnerId}:`, resetError);
-    }
-    
-    // Reset tickets for non-winners so they can participate in the next lottery
-    try {
-      const nonWinnerUserIds = activeDraw.participants
-        .filter(p => p.userId !== result.winnerId)
-        .map(p => p.userId);
-      
-      console.log(`Resetting tickets for ${nonWinnerUserIds.length} non-winners`);
-      
-      // Process in parallel
-      const resetPromises = nonWinnerUserIds.map(async (userId) => {
-        try {
-          const resetCount = await resetUserTicketsForNextLottery(userId);
-          console.log(`Reset ${resetCount} tickets for user ${userId}`);
-          return resetCount;
-        } catch (resetError) {
-          console.error(`Failed to reset tickets for user ${userId}:`, resetError);
-          return 0;
-        }
-      });
-      
-      // Wait for all resets to complete
-      await Promise.all(resetPromises);
-    } catch (error) {
-      console.error("Error resetting non-winner tickets:", error);
-      // Don't fail the entire operation if ticket reset fails
+      console.error(`Failed to reset available tickets:`, resetError);
     }
     
     // Send non-winner emails to all participants who didn't win
@@ -219,8 +221,8 @@ export async function POST(req: Request) {
       success: true,
       message: "Weekly draw completed successfully",
       winner: {
-        name: result.winnerUser.name,
-        email: result.winnerUser.email,
+        name: result.winnerUser?.name || "Unknown",
+        email: result.winnerUser?.email || "",
         ticketCount: result.winner.ticketCount,
         prizeAmount: result.winner.prizeAmount,
       },

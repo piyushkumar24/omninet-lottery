@@ -35,6 +35,7 @@ interface TicketHistoryModalProps {
     createdAt: Date;
     confirmationCode?: string | null;
   }>;
+  children?: React.ReactNode;
 }
 
 const getSourceIcon = (source: TicketSource) => {
@@ -89,7 +90,7 @@ const getSourceBadgeColor = (source: TicketSource) => {
   }
 };
 
-export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
+export const TicketHistoryModal = ({ tickets, children }: TicketHistoryModalProps) => {
   const [open, setOpen] = useState(false);
   
   // Count tickets by source
@@ -100,14 +101,16 @@ export const TicketHistoryModal = ({ tickets }: TicketHistoryModalProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          className="bg-gradient-to-r from-slate-50 to-blue-50 border-2 border-blue-200 hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 text-slate-700 font-medium transition-all duration-300 hover:shadow-md"
-          onClick={() => setOpen(true)}
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          View Complete History
-        </Button>
+        {children || (
+          <Button 
+            variant="outline" 
+            className="bg-gradient-to-r from-slate-50 to-blue-50 border-2 border-blue-200 hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 text-slate-700 font-medium transition-all duration-300 hover:shadow-md"
+            onClick={() => setOpen(true)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Complete History
+          </Button>
+        )}
       </DialogTrigger>
       
       <DialogContent className="max-w-4xl max-h-[80vh] bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 shadow-2xl">

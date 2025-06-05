@@ -129,6 +129,13 @@ export const CPXSurveyModal = ({
         toast.success(ticketMessage, {
           duration: 5000,
         });
+
+        // Store notification data for dashboard wrapper
+        localStorage.setItem('ticket_awarded', JSON.stringify({
+          source: 'SURVEY',
+          count: data.data?.ticketCount || (data.bonusTickets ? 2 : 1),
+        }));
+
         setShowTicketReward(true);
         setTicketAwarded(true);
         setTicketId(data.data?.ticketId || data.data?.ticketIds?.[0]);
@@ -139,6 +146,17 @@ export const CPXSurveyModal = ({
           }
           // Force refresh dashboard to show updated ticket count
           router.refresh();
+
+          // Trigger notification after refresh
+          setTimeout(() => {
+            window.dispatchEvent(new StorageEvent('storage', {
+              key: 'ticket_awarded',
+              newValue: JSON.stringify({
+                source: 'SURVEY',
+                count: data.data?.ticketCount || (data.bonusTickets ? 2 : 1),
+              }),
+            }));
+          }, 500);
         }, 1500);
       } else {
         console.error('❌ Failed to award participation ticket:', data.message);

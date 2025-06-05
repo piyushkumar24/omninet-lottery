@@ -218,8 +218,25 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
             fontSize: '14px',
           },
         });
+
+        localStorage.setItem('ticket_awarded', JSON.stringify({
+          source: 'SOCIAL',
+          count: data.data?.ticketCount || 1,
+        }));
+
         setSocialMediaFollowed(true);
+        
         router.refresh();
+
+        setTimeout(() => {
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: 'ticket_awarded',
+            newValue: JSON.stringify({
+              source: 'SOCIAL',
+              count: data.data?.ticketCount || 1,
+            }),
+          }));
+        }, 1000);
       } else {
         if (data.message.includes("already") || data.message.includes("only earn 1")) {
           toast.error(data.message, {

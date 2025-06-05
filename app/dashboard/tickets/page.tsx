@@ -17,7 +17,8 @@ import {
   DollarSign,
   ArrowRight,
   Info,
-  Eye
+  Eye,
+  CheckCircle2
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getUserDrawParticipations } from "@/data/draw";
@@ -42,45 +43,6 @@ export const metadata: Metadata = {
   description: "Manage and track your lottery tickets",
 };
 
-const getSourceIcon = (source: TicketSource) => {
-  switch (source) {
-    case "SURVEY":
-      return <ClipboardCheck className="h-5 w-5 text-blue-600" />;
-    case "SOCIAL":
-      return <Share2 className="h-5 w-5 text-purple-600" />;
-    case "REFERRAL":
-      return <Users className="h-5 w-5 text-green-600" />;
-    default:
-      return <Ticket className="h-5 w-5 text-indigo-600" />;
-  }
-};
-
-const getSourceLabel = (source: TicketSource) => {
-  switch (source) {
-    case "SURVEY":
-      return "Survey Completion";
-    case "SOCIAL":
-      return "Social Media Follow";
-    case "REFERRAL":
-      return "Friend Invitation";
-    default:
-      return "Unknown Source";
-  }
-};
-
-const getSourceColor = (source: TicketSource) => {
-  switch (source) {
-    case "SURVEY":
-      return "from-blue-50 to-indigo-50 border-blue-200";
-    case "SOCIAL":
-      return "from-purple-50 to-pink-50 border-purple-200";
-    case "REFERRAL":
-      return "from-green-50 to-emerald-50 border-green-200";
-    default:
-      return "from-slate-50 to-gray-50 border-slate-200";
-  }
-};
-
 export default async function TicketsPage() {
   const user = await getCurrentUser();
   
@@ -92,10 +54,18 @@ export default async function TicketsPage() {
     return redirect("/auth/blocked");
   }
 
-  // Get ticket counts - now all tickets are applied tickets
-  const appliedTickets = await getUserAppliedTickets(user.id);
-  const usedTickets = await getUserUsedTickets(user.id);
-  const totalTickets = await getUserTotalTickets(user.id);
+  // Get user's ticket information from the user model
+  const userWithTickets = await db.user.findUnique({
+    where: { id: user.id },
+    select: {
+      availableTickets: true,
+      totalTicketsEarned: true,
+    }
+  });
+
+  const availableTickets = userWithTickets?.availableTickets || 0;
+  const totalTickets = userWithTickets?.totalTicketsEarned || 0;
+  const usedTickets = totalTickets - availableTickets; // Tickets that have been used in past lotteries
 
   // Fetch user's lottery participations with detailed information
   const participations = await getUserDrawParticipations(user.id);
@@ -111,7 +81,7 @@ export default async function TicketsPage() {
     orderBy: {
       createdAt: "desc",
     },
-    take: 10, // Show only recent 10 tickets for performance
+    take: 20, // Show more recent tickets
   });
 
   // Group tickets by source for display
@@ -129,300 +99,290 @@ export default async function TicketsPage() {
     return acc;
   }, {} as Record<TicketSource, number>);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Tickets</h1>
-          <p className="text-slate-600 mt-1">Manage and track your lottery tickets</p>
-        </div>
-        
-        {/* Ticket Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Applied Tickets */}
-          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 shadow-lg">
-            <CardContent className="pt-6 pb-4">
-              <div className="flex items-center gap-4">
-                <div className="bg-blue-100 p-3 rounded-lg">
-                  <Ticket className="h-5 w-5 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-blue-800">Applied Tickets</h3>
-              </div>
-              <p className="text-4xl font-bold mt-4 text-blue-900">{appliedTickets}</p>
-              <p className="text-sm text-blue-700 mt-2 flex items-center">
-                <Trophy className="h-4 w-4 mr-1" />
-                Automatically entered in lottery
-              </p>
-            </CardContent>
-          </Card>
-          
-          {/* Total Tickets */}
-          <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 shadow-lg">
-            <CardContent className="pt-6 pb-4">
-              <div className="flex items-center gap-4">
-                <div className="bg-green-100 p-3 rounded-lg">
-                  <Ticket className="h-5 w-5 text-green-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-green-800">Total Tickets</h3>
-              </div>
-              <p className="text-4xl font-bold mt-4 text-green-900">{totalTickets}</p>
-              <p className="text-sm text-green-700 mt-2 flex items-center">
-                <Calendar className="h-4 w-4 mr-1" />
-                All time earned
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+  const getSourceIcon = (source: TicketSource) => {
+    switch (source) {
+      case "SURVEY":
+        return <ClipboardCheck className="h-4 w-4" />;
+      case "SOCIAL":
+        return <Share2 className="h-4 w-4" />;
+      case "REFERRAL":
+        return <Users className="h-4 w-4" />;
+      default:
+        return <Ticket className="h-4 w-4" />;
+    }
+  };
 
-        {/* Recent Ticket History */}
-        <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
+  const getSourceColor = (source: TicketSource) => {
+    switch (source) {
+      case "SURVEY":
+        return "text-blue-600";
+      case "SOCIAL":
+        return "text-green-600";
+      case "REFERRAL":
+        return "text-purple-600";
+      default:
+        return "text-slate-600";
+    }
+  };
+
+  const getSourceBgColor = (source: TicketSource) => {
+    switch (source) {
+      case "SURVEY":
+        return "bg-blue-100";
+      case "SOCIAL":
+        return "bg-green-100";
+      case "REFERRAL":
+        return "bg-purple-100";
+      default:
+        return "bg-slate-100";
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto p-6 space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">My Lottery Tickets</h1>
+          <p className="text-slate-600 mt-1">Track your tickets and lottery participation</p>
+        </div>
+        <Link href="/dashboard">
+          <Button variant="outline" className="flex items-center gap-2">
+            <ArrowRight className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
+        </Link>
+      </div>
+
+      {/* Ticket Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-slate-600" />
-              <div>
-                <CardTitle className="text-slate-800">Recent Ticket History</CardTitle>
-                <p className="text-sm text-slate-600">Latest tickets you&apos;ve earned</p>
-              </div>
-            </div>
-            <TicketHistoryModal tickets={tickets} />
+            <CardTitle className="text-sm font-medium text-blue-800">Available Tickets</CardTitle>
+            <Ticket className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent className="p-4">
-            {tickets.length === 0 ? (
-              <div className="text-center py-6">
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-700">{availableTickets}</div>
+            <p className="text-xs text-blue-600">Ready for next lottery</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-slate-800">Used Tickets</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-slate-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-700">{usedTickets}</div>
+            <p className="text-xs text-slate-600">From past lotteries</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-green-800">Total Earned</CardTitle>
+            <Trophy className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">{totalTickets}</div>
+            <p className="text-xs text-green-600">All-time total</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-purple-800">Participations</CardTitle>
+            <Calendar className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-700">{participations.length}</div>
+            <p className="text-xs text-purple-600">Lottery draws entered</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Ticket Earning Sources */}
+      <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-slate-800 flex items-center gap-2">
+            <Ticket className="h-5 w-5" />
+            Ticket Sources
+          </CardTitle>
+          <p className="text-sm text-slate-600">How you&apos;ve earned your tickets</p>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Object.entries(ticketCounts).map(([source, count]) => {
+              const ticketSource = source as TicketSource;
+              return (
+                <div
+                  key={source}
+                  className={`p-4 rounded-lg border-2 ${getSourceBgColor(ticketSource)} border-opacity-30`}
+                >
+                  <div className={`flex items-center gap-2 ${getSourceColor(ticketSource)} mb-2`}>
+                    {getSourceIcon(ticketSource)}
+                    <span className="font-medium">
+                      {source === "SURVEY" ? "Survey Completion" : 
+                       source === "SOCIAL" ? "Social Media Follow" : 
+                       source === "REFERRAL" ? "Friend Referrals" : source}
+                    </span>
+                  </div>
+                  <div className={`text-2xl font-bold ${getSourceColor(ticketSource)}`}>
+                    {count}
+                  </div>
+                  <p className={`text-xs ${getSourceColor(ticketSource)} opacity-75`}>
+                    tickets earned
+                  </p>
+                </div>
+              );
+            })}
+            {Object.keys(ticketCounts).length === 0 && (
+              <div className="col-span-3 text-center py-6">
                 <p className="text-slate-600">No tickets earned yet</p>
+                <Link href="/dashboard">
+                  <Button className="mt-2" size="sm">
+                    Start Earning Tickets
+                  </Button>
+                </Link>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {tickets.slice(0, 3).map((ticket) => (
-                  <div key={ticket.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-white rounded-lg">
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Ticket History */}
+      <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-slate-600" />
+            <div>
+              <CardTitle className="text-slate-800">Recent Ticket History</CardTitle>
+              <p className="text-sm text-slate-600">Latest tickets you&apos;ve earned</p>
+            </div>
+          </div>
+          <TicketHistoryModal tickets={tickets} />
+        </CardHeader>
+        <CardContent className="p-4">
+          {tickets.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-slate-600">No tickets earned yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tickets.slice(0, 5).map((ticket) => (
+                <div
+                  key={ticket.id}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${getSourceBgColor(ticket.source)}`}>
+                      <div className={getSourceColor(ticket.source)}>
                         {getSourceIcon(ticket.source)}
                       </div>
-                      <div>
-                        <p className="font-medium text-slate-800">{getSourceLabel(ticket.source)}</p>
-                        <p className="text-xs text-slate-500">Earned on {formatDate(ticket.createdAt, 'short')}</p>
-                      </div>
                     </div>
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
-                      Applied
-                    </Badge>
+                    <div>
+                      <p className="font-medium text-slate-800">
+                        {ticket.source === "SURVEY" ? "Survey Completion" : 
+                         ticket.source === "SOCIAL" ? "Social Media Follow" : 
+                         ticket.source === "REFERRAL" ? "Friend Referral" : ticket.source} Ticket
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {formatDate(ticket.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                ))}
-                
-                {tickets.length > 3 && (
-                  <div className="text-center pt-2">
-                    <p className="text-sm text-slate-500">Showing 3 of {tickets.length} tickets</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Lottery Participation History */}
-        <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
-            <div className="flex items-center gap-3">
-              <Trophy className="h-5 w-5 text-amber-600" />
-              <CardTitle className="text-amber-800">Lottery Participation History</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            {participations.length === 0 ? (
-              <div className="text-center py-6">
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <Ticket className="h-8 w-8 text-yellow-600" />
-                  </div>
+                  <Badge
+                    variant={ticket.isUsed ? "secondary" : "outline"}
+                    className={
+                      ticket.isUsed 
+                        ? "bg-slate-100 text-slate-600" 
+                        : "bg-green-50 text-green-700 border-green-200"
+                    }
+                  >
+                    {ticket.isUsed ? "Used" : "Available"}
+                  </Badge>
                 </div>
-                <h3 className="text-lg font-medium text-slate-800 mb-2">No Lottery Participation Yet</h3>
-                <p className="text-slate-600">
-                  You haven&apos;t participated in any lottery draws yet. Start earning tickets to join the next draw!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {participations.map((participation) => (
-                  <Dialog key={participation.id}>
-                    <DialogTrigger asChild>
-                      <div className="bg-yellow-50/70 border border-yellow-200 rounded-lg p-4 hover:bg-yellow-50 transition-colors cursor-pointer">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-yellow-100 rounded-lg">
-                              <Ticket className="h-5 w-5 text-yellow-600" />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-amber-900">
-                                Lottery Draw - {formatDate(new Date(participation.draw.drawDate), 'dateOnly')}
-                              </h4>
-                              <p className="text-sm text-amber-700">
-                                Participated with {participation.ticketsUsed} tickets
-                              </p>
-                              <p className="text-xs text-amber-600 mt-1">
-                                Participated on {formatDate(new Date(participation.participatedAt), 'short')}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right">
-                            <div className="flex items-center gap-1 mb-2">
-                              <DollarSign className="h-4 w-4 text-green-600" />
-                              <span className="font-bold text-green-700">${participation.draw.prizeAmount}</span>
-                            </div>
-                            <div className={`text-xs px-3 py-1 rounded-full ${
-                              participation.draw.status === 'COMPLETED' 
-                                ? participation.isWinner 
-                                  ? 'bg-green-100 text-green-700' 
-                                  : 'bg-gray-100 text-gray-600'
-                                : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              {participation.draw.status === 'COMPLETED' 
-                                ? participation.isWinner 
-                                  ? '🎉 Winner!' 
-                                  : 'Not selected'
-                                : 'Pending draw'
-                              }
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Lottery Draw Details</DialogTitle>
-                        <DialogDescription>
-                          Details about your participation in this lottery draw
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                          <h4 className="font-semibold text-blue-800 mb-2">Draw Information</h4>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div className="text-blue-700">Date:</div>
-                            <div className="font-medium">{formatDate(new Date(participation.draw.drawDate), 'dateOnly')}</div>
-                            <div className="text-blue-700">Prize:</div>
-                            <div className="font-medium">${participation.draw.prizeAmount}</div>
-                            <div className="text-blue-700">Status:</div>
-                            <div className="font-medium">{participation.draw.status}</div>
-                          </div>
-                        </div>
-                        <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                          <h4 className="font-semibold text-indigo-800 mb-2">Your Participation</h4>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div className="text-indigo-700">Tickets Used:</div>
-                            <div className="font-medium">{participation.ticketsUsed}</div>
-                            <div className="text-indigo-700">Participated On:</div>
-                            <div className="font-medium">{formatDate(new Date(participation.participatedAt), 'full')}</div>
-                            <div className="text-indigo-700">Result:</div>
-                            <div className="font-medium">
-                              {participation.draw.status === 'COMPLETED' 
-                                ? participation.isWinner 
-                                  ? '🎉 Winner!' 
-                                  : 'Not selected'
-                                : 'Pending draw'
-                              }
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              ))}
+              {tickets.length > 5 && (
+                <div className="text-center pt-2">
+                  <TicketHistoryModal tickets={tickets}>
+                    <Button variant="ghost" size="sm" className="text-indigo-600">
+                      View all {tickets.length} tickets
+                    </Button>
+                  </TicketHistoryModal>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Tickets by Source */}
+      {/* Lottery Participation History */}
+      {participations.length > 0 && (
         <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
-          <CardHeader className="flex items-center gap-2 pb-2">
-            <ArrowRight className="h-5 w-5 text-slate-600" />
-            <CardTitle className="text-slate-800">Tickets by Source</CardTitle>
+          <CardHeader>
+            <CardTitle className="text-slate-800 flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Lottery Participation History
+            </CardTitle>
+            <p className="text-sm text-slate-600">Your entries in past and current lotteries</p>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Survey Tickets */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-white rounded-lg">
-                    <ClipboardCheck className="h-5 w-5 text-blue-600" />
+            <div className="space-y-3">
+              {participations.slice(0, 10).map((participation) => (
+                <div
+                  key={participation.id}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-indigo-100">
+                      <Calendar className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-800">
+                        Lottery Draw - {formatDate(participation.draw.drawDate)}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Prize: ${participation.draw.prizeAmount.toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-bold text-blue-800">
-                    {ticketCounts["SURVEY"] || 0}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      {participation.ticketsUsed} ticket{participation.ticketsUsed !== 1 ? 's' : ''}
+                    </Badge>
+                    {participation.isWinner && (
+                      <Badge className="bg-yellow-500 text-white">
+                        <Trophy className="h-3 w-3 mr-1" />
+                        Winner!
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <h4 className="font-semibold text-blue-700">Survey Tickets</h4>
-                <p className="text-xs text-blue-600 mt-1">Earned by completing surveys</p>
-              </div>
-              
-              {/* Social Media Tickets */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-white rounded-lg">
-                    <Share2 className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <h3 className="text-lg font-bold text-purple-800">
-                    {ticketCounts["SOCIAL"] || 0}
-                  </h3>
-                </div>
-                <h4 className="font-semibold text-purple-700">Social Media Tickets</h4>
-                <p className="text-xs text-purple-600 mt-1">Earned by following on social media</p>
-              </div>
-              
-              {/* Referral Tickets */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="p-2 bg-white rounded-lg">
-                    <Users className="h-5 w-5 text-green-600" />
-                  </div>
-                  <h3 className="text-lg font-bold text-green-800">
-                    {ticketCounts["REFERRAL"] || 0}
-                  </h3>
-                </div>
-                <h4 className="font-semibold text-green-700">Referral Tickets</h4>
-                <p className="text-xs text-green-600 mt-1">Earned by inviting friends</p>
-                {ticketCounts["REFERRAL"] > 0 ? (
-                  <div className="mt-3 text-xs bg-green-100 p-2 rounded border border-green-200">
-                    <p className="text-green-700 font-medium">
-                      You&apos;ve earned {ticketCounts["REFERRAL"]} ticket{ticketCounts["REFERRAL"] !== 1 ? 's' : ''} from friends who completed surveys.
-                    </p>
-                    <Link href="/dashboard/refer" className="flex items-center mt-1 text-green-800 hover:underline">
-                      <p>View your referrals</p>
-                      <ArrowRight className="h-3 w-3 ml-1" />
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="mt-3 text-xs bg-amber-100 p-2 rounded border border-amber-200">
-                    <p className="text-amber-700">You haven&apos;t earned any referral tickets yet.</p>
-                    <Link href="/dashboard/refer" className="flex items-center mt-1 text-amber-800 hover:underline">
-                      <p>Invite friends to earn tickets</p>
-                      <ArrowRight className="h-3 w-3 ml-1" />
-                    </Link>
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
+      )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href="/dashboard">
-            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-              <ArrowRight className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
-          <Link href="/dashboard/refer">
-            <Button variant="outline" className="border-green-200 text-green-700 hover:bg-green-50">
-              <Users className="h-4 w-4 mr-2" />
-              Earn More Tickets
-            </Button>
-          </Link>
-        </div>
-      </div>
+      {/* Help Information */}
+      <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-indigo-600 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-indigo-800 mb-2">How the Ticket System Works</h3>
+              <div className="text-sm text-indigo-700 space-y-2">
+                <p><strong>Available Tickets:</strong> Tickets you can use for the current lottery. These reset to 0 after each lottery draw.</p>
+                <p><strong>Used Tickets:</strong> Tickets from previous lotteries that have already been entered.</p>
+                <p><strong>Total Earned:</strong> All tickets you've earned throughout your time on the platform.</p>
+                <p className="mt-3 pt-2 border-t border-indigo-200">
+                  <strong>Note:</strong> All available tickets are automatically entered into each lottery draw. After each lottery, all tickets are reset and you can start earning new ones for the next draw.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

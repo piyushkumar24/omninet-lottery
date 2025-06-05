@@ -34,7 +34,8 @@ import {
   Search,
   Calendar,
   Mail,
-  Ticket
+  Ticket,
+  RefreshCw
 } from "lucide-react";
 import { 
   AlertDialog,
@@ -69,6 +70,8 @@ export const UsersTable = ({ users }: UsersTableProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "email" | "createdAt" | "ticketCount">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [syncingTickets, setSyncingTickets] = useState(false);
+  const [syncResults, setSyncResults] = useState<{ updated: number, total: number } | null>(null);
 
   // Filter users based on search term (name and email)
   const filteredUsers = users.filter(user =>
@@ -160,6 +163,83 @@ export const UsersTable = ({ users }: UsersTableProps) => {
     }
   };
 
+  const syncAllTickets = async () => {
+    try {
+      setSyncingTickets(true);
+      setSyncResults(null);
+
+      const response = await fetch('/api/admin/sync-tickets', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to sync tickets');
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSyncResults({
+          updated: data.data.usersUpdated,
+          total: data.data.totalUsers
+        });
+        
+        toast.success(`Synchronized tickets for ${data.data.usersUpdated} users`);
+        
+        if (data.data.usersUpdated > 0) {
+          // Refresh the page to show updated data
+          router.refresh();
+        }
+      } else {
+        toast.error(data.message || 'Failed to sync tickets');
+      }
+    } catch (error) {
+      console.error('Error syncing tickets:', error);
+      toast.error('Something went wrong');
+    } finally {
+      setSyncingTickets(false);
+    }
+  };
+
+  const syncUserTickets = async (userId: string) => {
+    try {
+      setLoading(userId);
+
+      const response = await fetch('/api/admin/sync-tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to sync user tickets');
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        if (data.data.changes.availableTickets || data.data.changes.totalTickets) {
+          toast.success('Ticket data synchronized successfully');
+          router.refresh();
+        } else {
+          toast.success('Ticket data is already in sync');
+        }
+      } else {
+        toast.error(data.message || 'Failed to sync user tickets');
+      }
+    } catch (error) {
+      console.error('Error syncing user tickets:', error);
+      toast.error('Something went wrong');
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Search and Filter Controls */}
@@ -173,42 +253,75 @@ export const UsersTable = ({ users }: UsersTableProps) => {
             className="pl-10"
           />
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={syncAllTickets}
+            disabled={syncingTickets}
+            className="border-blue-200 text-blue-700 hover:bg-blue-50"
+          >
+            {syncingTickets ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Sync All Tickets
+              </>
+            )}
+          </Button>
           <span className="text-sm text-slate-500">
             {sortedUsers.length} user{sortedUsers.length !== 1 ? 's' : ''} found
           </span>
         </div>
       </div>
 
+      {syncResults && (
+        <div className={`p-3 rounded-lg border text-sm ${
+          syncResults.updated > 0 
+            ? 'bg-green-50 border-green-200 text-green-700' 
+            : 'bg-blue-50 border-blue-200 text-blue-700'
+        }`}>
+          {syncResults.updated > 0 
+            ? `✅ Synchronized ticket data for ${syncResults.updated} of ${syncResults.total} users` 
+            : `✓ All users' ticket data is already in sync`}
+        </div>
+      )}
+
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-blue-50 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-blue-700">{sortedUsers.length}</p>
+          <p className="text-2xl font-bold text-blue-700">{users.length}</p>
           <p className="text-sm text-blue-600">Total Users</p>
         </div>
         <div className="bg-green-50 rounded-lg p-3 text-center">
           <p className="text-2xl font-bold text-green-700">
-            {sortedUsers.filter(u => u.role === "ADMIN").length}
+            {users.filter(u => u.role === "ADMIN").length}
           </p>
           <p className="text-sm text-green-600">Admins</p>
         </div>
         <div className="bg-yellow-50 rounded-lg p-3 text-center">
           <p className="text-2xl font-bold text-yellow-700">
-            {sortedUsers.filter(u => u.isBlocked).length}
+            {users.filter(u => u.isBlocked).length}
           </p>
           <p className="text-sm text-yellow-600">Blocked</p>
         </div>
         <div className="bg-purple-50 rounded-lg p-3 text-center">
           <p className="text-2xl font-bold text-purple-700">
-            {sortedUsers.reduce((sum, user) => sum + user.ticketCount, 0)}
+            {users.reduce((sum, user) => sum + user.ticketCount, 0)}
           </p>
           <p className="text-sm text-purple-600">Available Tickets</p>
+          <p className="text-xs text-purple-500">In current lottery</p>
         </div>
         <div className="bg-indigo-50 rounded-lg p-3 text-center">
           <p className="text-2xl font-bold text-indigo-700">
-            {sortedUsers.reduce((sum, user) => sum + user.totalTicketsEarned, 0)}
+            {users.reduce((sum, user) => sum + user.totalTicketsEarned, 0)}
           </p>
           <p className="text-sm text-indigo-600">Total Earned</p>
+          <p className="text-xs text-indigo-500">Lifetime</p>
         </div>
       </div>
 
@@ -334,6 +447,13 @@ export const UsersTable = ({ users }: UsersTableProps) => {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => syncUserTickets(user.id)}
+                        disabled={loading === user.id}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2 text-blue-600" /> 
+                        Sync Tickets
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => blockUser(user.id, user.isBlocked)}
                         disabled={loading === user.id}

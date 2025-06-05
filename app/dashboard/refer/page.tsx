@@ -22,6 +22,8 @@ interface Referral {
 interface UserStatus {
   success: boolean;
   referralTicketCount: number;
+  availableTickets: number;
+  totalTicketsEarned: number;
   referralStats: {
     totalReferrals: number;
     qualifiedReferrals: number;
@@ -137,6 +139,7 @@ export default function ReferPage() {
 
   const referrals = userStatus?.referrals || [];
   const referralTicketCount = userStatus?.referralTicketCount || 0;
+  const availableTickets = userStatus?.availableTickets || 0;
   const totalReferrals = userStatus?.referralStats?.totalReferrals || 0;
   const qualifiedReferrals = userStatus?.referralStats?.qualifiedReferrals || 0;
   const pendingReferrals = userStatus?.referralStats?.pendingReferrals || 0;
@@ -178,6 +181,9 @@ export default function ReferPage() {
               <p className="text-sm text-green-700 mt-2 flex items-center">
                 <TrendingUp className="h-4 w-4 mr-1" />
                 Tickets earned from referrals
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                {availableTickets > 0 && `${availableTickets} tickets available for the next draw`}
               </p>
             </CardContent>
           </Card>
@@ -223,7 +229,7 @@ export default function ReferPage() {
               Your Referral Link
             </CardTitle>
             <CardDescription className="text-blue-700">
-              Share this link with friends. When they sign up and complete their first survey, you&apos;ll both earn a ticket!
+              Share this link with friends. When they sign up and complete their first survey, you&apos;ll both earn a ticket for the lottery!
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
@@ -273,20 +279,18 @@ export default function ReferPage() {
               </div>
             </div>
             
-            <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-6 text-amber-800">
-              <div className="flex items-start gap-3">
-                <Info className="h-6 w-6 text-amber-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-semibold text-amber-900 mb-2">💡 How Referrals Work</p>
-                  <ul className="text-amber-800 text-sm space-y-1">
-                    <li>• Share your unique referral link with friends</li>
-                    <li>• When they sign up using your link, they get marked as your referral</li>
-                    <li>• Once they complete their first survey, you automatically earn 1 ticket</li>
-                    <li>• Your friend also gets their survey completion ticket</li>
-                    <li>• Both of you can now participate in lottery draws!</li>
-                  </ul>
-                </div>
-              </div>
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mt-4">
+              <h3 className="font-semibold text-blue-800 flex items-center gap-2 mb-2">
+                <Gift className="h-5 w-5 text-blue-600" />
+                How to Earn Referral Tickets
+              </h3>
+              <ol className="text-sm text-blue-700 space-y-2 ml-6 list-decimal">
+                <li>Share your unique referral link with friends</li>
+                <li>When they sign up using your link, they become your referral</li>
+                <li>When your referral completes their first survey, you earn a referral ticket</li>
+                <li>Your ticket is automatically entered into the current lottery draw</li>
+                <li>Track your referrals and earned tickets in this dashboard</li>
+              </ol>
             </div>
           </CardContent>
         </Card>

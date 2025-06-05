@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getUserAppliedTickets, getUserTotalTickets } from "@/lib/ticket-utils";
+import { createOrGetNextDraw } from "@/data/draw";
 import { nanoid } from "nanoid";
 
 /**
@@ -29,145 +30,86 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Query the database directly for accurate count
-    const rawTicketCount = await db.$queryRaw`
-      SELECT COUNT(*) as count FROM "Ticket" WHERE "userId" = ${user.id}::text AND "isUsed" = false
-    ` as { count: bigint }[];
+    // Get current active draw
+    const currentDraw = await createOrGetNextDraw();
     
-    // Get draw participation counts for this user
-    const userParticipations = await db.drawParticipation.findMany({
-      where: { userId: user.id },
-      select: { 
-        id: true,
-        drawId: true,
-        ticketsUsed: true 
+    // Get user's participation in current draw
+    const userParticipation = await db.drawParticipation.findUnique({
+      where: {
+        userId_drawId: {
+          userId: user.id,
+          drawId: currentDraw.id,
+        },
       },
     });
     
-    // Calculate total tickets from participation records
-    const participationTotal = userParticipations.reduce(
-      (sum, record) => sum + record.ticketsUsed, 
-      0
-    );
+    // Get total tickets and breakdown by source
+    const [totalTickets, surveyTickets, socialTickets, referralTickets] = await Promise.all([
+      db.ticket.count({
+        where: { userId: user.id },
+      }),
+      db.ticket.count({
+        where: { userId: user.id, source: "SURVEY" },
+      }),
+      db.ticket.count({
+        where: { userId: user.id, source: "SOCIAL" },
+      }),
+      db.ticket.count({
+        where: { userId: user.id, source: "REFERRAL" },
+      }),
+    ]);
     
     // Get recent tickets with detailed information
     const recentTickets = await db.ticket.findMany({
       where: {
         userId: user.id,
-        isUsed: false, // Only get unused tickets
       },
       orderBy: {
         createdAt: 'desc',
       },
       take: 10,
     });
-
-    // Get active draw information
-    const activeDraw = await db.draw.findFirst({
-      where: {
-        status: "PENDING",
-      },
-      orderBy: {
-        drawDate: 'asc',
-      },
-    });
-
-    // Get draw participation details
-    let drawParticipation = null;
-    if (activeDraw) {
-      drawParticipation = await db.drawParticipation.findUnique({
-        where: {
-          userId_drawId: {
-            userId: user.id,
-            drawId: activeDraw.id,
-          },
-        },
-      });
-    }
-
-    // Get ticket counts by source
-    const surveyTickets = await db.ticket.count({
-      where: {
-        userId: user.id,
-        source: "SURVEY",
-        isUsed: false, // Only count unused tickets
-      },
-    });
-
-    const referralTickets = await db.ticket.count({
-      where: {
-        userId: user.id,
-        source: "REFERRAL",
-        isUsed: false, // Only count unused tickets
-      },
-    });
-
-    const socialTickets = await db.ticket.count({
-      where: {
-        userId: user.id,
-        source: "SOCIAL",
-        isUsed: false, // Only count unused tickets
-      },
-    });
-
-    // Calculate total tickets directly from the database
-    const totalCount = Number(rawTicketCount[0].count);
     
-    // Check for discrepancies
-    const hasDiscrepancy = totalCount !== participationTotal;
-
-    // Log performance metrics
+    // Applied tickets is from current draw participation
+    const appliedTickets = userParticipation?.ticketsUsed || 0;
+    
+    // Format recent tickets with time information
+    const formattedRecentTickets = recentTickets.map(ticket => ({
+      id: ticket.id,
+      source: ticket.source,
+      createdAt: ticket.createdAt,
+      isUsed: ticket.isUsed,
+      drawId: ticket.drawId,
+      timeAgo: getTimeAgo(ticket.createdAt),
+    }));
+    
     const endTime = Date.now();
-    console.log(`[${requestId}] Completed ticket verification in ${endTime - startTime}ms`);
-    console.log(`[${requestId}] User ${user.id} ticket counts:`, {
-      totalFromTickets: totalCount,
-      totalFromParticipation: participationTotal,
-      hasDiscrepancy
-    });
-
+    console.log(`[${requestId}] Ticket verification completed in ${endTime - startTime}ms`);
+    
     return NextResponse.json({
       success: true,
-      requestId,
-      message: hasDiscrepancy 
-        ? "Ticket count discrepancy detected. Use 'Fix Issues' to resolve." 
-        : "Enhanced ticket verification successful",
       data: {
         userId: user.id,
-        userName: user.name,
-        email: user.email,
-        totalTickets: totalCount,
-        participationTotal,
-        hasDiscrepancy,
+        appliedTickets,
+        totalTickets,
         surveyTickets,
-        referralTickets,
         socialTickets,
-        lastVerified: new Date().toISOString(),
-        recentTickets: recentTickets.map(ticket => ({
-          id: ticket.id,
-          source: ticket.source,
-          createdAt: ticket.createdAt,
-          isUsed: ticket.isUsed,
-          drawId: ticket.drawId,
-          confirmationCode: ticket.confirmationCode,
-          timeAgo: `${Math.round((Date.now() - ticket.createdAt.getTime()) / 1000 / 60)} minutes ago`,
-        })),
-        activeDraw: activeDraw ? {
-          id: activeDraw.id,
-          drawDate: activeDraw.drawDate,
-          totalTickets: activeDraw.totalTickets,
+        referralTickets,
+        userParticipation: userParticipation ? {
+          ticketsUsed: userParticipation.ticketsUsed,
+          participatedAt: userParticipation.participatedAt,
         } : null,
-        drawParticipation: drawParticipation ? {
-          id: drawParticipation.id,
-          ticketsUsed: drawParticipation.ticketsUsed,
-        } : null,
-        participations: userParticipations
+        currentDraw: {
+          id: currentDraw.id,
+          drawDate: currentDraw.drawDate,
+          totalTickets: currentDraw.totalTickets,
+        },
+        recentTickets: formattedRecentTickets,
+        lastUpdated: new Date().toISOString(),
       },
-      performance: {
-        processingTimeMs: endTime - startTime,
-      }
     });
   } catch (error) {
-    console.error("Error verifying tickets:", error);
+    console.error("Error in ticket verification:", error);
     
     return new NextResponse(
       JSON.stringify({
@@ -177,6 +119,27 @@ export async function GET(request: NextRequest) {
       }),
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Helper function to get human-readable time ago
+ */
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) {
+    return `${diffInSeconds} seconds ago`;
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+  } else {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} day${days !== 1 ? 's' : ''} ago`;
   }
 }
 

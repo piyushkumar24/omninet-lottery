@@ -8,7 +8,8 @@ import { NewsletterSection } from "@/components/dashboard/newsletter-cta";
 import { DashboardWrapper } from "@/components/dashboard/dashboard-wrapper";
 import { createOrGetNextDraw, getUserParticipationInDraw } from "@/data/draw";
 import { getUserAppliedTickets } from "@/lib/ticket-utils";
-import { SurveyCompletionAlert, NonWinnerBonusAlert } from "@/components/dashboard/survey-completion-alert";
+import { SurveyCompletionAlert } from "@/components/dashboard/survey-completion-alert";
+import { NonWinnerBonusAlert } from "@/components/dashboard/NonWinnerBonusAlert";
 import { UserLotteryTickets } from "@/components/dashboard/user-lottery-tickets";
 import { NextLotteryDraw } from "@/components/dashboard/next-lottery-draw";
 import { RecentWinners } from "@/components/dashboard/recent-winners";
@@ -117,7 +118,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
         {/* Non-Winner Bonus Alert */}
         {fromNonWinnerEmail && nonWinnerToken && (
-          <NonWinnerBonusAlert token={nonWinnerToken} />
+          <NonWinnerBonusAlert />
         )}
 
         {/* Header */}

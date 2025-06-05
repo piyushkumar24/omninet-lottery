@@ -494,16 +494,39 @@ export const sendNonWinnerEmail = async (
   drawDate: Date,
   userId: string
 ) => {
-  const formattedDrawDate = new Intl.DateTimeFormat('en-US', {
+  const firstName = userName.split(' ')[0] || 'Friend';
+  const formattedDrawDate = drawDate.toLocaleDateString('en-US', { 
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
-  }).format(drawDate);
+  });
 
-  // Create a unique tracking token for this non-winner email
-  const trackingToken = `nw_${userId}_${Date.now()}`;
-  const dashboardLink = `${domain}/dashboard?source=non_winner_email&token=${trackingToken}`;
+  // Generate unique token for non-winner bonus tracking
+  const nonWinnerToken = `nw_${userId}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+  
+  // Store token in database for verification later
+  try {
+    await db.settings.create({
+      data: {
+        key: `non_winner_email_${nonWinnerToken}`,
+        value: JSON.stringify({
+          userId,
+          email,
+          drawDate: drawDate.toISOString(),
+          createdAt: new Date().toISOString(),
+          bonusTicketsAwarded: false,
+        }),
+        description: `Non-winner email token for user ${userId}`,
+      }
+    });
+  } catch (error) {
+    console.error("Error storing non-winner token:", error);
+    // Continue sending the email even if token storage fails
+  }
+
+  // Create the bonus claim URL with token
+  const bonusUrl = `${domain}/dashboard?source=non_winner_email&token=${nonWinnerToken}`;
 
   const emailHtml = `
     <!DOCTYPE html>
@@ -511,7 +534,7 @@ export const sendNonWinnerEmail = async (
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Your Lottery Results + Bonus Opportunity - 0MNINET</title>
+        <title>Better Luck Next Time - 0MNINET Lottery</title>
         <style>
             body { 
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -542,68 +565,40 @@ export const sendNonWinnerEmail = async (
                 background-clip: text;
                 margin-bottom: 10px;
             }
-            .bonus-offer {
-                background: linear-gradient(135deg, #f0f9ff, #e0f7fa);
-                border: 2px solid #0ea5e9;
-                padding: 25px;
-                text-align: center;
-                border-radius: 16px;
-                margin: 25px 0;
-            }
-            .tickets-highlight {
-                font-size: 32px;
-                font-weight: bold;
-                color: #0ea5e9;
-                margin: 15px 0;
-            }
-            .cta-button { 
+            .btn { 
                 display: inline-block; 
-                background: linear-gradient(135deg, #0ea5e9, #10b981);
+                background: linear-gradient(135deg, #3b82f6, #10b981);
                 color: white; 
-                padding: 18px 36px; 
+                padding: 16px 32px; 
                 text-decoration: none; 
                 border-radius: 12px; 
                 font-weight: 600;
-                font-size: 18px;
+                font-size: 16px;
                 margin: 20px 0;
-                box-shadow: 0 6px 20px rgba(14, 165, 233, 0.3);
+                box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
                 transition: all 0.3s ease;
             }
-            .cta-button:hover {
+            .btn:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+                box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
             }
-            .how-it-works {
-                background: #f8fafc;
+            .bonus-section {
+                background: #f0f4ff; /* Light indigo */
+                border: 2px dashed #818cf8; /* Indigo */
                 padding: 20px;
                 border-radius: 12px;
-                margin: 20px 0;
+                margin: 30px 0;
+                text-align: center;
             }
-            .step {
-                margin: 12px 0;
-                padding-left: 30px;
-                position: relative;
-                font-size: 16px;
-            }
-            .step:before {
-                content: counter(step-counter);
-                counter-increment: step-counter;
-                position: absolute;
-                left: 0;
-                top: 0;
-                background: #0ea5e9;
+            .bonus-badge {
+                display: inline-block;
+                background: #6366f1; /* Indigo */
                 color: white;
-                width: 24px;
-                height: 24px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
+                padding: 6px 12px;
+                border-radius: 20px;
                 font-weight: bold;
-                font-size: 12px;
-            }
-            .steps-container {
-                counter-reset: step-counter;
+                font-size: 14px;
+                margin-bottom: 15px;
             }
             .footer { 
                 text-align: center; 
@@ -613,72 +608,48 @@ export const sendNonWinnerEmail = async (
                 color: #64748b;
                 font-size: 14px;
             }
+            .emoji { font-size: 20px; margin-right: 8px; }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
                 <div class="logo">0MNINET</div>
-                <h1 style="color: #1e293b; margin: 0; font-size: 24px;">This week's lottery draw has just closed</h1>
+                <h1 style="color: #1e293b; margin: 0;">Unfortunate News</h1>
             </div>
             
-            <p style="font-size: 16px; margin-bottom: 25px; color: #475569;">
-                This week's lottery draw has just closed — and unfortunately, you weren't one of the winners.
+            <p style="font-size: 16px; margin-bottom: 20px;">Hi <strong>${firstName}</strong>,</p>
+            
+            <p style="font-size: 16px; margin-bottom: 20px;">
+                We're sorry to inform you that you didn't win the 0mninet lottery draw held on ${formattedDrawDate}.
             </p>
             
-            <p style="font-size: 16px; margin-bottom: 25px; color: #1e293b; font-weight: 500;">
-                But at 0mninet, even when you don't win... you don't leave empty-handed.
+            <p style="font-size: 16px; margin-bottom: 20px;">
+                Don't worry though - there's always next week's draw, and we have a special bonus for you!
             </p>
             
-            <div class="bonus-offer">
-                <div style="font-size: 24px; margin-bottom: 15px;">🎁</div>
-                <h2 style="color: #0ea5e9; margin: 0 0 15px 0; font-size: 22px;">
-                    We've got a special reward just for you:
-                </h2>
-                <p style="color: #1e293b; font-size: 18px; font-weight: 500; margin-bottom: 10px;">
-                    Complete just 1 survey and get
+            <div class="bonus-section">
+                <span class="bonus-badge">SPECIAL OFFER</span>
+                <h2 style="color: #4338ca; margin-top: 0;">Claim 2 Bonus Tickets!</h2>
+                <p style="color: #4338ca;">
+                    As a thank you for participating, we're offering you <strong>2 FREE BONUS TICKETS</strong> for the next lottery draw!
                 </p>
-                <div class="tickets-highlight">+2 BONUS tickets</div>
-                <p style="color: #1e293b; font-size: 16px; margin-top: 10px;">
-                    for next week's draw.
-                </p>
-                <p style="color: #0ea5e9; font-size: 16px; font-weight: 500; margin-top: 15px;">
-                    That's twice the chances to win — just for staying in the game.
-                </p>
-            </div>
-            
-            <div class="how-it-works">
-                <h3 style="color: #1e293b; margin-top: 0; margin-bottom: 20px; font-size: 18px;">
-                    Here's how it works:
-                </h3>
-                <div class="steps-container">
-                    <div class="step">Click the button below</div>
-                    <div class="step">Complete a short survey</div>
-                    <div class="step">🎟 Your 2 bonus tickets will be added instantly to your account</div>
-                </div>
-            </div>
-            
-            <div style="text-align: center; margin: 35px 0;">
-                <a href="${dashboardLink}" class="cta-button">
-                    Claim Your Bonus Tickets
+                <a href="${bonusUrl}" class="btn" style="background: linear-gradient(135deg, #4f46e5, #6366f1);">
+                    <span class="emoji">🎟️</span>
+                    Claim My Bonus Tickets
                 </a>
+                <p style="font-size: 14px; color: #6366f1; margin-top: 15px;">
+                    * Limited time offer. Click the button to claim your tickets now.
+                </p>
             </div>
             
-            <p style="font-size: 16px; color: #1e293b; margin: 30px 0 15px 0;">
-                Your time matters. And at 0mninet, every interaction brings you closer to your next opportunity.
-            </p>
-            
-            <p style="font-size: 16px; color: #1e293b; font-weight: 600; margin: 25px 0;">
-                Free internet is coming.<br>
-                0mninet
+            <p style="font-size: 16px; margin-top: 25px; color: #1e293b;">
+                Thanks for being part of the 0mninet community. Good luck in the next draw!
             </p>
             
             <div class="footer">
                 <p><strong>The 0mninet Team</strong></p>
                 <p><a href="https://www.0mninet.com" style="color: #3b82f6; text-decoration: none;">www.0mninet.com</a></p>
-                <p style="font-size: 12px; margin-top: 10px;">
-                    If you have any questions, reply to this email or visit our support center.
-                </p>
             </div>
         </div>
     </body>
@@ -686,45 +657,15 @@ export const sendNonWinnerEmail = async (
   `;
 
   try {
-    // Store the tracking token in settings for later verification
-    await db.settings.upsert({
-      where: { 
-        key: `non_winner_email_${trackingToken}` 
-      },
-      update: {
-        value: JSON.stringify({
-          userId,
-          email,
-          userName,
-          drawDate: drawDate.toISOString(),
-          sentAt: new Date().toISOString(),
-          bonusTicketsAwarded: false
-        }),
-        updatedAt: new Date(),
-      },
-      create: {
-        key: `non_winner_email_${trackingToken}`,
-        value: JSON.stringify({
-          userId,
-          email,
-          userName,
-          drawDate: drawDate.toISOString(),
-          sentAt: new Date().toISOString(),
-          bonusTicketsAwarded: false
-        }),
-        description: "Non-winner email tracking for bonus tickets"
-      }
-    });
-
     const result = await resend.emails.send({
       from: 'noreply@resend.dev',
       to: email,
-      subject: `Your Lottery Results + Earn 2 BONUS Tickets - 0MNINET`,
+      subject: 'Better Luck Next Time - Get 2 Bonus Tickets!',
       html: emailHtml,
     });
     
-    console.log("Non-winner email sent successfully:", result.data?.id, "Tracking token:", trackingToken);
-    return { success: true, trackingToken, result };
+    console.log("Non-winner email sent successfully:", result.data?.id);
+    return result;
   } catch (error) {
     console.error("Error sending non-winner email:", error);
     throw error;

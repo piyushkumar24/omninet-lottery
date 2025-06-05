@@ -1,45 +1,37 @@
 import { db } from "@/lib/db";
 import { dbQueryWithRetry } from "@/lib/db-utils";
+import { createOrGetNextDraw } from "@/data/draw";
 
 /**
- * Get the user's tickets that will be applied to the lottery
- * All tickets are automatically applied to the lottery
+ * Get the user's available tickets (tickets that can participate in lottery)
+ * This is now stored directly in the user model and reset after each lottery
  */
 export const getUserAppliedTickets = async (userId: string): Promise<number> => {
   // Add cache-busting by adding the current timestamp to query params
   const timestamp = Date.now();
   
   try {
-    // Use a direct query to ensure we get the most accurate count
-    const unusedTicketsCount = await db.ticket.count({
-      where: {
-        userId: userId,
-        isUsed: false,
-      }
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { availableTickets: true }
     });
     
-    console.log(`[${timestamp}] Unused ticket count for user ${userId}: ${unusedTicketsCount}`);
+    const availableTickets = user?.availableTickets || 0;
     
-    return unusedTicketsCount;
+    console.log(`[${timestamp}] Available tickets for user ${userId}: ${availableTickets}`);
+    
+    return availableTickets;
   } catch (error) {
-    console.error(`Error getting tickets for user ${userId}:`, error);
-    
-    // Fallback to simpler query if the first attempt fails
-    try {
-      // Use raw SQL query as a last resort
-      const result = await db.$queryRaw`
-        SELECT COUNT(*) as count FROM "Ticket" 
-        WHERE "userId" = ${userId}::text AND "isUsed" = false
-      ` as { count: bigint }[];
-      
-      const count = Number(result[0].count);
-      console.log(`[${timestamp}] Fallback unused ticket count for user ${userId}: ${count}`);
-      return count;
-    } catch (fallbackError) {
-      console.error(`Fallback query failed for user ${userId}:`, fallbackError);
-      return 0;
-    }
+    console.error(`Error getting available tickets for user ${userId}:`, error);
+    return 0;
   }
+};
+
+/**
+ * Get user's available tickets (same as applied tickets in new system)
+ */
+export const getUserAvailableTickets = async (userId: string): Promise<number> => {
+  return await getUserAppliedTickets(userId);
 };
 
 /**
@@ -59,17 +51,20 @@ export const getUserTicketsInDraw = async (userId: string, drawId: string): Prom
 };
 
 /**
- * Get user's total tickets (all time)
+ * Get user's total tickets earned (lifetime, includes available + used)
  */
 export const getUserTotalTickets = async (userId: string): Promise<number> => {
-  return await dbQueryWithRetry(
-    () => db.ticket.count({
-      where: {
-        userId: userId,
-      },
-    }),
-    'getUserTotalTickets'
-  );
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { totalTicketsEarned: true }
+    });
+    
+    return user?.totalTicketsEarned || 0;
+  } catch (error) {
+    console.error(`Error getting total tickets for user ${userId}:`, error);
+    return 0;
+  }
 };
 
 /**
@@ -88,71 +83,176 @@ export const getUserUsedTickets = async (userId: string): Promise<number> => {
 };
 
 /**
- * DEPRECATED: Use getUserAppliedTickets instead
- * Kept for backward compatibility
+ * Award tickets to a user (increases both available and total counts)
  */
-export const getUserAvailableTickets = async (userId: string): Promise<number> => {
-  // Return all tickets as they are all automatically applied
-  return await getUserAppliedTickets(userId);
+export const awardTicketsToUser = async (
+  userId: string, 
+  ticketCount: number,
+  source: "SURVEY" | "SOCIAL" | "REFERRAL"
+): Promise<{
+  success: boolean;
+  availableTickets: number;
+  totalTickets: number;
+  ticketIds: string[];
+}> => {
+  try {
+    const result = await db.$transaction(async (tx) => {
+      // Create ticket records for history
+      const ticketIds = [];
+      for (let i = 0; i < ticketCount; i++) {
+        const ticket = await tx.ticket.create({
+          data: {
+            userId,
+            source,
+            isUsed: false,
+            confirmationCode: `${source}_${userId}_${Date.now()}_${i}`,
+          },
+        });
+        ticketIds.push(ticket.id);
+      }
+
+      // Update user's ticket counts
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: {
+          availableTickets: {
+            increment: ticketCount,
+          },
+          totalTicketsEarned: {
+            increment: ticketCount,
+          },
+        },
+      });
+
+      return {
+        success: true,
+        availableTickets: updatedUser.availableTickets,
+        totalTickets: updatedUser.totalTicketsEarned,
+        ticketIds,
+      };
+    });
+
+    console.log(`✅ Awarded ${ticketCount} ${source} tickets to user ${userId}`);
+    return result;
+  } catch (error) {
+    console.error(`Error awarding tickets to user ${userId}:`, error);
+    return {
+      success: false,
+      availableTickets: 0,
+      totalTickets: 0,
+      ticketIds: [],
+    };
+  }
 };
 
 /**
  * Apply all available tickets to the current lottery
+ * In the new system, this creates draw participation based on available tickets
  */
 export const applyAllTicketsToLottery = async (userId: string, drawId: string): Promise<number> => {
-  // Find all tickets that aren't used yet
-  const tickets = await dbQueryWithRetry(
-    () => db.ticket.findMany({
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { availableTickets: true }
+    });
+
+    if (!user || user.availableTickets === 0) {
+      return 0;
+    }
+
+    const ticketsToApply = user.availableTickets;
+
+    // Create or update draw participation
+    await db.drawParticipation.upsert({
       where: {
-        userId: userId,
-        isUsed: false,
+        userId_drawId: {
+          userId,
+          drawId,
+        },
       },
-    }),
-    'findAvailableTickets'
-  );
-  
-  if (tickets.length === 0) {
+      update: {
+        ticketsUsed: ticketsToApply,
+        updatedAt: new Date(),
+      },
+      create: {
+        userId,
+        drawId,
+        ticketsUsed: ticketsToApply,
+      },
+    });
+
+    // Update draw total tickets
+    const currentDraw = await db.draw.findUnique({
+      where: { id: drawId },
+      select: { totalTickets: true }
+    });
+
+    if (currentDraw) {
+      await db.draw.update({
+        where: { id: drawId },
+        data: {
+          totalTickets: (currentDraw.totalTickets || 0) + ticketsToApply,
+        },
+      });
+    }
+
+    console.log(`Applied ${ticketsToApply} tickets to lottery for user ${userId}`);
+    return ticketsToApply;
+  } catch (error) {
+    console.error(`Error applying tickets to lottery for user ${userId}:`, error);
     return 0;
   }
-  
-  // Update all tickets to be used in this draw
-  await dbQueryWithRetry(
-    () => db.ticket.updateMany({
+};
+
+/**
+ * Reset all users' available tickets to 0 after lottery results
+ * This is called after every lottery draw, regardless of who wins
+ */
+export const resetAllAvailableTickets = async (): Promise<number> => {
+  try {
+    const result = await db.user.updateMany({
       where: {
-        id: {
-          in: tickets.map(ticket => ticket.id)
-        }
+        availableTickets: {
+          gt: 0,
+        },
       },
       data: {
-        isUsed: true,
-        drawId: drawId
-      }
-    }),
-    'applyTicketsToLottery'
-  );
-  
-  return tickets.length;
+        availableTickets: 0,
+      },
+    });
+
+    console.log(`Reset available tickets for ${result.count} users`);
+    return result.count;
+  } catch (error) {
+    console.error(`Error resetting available tickets:`, error);
+    return 0;
+  }
 };
 
 /**
  * Reset tickets for a user after a lottery draw is completed
- * This will mark all tickets as used and remove the drawId
- * so they don't appear in the next lottery
+ * In the new system, this just resets available tickets to 0
  */
 export const resetUserTicketsForNextLottery = async (userId: string): Promise<number> => {
   try {
-    const result = await db.ticket.updateMany({
-      where: {
-        userId: userId,
-        isUsed: true,
-      },
-      data: {
-        isUsed: true, // Keep them as used
-        drawId: null  // But remove the draw association
-      }
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { availableTickets: true }
     });
-    
-    return result.count;
+
+    if (!user || user.availableTickets === 0) {
+      return 0;
+    }
+
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        availableTickets: 0,
+      },
+    });
+
+    console.log(`Reset available tickets for user ${userId}: ${user.availableTickets} → 0`);
+    return user.availableTickets;
   } catch (error) {
     console.error(`Error resetting tickets for user ${userId}:`, error);
     return 0;
@@ -161,22 +261,28 @@ export const resetUserTicketsForNextLottery = async (userId: string): Promise<nu
 
 /**
  * Reset tickets for a lottery winner
- * This will mark ALL tickets as used, regardless of current status
- * so they don't appear in the next lottery
+ * In the new system, this resets available tickets to 0 (same as non-winners)
  */
 export const resetWinnerTickets = async (userId: string): Promise<number> => {
   try {
-    const result = await db.ticket.updateMany({
-      where: {
-        userId: userId,
-      },
-      data: {
-        isUsed: true, // Mark all tickets as used
-        drawId: null  // Remove the draw association
-      }
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { availableTickets: true }
     });
-    
-    return result.count;
+
+    if (!user || user.availableTickets === 0) {
+      return 0;
+    }
+
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        availableTickets: 0,
+      },
+    });
+
+    console.log(`Reset winner tickets for user ${userId}: ${user.availableTickets} → 0`);
+    return user.availableTickets;
   } catch (error) {
     console.error(`Error resetting winner tickets for user ${userId}:`, error);
     return 0;

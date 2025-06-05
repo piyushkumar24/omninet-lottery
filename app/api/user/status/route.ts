@@ -18,12 +18,14 @@ export async function GET() {
       );
     }
 
-    // Get user details including social media follow status
+    // Get complete user details
     const userRecord = await dbQueryWithRetry(
       () => db.user.findUnique({
         where: { id: user.id },
         select: { 
           socialMediaFollowed: true,
+          availableTickets: true,
+          totalTicketsEarned: true,
         },
       }),
       'getUserRecord'
@@ -102,7 +104,7 @@ export async function GET() {
     // Calculate how many referrals have completed surveys (and thus earned the referrer a ticket)
     const qualifiedReferrals = referrals.filter(referral => referral.tickets.length > 0);
 
-    logger.debug(`User status: survey=${surveyTicketCount}, referral=${referralTicketCount}, social=${socialTicketCount}, referrals=${referralCount}`, 'API');
+    logger.debug(`User status: survey=${surveyTicketCount}, referral=${referralTicketCount}, social=${socialTicketCount}, referrals=${referralCount}, available=${userRecord?.availableTickets}, total=${userRecord?.totalTicketsEarned}`, 'API');
 
     return NextResponse.json({
       success: true,
@@ -111,6 +113,11 @@ export async function GET() {
       surveyTicketCount,
       referralTicketCount,
       socialTicketCount,
+      // Use the actual available tickets from user record, which accounts for all sources
+      availableTickets: userRecord?.availableTickets || 0,
+      // Total tickets earned (lifetime)
+      totalTicketsEarned: userRecord?.totalTicketsEarned || 0,
+      // For backward compatibility
       totalTickets: surveyTicketCount + referralTicketCount + socialTicketCount,
       referralStats: {
         totalReferrals: referralCount,

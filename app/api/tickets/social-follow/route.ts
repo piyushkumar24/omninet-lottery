@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createOrGetNextDraw } from "@/data/draw";
 import { sendTicketApplicationEmail } from "@/lib/mail";
+import { awardTicketsToUser, applyAllTicketsToLottery } from "@/lib/ticket-utils";
 import { nanoid } from "nanoid";
 
 export async function POST() {
@@ -62,62 +63,35 @@ export async function POST() {
         data: { socialMediaFollowed: true },
       });
 
-      // Create the social media ticket and immediately apply to lottery
-      const confirmationCode = nanoid(10);
-      const ticket = await tx.ticket.create({
-        data: {
-          userId: user.id,
-          source: "SOCIAL",
-          isUsed: false, // Set to false so it shows up on dashboard
-          drawId: null, // Don't assign to a draw yet
-          confirmationCode: confirmationCode,
-        },
-      });
-
-      // Update or create draw participation
-      const existingParticipation = await tx.drawParticipation.findUnique({
-        where: {
-          userId_drawId: {
-            userId: user.id,
-            drawId: draw.id,
-          },
-        },
-      });
-
-      let totalUserTickets = 1;
-      if (existingParticipation) {
-        totalUserTickets = existingParticipation.ticketsUsed + 1;
-        await tx.drawParticipation.update({
-          where: { id: existingParticipation.id },
-          data: {
-            ticketsUsed: totalUserTickets,
-            updatedAt: new Date(),
-          },
-        });
-      } else {
-        await tx.drawParticipation.create({
-          data: {
-            userId: user.id,
-            drawId: draw.id,
-            ticketsUsed: 1,
-          },
-        });
+      // Award social media ticket using the new system
+      const awardResult = await awardTicketsToUser(user.id, 1, "SOCIAL");
+      
+      if (!awardResult.success) {
+        throw new Error("Failed to award social media ticket");
       }
 
-      // Update draw total tickets
-      await tx.draw.update({
-        where: { id: draw.id },
+      // Apply all available tickets to the current lottery
+      const appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);
+
+      // Log the social media ticket award
+      await tx.settings.create({
         data: {
-          totalTickets: {
-            increment: 1,
-          },
+          key: `social_ticket_${awardResult.ticketIds[0]}`,
+          value: JSON.stringify({
+            userId: user.id,
+            ticketId: awardResult.ticketIds[0],
+            timestamp: new Date().toISOString(),
+          }),
+          description: "Social media follow ticket awarded",
         },
       });
 
       return {
-        ticket,
-        confirmationCode,
-        totalUserTickets,
+        ticketId: awardResult.ticketIds[0],
+        availableTickets: awardResult.availableTickets,
+        totalTickets: awardResult.totalTickets,
+        appliedTickets,
+        confirmationCode: `SOCIAL_${awardResult.ticketIds[0]}`,
       };
     });
 
@@ -133,18 +107,31 @@ export async function POST() {
             confirmationCode: result.confirmationCode
           }
         );
-        console.log('📧 Social media ticket automatically applied, email sent to user:', userRecord.email);
+        console.log('📧 Social media ticket email sent to user:', userRecord.email);
       } catch (emailError) {
         console.error('📧 Failed to send social media ticket email:', emailError);
       }
     }
+
+    console.log('🎫 Social media ticket awarded:', {
+      userId: user.id,
+      ticketId: result.ticketId,
+      drawId: draw.id,
+    });
     
     return NextResponse.json({
       success: true,
       message: "🎉 Thanks for following us! Your ticket has been automatically applied to this week's lottery!",
-      ticket: result.ticket,
-      appliedToLottery: true,
-      totalUserTickets: result.totalUserTickets,
+      data: {
+        ticketId: result.ticketId,
+        ticketCount: 1,
+        drawId: draw.id,
+        availableTickets: result.availableTickets,
+        totalUserTickets: result.totalTickets,
+        appliedTickets: result.appliedTickets,
+        source: "SOCIAL",
+        appliedToLottery: true,
+      },
     });
   } catch (error) {
     console.error("Error earning social media ticket:", error);

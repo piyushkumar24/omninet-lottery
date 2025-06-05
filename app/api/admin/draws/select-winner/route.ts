@@ -3,6 +3,7 @@ import { isAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DrawStatus } from "@prisma/client";
 import { sendNonWinnerEmail } from "@/lib/mail";
+import { resetAllAvailableTickets } from "@/lib/ticket-utils";
 
 export async function POST(req: Request) {
   try {
@@ -74,27 +75,12 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Use database transaction to ensure atomicity
+    // Run the lottery draw in a transaction
     const result = await db.$transaction(async (tx) => {
-      // Get the selected user's details
-      const selectedUser = await tx.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-        }
-      });
-
-      if (!selectedUser) {
-        throw new Error("Selected user not found");
-      }
-
       // Create a winner record
       const winner = await tx.winner.create({
         data: {
-          userId: selectedUser.id,
+          userId: userId,
           ticketCount: selectedParticipation.ticketsUsed,
           prizeAmount: activeDraw.prizeAmount,
           drawDate: new Date(),
@@ -113,18 +99,46 @@ export async function POST(req: Request) {
         where: { id: activeDraw.id },
         data: { 
           status: DrawStatus.COMPLETED,
-          winnerId: selectedUser.id,
+          winnerId: userId,
+        },
+      });
+
+      // Update winner user record
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          hasWon: true,
+          lastWinDate: new Date(),
+        },
+      });
+
+      const winnerUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
         },
       });
 
       return {
         winner,
-        winnerUser: selectedUser,
+        winnerUser,
         participantCount: activeDraw.participants.length,
         totalTicketsInDraw: activeDraw.totalTickets,
-        winnerId: selectedUser.id,
+        winnerId: userId,
       };
     });
+
+    // Reset ALL users' available tickets to 0 (new system)
+    try {
+      console.log(`Resetting all users' available tickets after lottery draw`);
+      const resetCount = await resetAllAvailableTickets();
+      console.log(`Reset available tickets for ${resetCount} users`);
+    } catch (resetError) {
+      console.error(`Failed to reset available tickets:`, resetError);
+    }
 
     // Send non-winner emails to all participants who didn't win
     try {
@@ -160,10 +174,10 @@ export async function POST(req: Request) {
       success: true,
       message: "Winner selected successfully!",
       winner: {
-        id: result.winnerUser.id,
-        name: result.winnerUser.name,
-        email: result.winnerUser.email,
-        image: result.winnerUser.image,
+        id: result.winnerUser?.id || "",
+        name: result.winnerUser?.name || "Unknown",
+        email: result.winnerUser?.email || "",
+        image: result.winnerUser?.image || "",
         ticketCount: result.winner.ticketCount,
         prizeAmount: result.winner.prizeAmount,
         winnerId: result.winner.id
