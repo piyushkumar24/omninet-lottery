@@ -49,6 +49,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-switch": "^1.0.3",
     "@radix-ui/react-tabs": "^1.1.12",
+    "@radix-ui/react-toast": "^1.2.14",
     "axios": "^1.9.0",
     "bcryptjs": "^2.4.3",
     "chart.js": "^4.4.9",
