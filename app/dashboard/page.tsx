@@ -77,12 +77,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const isRecentWinner = !!userWinner && 
     (new Date().getTime() - new Date(userWinner.drawDate).getTime()) < 7 * 24 * 60 * 60 * 1000;
 
-  // Get available tickets (not used in any draw)
-  // Add a timestamp to prevent caching
+  // Get fresh user data with tickets directly from the database
   const timestamp = Date.now();
-  const availableTickets = await getUserAppliedTickets(user.id);
+  const userWithTickets = await db.user.findUnique({
+    where: { id: user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      hasWon: true,
+      availableTickets: true,
+      totalTicketsEarned: true,
+    }
+  });
 
-  console.log(`[${timestamp}] Dashboard - Available tickets for user ${user.id}: ${availableTickets}`);
+  const availableTickets = userWithTickets?.availableTickets || 0;
+  const totalTicketsEarned = userWithTickets?.totalTicketsEarned || 0;
+
+  console.log(`[${timestamp}] Dashboard - User ${user.id} has ${availableTickets} available tickets, ${totalTicketsEarned} total earned`);
 
   // Get recent winners
   const recentWinners = await db.winner.findMany({

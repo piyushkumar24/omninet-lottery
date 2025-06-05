@@ -48,10 +48,10 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Manual Survey Completion Handler
- * 
- * This can be used as a fallback if the postback fails
- * or for testing purposes. Now includes bonus ticket logic for non-winner emails.
+ * Survey Completion Handler
+ * ALWAYS awards exactly 1 ticket for survey completion
+ * Awards 2 tickets if from non-winner email
+ * Awards referral ticket to referrer if this is user's first survey
  */
 export async function POST(request: NextRequest) {
   try {
@@ -71,11 +71,10 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const nonWinnerToken = searchParams.get('token');
     let isNonWinnerBonus = false;
-    let bonusTicketsToAward = 1; // Default: 1 ticket for regular survey completion
+    let ticketsToAward = 1; // Default: 1 ticket for survey completion
     let trackingRecord = null;
 
     if (nonWinnerToken && nonWinnerToken.startsWith('nw_')) {
-      // Verify the non-winner token
       try {
         trackingRecord = await db.settings.findUnique({
           where: { key: `non_winner_email_${nonWinnerToken}` }
@@ -84,12 +83,11 @@ export async function POST(request: NextRequest) {
         if (trackingRecord) {
           const trackingData = JSON.parse(trackingRecord.value);
           
-          // Verify the token belongs to this user and hasn't been used
           if (trackingData.userId === user.id && !trackingData.bonusTicketsAwarded) {
             isNonWinnerBonus = true;
-            bonusTicketsToAward = 2; // Award 2 bonus tickets for non-winner email flow
+            ticketsToAward = 2; // Award 2 tickets for non-winner email flow
             
-            console.log(`🎫 Non-winner bonus flow detected for user ${user.id}, awarding ${bonusTicketsToAward} tickets`);
+            console.log(`🎫 Non-winner bonus flow detected for user ${user.id}, awarding ${ticketsToAward} tickets`);
           }
         }
       } catch (error) {
@@ -97,48 +95,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if user already has a recent survey ticket (within last 5 minutes)
-    const recentTicket = await db.ticket.findFirst({
-      where: {
-        userId: user.id,
-        source: "SURVEY",
-        createdAt: {
-          gte: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    if (recentTicket && !isNonWinnerBonus) {
-      console.log('Recent survey ticket already exists for user:', user.id);
-      return NextResponse.json({
-        success: true,
-        message: "Ticket already awarded recently",
-        ticketId: recentTicket.id,
-        data: {
-          ticketId: recentTicket.id,
-          ticketCount: 1,
-          source: "SURVEY",
-          isNonWinnerBonus: false,
-        }
-      });
-    }
-
-    // Award survey completion tickets using the new system
+    // Get or create the current draw
     const draw = await createOrGetNextDraw();
     
+    console.log(`🎫 Processing survey completion for user ${user.id}, awarding ${ticketsToAward} tickets`);
+
     const result = await db.$transaction(async (tx) => {
-      // Award tickets to user (increases both available and total counts)
-      const awardResult = await awardTicketsToUser(user.id, bonusTicketsToAward, "SURVEY");
+      // Award survey completion tickets
+      const awardResult = await awardTicketsToUser(user.id, ticketsToAward, "SURVEY");
       
       if (!awardResult.success) {
-        throw new Error("Failed to award tickets to user");
+        throw new Error("Failed to award survey tickets to user");
       }
+
+      console.log(`✅ Awarded ${ticketsToAward} survey tickets to user ${user.id}`);
 
       // Apply all available tickets to the current lottery
       const appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);
+      console.log(`🎯 Applied ${appliedTickets} tickets to lottery for user ${user.id}`);
 
       // Mark non-winner token as used if applicable
       if (isNonWinnerBonus && nonWinnerToken && trackingRecord) {
@@ -149,15 +123,14 @@ export async function POST(request: NextRequest) {
               ...JSON.parse(trackingRecord.value),
               bonusTicketsAwarded: true,
               bonusAwardedAt: new Date().toISOString(),
-              ticketsAwarded: bonusTicketsToAward
+              ticketsAwarded: ticketsToAward
             }),
             updatedAt: new Date(),
           },
         });
       }
 
-      // Check if this is the user's first survey and they were referred by someone
-      // If so, award a referral ticket to the referrer
+      // Handle referral ticket for referrer (if this is user's first survey)
       let referralTicketAwarded = false;
       let referralTicketId = null;
       let referrerInfo = null;
@@ -170,7 +143,7 @@ export async function POST(request: NextRequest) {
         },
       });
       
-      const isFirstSurvey = surveyTicketCount <= 1; // Count is 1 because we just created a ticket
+      const isFirstSurvey = surveyTicketCount <= ticketsToAward; // Just awarded tickets
       
       if (isFirstSurvey) {
         try {
@@ -181,7 +154,7 @@ export async function POST(request: NextRequest) {
           });
           
           if (userDetail?.referredBy) {
-            // Check if the referrer exists and is eligible
+            // Check if the referrer exists
             const referrer = await tx.user.findUnique({
               where: { id: userDetail.referredBy },
               select: { id: true, name: true, email: true }
@@ -208,7 +181,7 @@ export async function POST(request: NextRequest) {
                 );
                 
                 if (referralAwardResult.success) {
-                  // Apply the referrer's ticket to the lottery
+                  // Apply the referrer's tickets to the lottery
                   await applyAllTicketsToLottery(referrer.id, draw.id);
                   
                   referralTicketAwarded = true;
@@ -220,20 +193,6 @@ export async function POST(request: NextRequest) {
                     where: { id: referralTicketId },
                     data: {
                       confirmationCode: `REF_${user.id}_${nanoid(6)}`,
-                    },
-                  });
-                  
-                  // Log the referral award
-                  await tx.settings.create({
-                    data: {
-                      key: `referral_ticket_${referralTicketId}`,
-                      value: JSON.stringify({
-                        referrerId: referrer.id,
-                        referredUserId: user.id,
-                        ticketId: referralTicketId,
-                        timestamp: new Date().toISOString(),
-                      }),
-                      description: `Referral ticket awarded to ${referrer.email || referrer.id} for referring ${user.email || user.id}`,
                     },
                   });
                   
@@ -250,30 +209,13 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Log the exact award amount
-      await tx.settings.create({
-        data: {
-          key: `survey_ticket_${awardResult.ticketIds[0]}`,
-          value: JSON.stringify({
-            userId: user.id,
-            ticketIds: awardResult.ticketIds,
-            ticketCount: bonusTicketsToAward,
-            isNonWinnerBonus,
-            referralTicketAwarded,
-            referralTicketId,
-            timestamp: new Date().toISOString(),
-          }),
-          description: `Survey completion ticket${bonusTicketsToAward > 1 ? 's' : ''} awarded - ${bonusTicketsToAward} ticket${bonusTicketsToAward > 1 ? 's' : ''}`,
-        },
-      });
-
       return {
         ticketIds: awardResult.ticketIds,
         drawId: draw.id,
         totalUserTickets: awardResult.totalTickets,
         availableTickets: awardResult.availableTickets,
         appliedTickets,
-        bonusTicketsToAward,
+        ticketsToAward,
         isNonWinnerBonus,
         referralTicketAwarded,
         referralTicketId,
@@ -282,26 +224,27 @@ export async function POST(request: NextRequest) {
     });
 
     const message = isNonWinnerBonus 
-      ? `🎉 Bonus tickets awarded! You received ${bonusTicketsToAward} lottery tickets for completing the survey after the non-winner email.`
-      : `Survey completion ticket awarded - ${bonusTicketsToAward} ticket${bonusTicketsToAward > 1 ? 's' : ''}`;
+      ? `🎉 Bonus tickets awarded! You received ${ticketsToAward} lottery tickets for completing the survey.`
+      : `✅ Survey completed! You received ${ticketsToAward} lottery ticket${ticketsToAward > 1 ? 's' : ''}.`;
 
     console.log('🎫 Survey completion tickets awarded:', {
       userId: user.id,
       ticketIds: result.ticketIds,
       drawId: result.drawId,
-      ticketCount: bonusTicketsToAward,
+      ticketCount: ticketsToAward,
+      appliedTickets: result.appliedTickets,
       isNonWinnerBonus,
       referralTicketAwarded: result.referralTicketAwarded,
     });
 
-    // Send email notification
+    // Send email notification to user
     if (user.email) {
       try {
         await sendTicketApplicationEmail(
           user.email,
           {
             name: user.name || "User",
-            ticketCount: bonusTicketsToAward,
+            ticketCount: ticketsToAward,
             drawDate: draw.drawDate,
             confirmationCode: `SURVEY_${result.ticketIds[0]}`,
           }
@@ -336,20 +279,19 @@ export async function POST(request: NextRequest) {
       data: {
         ticketIds: result.ticketIds,
         ticketId: result.ticketIds[0], // For backward compatibility
-        ticketCount: bonusTicketsToAward,
+        ticketCount: ticketsToAward,
         drawId: result.drawId,
         totalUserTickets: result.totalUserTickets,
         availableTickets: result.availableTickets,
         appliedTickets: result.appliedTickets,
         source: "SURVEY",
         isNonWinnerBonus,
-        bonusTickets: isNonWinnerBonus,
         appliedToLottery: true,
         referralTicketAwarded: result.referralTicketAwarded,
       },
     });
   } catch (error) {
-    console.error("Error awarding survey completion ticket:", error);
+    console.error("❌ Error awarding survey completion ticket:", error);
     
     return new NextResponse(
       JSON.stringify({

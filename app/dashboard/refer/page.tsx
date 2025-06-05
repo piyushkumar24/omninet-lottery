@@ -12,48 +12,76 @@ import { formatDate } from "@/lib/utils";
 
 interface Referral {
   id: string;
-  name: string | null;
-  email: string | null;
-  createdAt: string;
+  name: string;
+  email: string;
+  joinedAt: string;
   hasCompletedSurvey: boolean;
   surveyCompletedAt: string | null;
 }
 
-interface UserStatus {
-  success: boolean;
-  referralTicketCount: number;
+interface ReferralStats {
+  totalReferrals: number;
+  qualifiedReferrals: number;
+  pendingReferrals: number;
+  referralTicketsEarned: number;
+}
+
+interface ReferralData {
   availableTickets: number;
   totalTicketsEarned: number;
-  referralStats: {
-    totalReferrals: number;
-    qualifiedReferrals: number;
-    pendingReferrals: number;
-  };
+  referralStats: ReferralStats;
   referrals: Referral[];
 }
 
-export default function ReferPage() {
+export default function ReferralPage() {
   const { data: session } = useSession();
   const [isCopied, setIsCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
+  const [referralData, setReferralData] = useState<ReferralData | null>(null);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const referralLink = referralCode ? `${baseUrl}/?ref=${referralCode}` : 'Loading...';
 
   useEffect(() => {
     if (session?.user?.id) {
-      // Generate or fetch referral code
+      fetchReferralData();
       fetchReferralCode();
-      // Fetch user status which includes referral data
-      fetchUserStatus();
     }
   }, [session?.user?.id]);
 
-  const fetchReferralCode = async () => {
+  const fetchReferralData = async () => {
     try {
       setIsLoading(true);
+      const response = await fetch('/api/referrals/stats', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setReferralData(data.data);
+      } else {
+        toast.error(data.message || "Failed to load referral data");
+      }
+    } catch (error) {
+      console.error("Error fetching referral data:", error);
+      toast.error("Failed to load referral data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchReferralCode = async () => {
+    try {
       const response = await fetch('/api/referrals/code');
       
       if (!response.ok) {
@@ -70,29 +98,6 @@ export default function ReferPage() {
     } catch (error) {
       console.error("Error fetching referral code:", error);
       toast.error("Failed to load referral code. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchUserStatus = async () => {
-    try {
-      const response = await fetch('/api/user/status');
-      
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setUserStatus(data);
-      } else {
-        console.error("API Error:", data.message);
-      }
-    } catch (error) {
-      console.error("Error fetching user status:", error);
-      toast.error("Failed to load referral data. Please refresh the page.");
     }
   };
 
@@ -137,12 +142,18 @@ export default function ReferPage() {
     window.open(`mailto:?subject=${subject}&body=${body}`);
   };
 
-  const referrals = userStatus?.referrals || [];
-  const referralTicketCount = userStatus?.referralTicketCount || 0;
-  const availableTickets = userStatus?.availableTickets || 0;
-  const totalReferrals = userStatus?.referralStats?.totalReferrals || 0;
-  const qualifiedReferrals = userStatus?.referralStats?.qualifiedReferrals || 0;
-  const pendingReferrals = userStatus?.referralStats?.pendingReferrals || 0;
+  if (isLoading || !referralData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading referral data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { availableTickets, referralStats, referrals } = referralData;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
@@ -177,7 +188,7 @@ export default function ReferPage() {
                 </div>
                 <h3 className="text-lg font-semibold text-green-800">Referral Tickets</h3>
               </div>
-              <p className="text-4xl font-bold mt-2 text-green-900">{referralTicketCount}</p>
+              <p className="text-4xl font-bold mt-2 text-green-900">{referralStats.referralTicketsEarned}</p>
               <p className="text-sm text-green-700 mt-2 flex items-center">
                 <TrendingUp className="h-4 w-4 mr-1" />
                 Tickets earned from referrals
@@ -196,7 +207,7 @@ export default function ReferPage() {
                 </div>
                 <h3 className="text-lg font-semibold text-blue-800">Total Referrals</h3>
               </div>
-              <p className="text-4xl font-bold mt-2 text-blue-900">{totalReferrals}</p>
+              <p className="text-4xl font-bold mt-2 text-blue-900">{referralStats.totalReferrals}</p>
               <p className="text-sm text-blue-700 mt-2 flex items-center">
                 <User className="h-4 w-4 mr-1" />
                 Friends who signed up
@@ -212,7 +223,7 @@ export default function ReferPage() {
                 </div>
                 <h3 className="text-lg font-semibold text-amber-800">Qualified Referrals</h3>
               </div>
-              <p className="text-4xl font-bold mt-2 text-amber-900">{qualifiedReferrals}</p>
+              <p className="text-4xl font-bold mt-2 text-amber-900">{referralStats.qualifiedReferrals}</p>
               <p className="text-sm text-amber-700 mt-2 flex items-center">
                 <Check className="h-4 w-4 mr-1" />
                 Completed their first survey
@@ -307,84 +318,77 @@ export default function ReferPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
-            {referrals.length > 0 ? (
-              <div className="space-y-4">
-                {referrals.map((referral, index) => (
-                  <div 
-                    key={referral.id} 
-                    className={`group p-6 rounded-xl hover:shadow-lg transition-all duration-300 border-2 ${
-                      referral.hasCompletedSurvey 
-                        ? 'bg-gradient-to-r from-white to-green-50 border-green-200' 
-                        : 'bg-gradient-to-r from-white to-amber-50 border-amber-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-xl group-hover:scale-105 transition-transform ${
-                          referral.hasCompletedSurvey 
-                            ? 'bg-green-100 group-hover:bg-green-200' 
-                            : 'bg-amber-100 group-hover:bg-amber-200'
-                        }`}>
-                          <User className={`h-6 w-6 ${
-                            referral.hasCompletedSurvey ? 'text-green-600' : 'text-amber-600'
-                          }`} />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-slate-800 text-lg">
-                            {referral.name || "Anonymous User"}
-                          </h3>
-                          <p className="text-sm text-slate-600">{referral.email}</p>
-                          <div className="flex items-center gap-3 mt-2">
-                            <p className="text-sm text-slate-500 flex items-center gap-1">
-                              <User className="h-4 w-4" />
-                              Joined {formatDate(new Date(referral.createdAt), 'short')}
+            {referrals.length > 0 && (
+              <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                <h4 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  Your Referrals ({referrals.length})
+                </h4>
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {referrals.map((referral) => (
+                    <div key={referral.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <User className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-800">{referral.name}</p>
+                            <p className="text-sm text-slate-600">{referral.email}</p>
+                            <p className="text-xs text-slate-500">
+                              Joined {formatDate(new Date(referral.joinedAt), 'dateOnly')}
                             </p>
-                            {referral.hasCompletedSurvey && referral.surveyCompletedAt && (
-                              <p className="text-sm text-green-600 flex items-center gap-1">
-                                <Check className="h-4 w-4" />
-                                Survey completed {formatDate(new Date(referral.surveyCompletedAt), 'short')}
-                              </p>
-                            )}
                           </div>
                         </div>
                       </div>
-                      
                       <div className="text-right">
                         {referral.hasCompletedSurvey ? (
                           <>
-                            <Badge className="bg-green-100 text-green-800 border border-green-300 px-4 py-2 text-sm font-semibold">
-                              <Ticket className="h-4 w-4 mr-1" />
-                              +1 Ticket Earned
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 mb-1">
+                              <Check className="h-3 w-3 mr-1" />
+                              Completed Survey
                             </Badge>
                             <p className="text-xs text-green-600 mt-2">
-                              ✅ Qualified Referral #{qualifiedReferrals - referrals.filter((r, i) => i <= index && r.hasCompletedSurvey).length + referrals.filter((r, i) => i <= index && r.hasCompletedSurvey).length}
+                              ✅ Qualified Referral #{referrals.filter(r => r.hasCompletedSurvey).findIndex(r => r.id === referral.id) + 1}
                             </p>
                           </>
                         ) : (
                           <>
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border border-amber-300 px-4 py-2 text-sm font-semibold">
-                              <Info className="h-4 w-4 mr-1" />
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 mb-1">
+                              <Info className="h-3 w-3 mr-1" />
                               Pending Survey
                             </Badge>
                             <p className="text-xs text-amber-600 mt-2">
-                              ⏳ No ticket yet
+                              Needs to complete survey to earn you a ticket
                             </p>
                           </>
                         )}
                       </div>
                     </div>
-                    
-                    {!referral.hasCompletedSurvey && (
-                      <div className="mt-4 pt-4 border-t border-amber-200">
-                        <p className="text-sm text-amber-700 bg-amber-50 p-3 rounded-lg">
-                          💡 <strong>Almost there!</strong> Once {referral.name || "this friend"} completes their first survey, you&apos;ll automatically earn a referral ticket.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            ) : (
+            )}
+            
+            {referralStats.pendingReferrals > 0 && (
+              <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <Info className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-800">
+                      {referralStats.pendingReferrals} friend{referralStats.pendingReferrals === 1 ? '' : 's'} haven&apos;t completed surveys yet
+                    </p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Once they complete their first survey, you&apos;ll automatically earn referral tickets!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {referrals.length === 0 && (
               <div className="text-center py-16">
                 <div className="flex justify-center mb-6">
                   <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
@@ -401,24 +405,6 @@ export default function ReferPage() {
                     Copy your referral link above and share it with friends on social media, 
                     email, or messaging apps. Every friend who completes their first survey earns you a lottery ticket!
                   </p>
-                </div>
-              </div>
-            )}
-            
-            {pendingReferrals > 0 && (
-              <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-lg">
-                    <Info className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-amber-800">
-                      {pendingReferrals} friend{pendingReferrals === 1 ? '' : 's'} haven&apos;t completed surveys yet
-                    </p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      Encourage them to complete their first survey to earn more tickets!
-                    </p>
-                  </div>
                 </div>
               </div>
             )}

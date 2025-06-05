@@ -1,137 +1,180 @@
-import { Metadata } from "next";
+"use client";
+
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DrawLogsTable } from "@/components/admin/draw-logs-table";
 import { ManualDrawForm } from "@/components/admin/manual-draw-form";
 import { ManualWinnerSelect } from "@/components/admin/manual-winner-select";
+import { LotteryResetCard } from "@/components/admin/lottery-reset-card";
 import { Gift, Users, AlertTriangle, Calendar, Ticket, Info } from "lucide-react";
 import { DrawStatus } from "@prisma/client";
-import { getUserAppliedTickets } from "@/lib/ticket-utils";
+import { toast } from "react-hot-toast";
 
-export const metadata: Metadata = {
-  title: "Draw Management | Admin Dashboard",
-  description: "Manage lottery draws, select winners, and process prizes",
-};
+interface DrawData {
+  id: string;
+  drawDate: string;
+  prizeAmount: number;
+  status: DrawStatus;
+  totalTickets: number;
+  createdAt: string;
+  updatedAt: string;
+  winners: Array<{
+    id: string;
+    userId: string;
+    prizeAmount: number;
+    user: {
+      name: string | null;
+      email: string | null;
+      image?: string | null;
+    };
+  }>;
+  participants: Array<{
+    id: string;
+    userId: string;
+    ticketsUsed: number;
+    createdAt: string;
+    user: {
+      name: string | null;
+      email: string | null;
+      image?: string | null;
+    };
+  }>;
+}
 
-export default async function DrawsPage() {
-  // Get all winners with user info
-  const winners = await db.winner.findMany({
-    orderBy: {
-      drawDate: "desc"
-    },
-    include: {
-      user: {
-        select: {
-          name: true,
-          email: true,
-          image: true,
-        }
+interface Stats {
+  totalWinners: number;
+  totalParticipants: number;
+  totalTicketsInSystem: number;
+  totalTicketsEarned: number;
+}
+
+export default function DrawsPage() {
+  const [draws, setDraws] = useState<DrawData[]>([]);
+  const [activeDraw, setActiveDraw] = useState<DrawData | null>(null);
+  const [stats, setStats] = useState<Stats>({
+    totalWinners: 0,
+    totalParticipants: 0,
+    totalTicketsInSystem: 0,
+    totalTicketsEarned: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDrawsData();
+  }, []);
+
+  const fetchDrawsData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch draws data
+      const drawsResponse = await fetch('/api/admin/draws');
+      const drawsData = await drawsResponse.json();
+      
+      if (drawsData.success) {
+        setDraws(drawsData.data.draws);
+        setActiveDraw(drawsData.data.activeDraw);
       }
+      
+      // Fetch lottery stats
+      const statsResponse = await fetch('/api/admin/reset-lottery');
+      const statsData = await statsResponse.json();
+      
+      if (statsData.success) {
+        setStats({
+          totalWinners: drawsData.data.draws.reduce((sum: number, draw: DrawData) => sum + draw.winners.length, 0),
+          totalParticipants: statsData.data.usersWithAvailableTickets,
+          totalTicketsInSystem: statsData.data.totalAvailableTickets,
+          totalTicketsEarned: statsData.data.totalEarnedTickets
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error fetching draws data:', error);
+      toast.error('Failed to fetch draws data');
+    } finally {
+      setIsLoading(false);
     }
-  });
+  };
 
-  // Get current active draw
-  const activeDraw = await db.draw.findFirst({
-    where: {
-      status: DrawStatus.PENDING,
-      drawDate: {
-        gte: new Date(),
-      },
-    },
-    orderBy: {
-      drawDate: 'asc',
-    },
-  });
-
-  // Get participants for the active draw if it exists
-  const participants = activeDraw ? await db.drawParticipation.findMany({
-    where: { drawId: activeDraw.id },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          availableTickets: true,
-          totalTicketsEarned: true,
+  const handleLotteryReset = async (drawId: string) => {
+    try {
+      const response = await fetch('/api/admin/reset-lottery', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      },
-    },
-  }) : [];
+        body: JSON.stringify({ drawId }),
+      });
 
-  // Get participation statistics
-  const participantCount = participants.length || 0;
-  
-  // Calculate total tickets in draw from participation records (more accurate)
-  let totalTicketsInDraw = 0;
-  if (participants.length > 0) {
-    // Sum up all ticketsUsed from participation records
-    totalTicketsInDraw = participants.reduce((total, participant) => {
-      return total + participant.ticketsUsed;
-    }, 0);
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Lottery reset successful! Reset tickets for ${data.data.usersReset} users.`);
+        await fetchDrawsData(); // Refresh data
+      } else {
+        toast.error(data.message || 'Failed to reset lottery');
+      }
+    } catch (error) {
+      console.error('Error resetting lottery:', error);
+      toast.error('Failed to reset lottery');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight">Draw Management</h1>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-slate-600">Loading draws data...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // Get all users with available tickets (tickets that can be applied to the lottery)
-  const usersWithAvailableTickets = await db.user.findMany({
-    where: {
-      availableTickets: {
-        gt: 0
-      }
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      availableTickets: true,
-    }
-  });
+  // Transform draws data for DrawLogsTable
+  const transformedDraws = draws.flatMap(draw => 
+    draw.winners.map(winner => ({
+      id: winner.id,
+      userName: winner.user.name || "Unknown",
+      userEmail: winner.user.email || "Unknown",
+      userImage: winner.user.image || null,
+      ticketCount: draw.totalTickets,
+      prizeAmount: winner.prizeAmount,
+      claimed: false, // This would come from the winner record in a real implementation
+      drawDate: new Date(draw.drawDate),
+      createdAt: new Date(draw.createdAt),
+    }))
+  );
 
-  // Calculate total available tickets across all users
-  const totalAvailableTickets = usersWithAvailableTickets.reduce((total, user) => {
-    return total + user.availableTickets;
-  }, 0);
-
-  // Get total tickets earned across all users (lifetime)
-  const totalTicketsStats = await db.user.aggregate({
-    _sum: {
-      totalTicketsEarned: true
-    }
-  });
-  
-  const totalTicketsEarnedAllTime = totalTicketsStats._sum.totalTicketsEarned || 0;
-
-  // Format draws data for the table
-  const formattedDraws = winners.map(winner => ({
-    id: winner.id,
-    userName: winner.user.name || "Unknown",
-    userEmail: winner.user.email || "Unknown",
-    userImage: winner.user.image,
-    ticketCount: winner.ticketCount,
-    prizeAmount: winner.prizeAmount,
-    claimed: winner.claimed,
-    drawDate: winner.drawDate,
-    createdAt: winner.createdAt,
-  }));
-
-  // Format participants data for manual selection
-  const formattedParticipants = participants.map(participant => ({
+  // Transform participants data for ManualWinnerSelect
+  const transformedParticipants = activeDraw ? activeDraw.participants.map(participant => ({
     id: participant.userId,
-    name: participant.user.name,
-    email: participant.user.email,
-    image: participant.user.image,
+    name: participant.user.name || "Anonymous",
+    email: participant.user.email || "Unknown",
+    image: participant.user.image || null,
     ticketsUsed: participant.ticketsUsed,
-    participatedAt: participant.createdAt,
-  }));
-
-  const canRunDraw = participantCount > 0;
+    participatedAt: new Date(participant.createdAt),
+  })) : [];
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Draw Management</h1>
       </div>
+
+      {/* Lottery Reset Card - Only show if there are available tickets */}
+      <LotteryResetCard 
+        activeDraw={activeDraw}
+        totalTicketsInSystem={stats.totalTicketsInSystem}
+        totalParticipants={stats.totalParticipants}
+      />
 
       {/* Current Draw Status */}
       {activeDraw && (
@@ -151,7 +194,7 @@ export default async function DrawsPage() {
                 <Users className="h-8 w-8 text-blue-600" />
                 <div>
                   <p className="text-sm font-medium text-blue-700">Participants</p>
-                  <p className="text-2xl font-bold text-blue-900">{participantCount}</p>
+                  <p className="text-2xl font-bold text-blue-900">{activeDraw.participants.length}</p>
                 </div>
               </div>
               
@@ -159,7 +202,7 @@ export default async function DrawsPage() {
                 <Ticket className="h-8 w-8 text-purple-600" />
                 <div>
                   <p className="text-sm font-medium text-purple-700">Tickets in Draw</p>
-                  <p className="text-2xl font-bold text-purple-900">{totalTicketsInDraw}</p>
+                  <p className="text-2xl font-bold text-purple-900">{activeDraw.totalTickets}</p>
                 </div>
               </div>
               
@@ -167,8 +210,8 @@ export default async function DrawsPage() {
                 <Ticket className="h-8 w-8 text-green-600" />
                 <div>
                   <p className="text-sm font-medium text-green-700">Available Tickets</p>
-                  <p className="text-2xl font-bold text-green-900">{totalAvailableTickets}</p>
-                  <p className="text-xs text-green-500">From {usersWithAvailableTickets.length} users</p>
+                  <p className="text-2xl font-bold text-green-900">{stats.totalTicketsInSystem}</p>
+                  <p className="text-xs text-green-500">From {stats.totalParticipants} users</p>
                 </div>
               </div>
             </div>
@@ -178,7 +221,7 @@ export default async function DrawsPage() {
                 <Info className="h-8 w-8 text-amber-600" />
                 <div>
                   <p className="text-sm font-medium text-amber-700">Total Tickets Earned (All Time)</p>
-                  <p className="text-2xl font-bold text-amber-900">{totalTicketsEarnedAllTime}</p>
+                  <p className="text-2xl font-bold text-amber-900">{stats.totalTicketsEarned}</p>
                   <p className="text-xs text-amber-500">Lifetime tickets across all users</p>
                 </div>
               </div>
@@ -191,19 +234,6 @@ export default async function DrawsPage() {
                 </div>
               </div>
             </div>
-
-            {!canRunDraw && (
-              <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-200 rounded-lg mb-4">
-                <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold text-orange-800">Cannot Run Draw</h3>
-                  <p className="text-sm text-orange-700 mt-1">
-                    At least 1 user must manually participate in the lottery before a draw can be run. 
-                    Simply having tickets is not enough - users must explicitly enter the lottery.
-                  </p>
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
@@ -221,9 +251,9 @@ export default async function DrawsPage() {
         </CardHeader>
         <CardContent>
           <ManualDrawForm 
-            canRunDraw={canRunDraw}
-            participantCount={participantCount}
-            totalTicketsInDraw={totalTicketsInDraw}
+            canRunDraw={!!activeDraw && activeDraw.participants.length > 0}
+            participantCount={activeDraw ? activeDraw.participants.length : 0}
+            totalTicketsInDraw={activeDraw ? activeDraw.totalTickets : 0}
           />
         </CardContent>
       </Card>
@@ -231,8 +261,8 @@ export default async function DrawsPage() {
       {/* Manual Winner Selection */}
       {activeDraw && (
         <ManualWinnerSelect 
-          canRunDraw={canRunDraw}
-          participants={formattedParticipants}
+          canRunDraw={activeDraw.participants.length > 0}
+          participants={transformedParticipants}
           drawDate={new Date(activeDraw.drawDate)}
           prizeAmount={activeDraw.prizeAmount}
         />
@@ -249,7 +279,9 @@ export default async function DrawsPage() {
             History of all lottery draws, winners, and prize claim status
           </CardDescription>
         </CardHeader>
-        <DrawLogsTable draws={formattedDraws} />
+        <CardContent>
+          <DrawLogsTable draws={transformedDraws} />
+        </CardContent>
       </Card>
     </div>
   );
