@@ -52,7 +52,7 @@ export default function Home() {
     },
     {
       title: "Amazon Gift Cards",
-      image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&auto=format&fit=crop&ixlib=rb-4.0.3",
+      image: "/giftCard.png",
       description: "Win $50 Amazon gift cards weekly"
     },
   ];
@@ -481,7 +481,7 @@ export default function Home() {
             </div>
             
             {/* Professional Image Grid */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-4 md:gap-6">
               {showcaseImages.map((item, index) => (
                 <div 
                   key={index}
@@ -492,12 +492,28 @@ export default function Home() {
                       src={item.image}
                       alt={item.title}
                       fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-110"
+                      className={`transition-transform duration-700 group-hover:scale-110 ${
+                        index === 3 
+                          ? 'object-contain bg-white' // Gift card - contain with white background for proper visibility
+                          : 'object-cover' // Other images - cover for full background
+                      }`}
+                      sizes="(max-width: 768px) 50vw, 25vw"
+                      priority={index < 4}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                      <h3 className="font-bold text-lg mb-2">{item.title}</h3>
-                      <p className="text-sm text-white/90 leading-relaxed">{item.description}</p>
+                    <div className={`absolute inset-0 ${
+                      index === 3 
+                        ? 'bg-gradient-to-t from-black/70 via-transparent to-transparent' // Lighter overlay for gift card
+                        : 'bg-gradient-to-t from-black/80 via-black/30 to-transparent' // Standard overlay for others
+                    }`}></div>
+                    <div className="absolute bottom-0 left-0 right-0 p-3 md:p-6 text-white">
+                      <h3 className={`font-bold mb-1 md:mb-2 ${
+                        index === 0 
+                          ? 'text-sm md:text-lg leading-tight' // Global Connectivity - better mobile formatting
+                          : 'text-sm md:text-lg' // Other titles - standard formatting
+                      }`}>
+                        {item.title}
+                      </h3>
+                      <p className="text-xs md:text-sm text-white/90 leading-relaxed">{item.description}</p>
                     </div>
                   </div>
                 </div>
