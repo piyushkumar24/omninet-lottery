@@ -1037,8 +1037,8 @@ export default function Home() {
               <div className="flex items-start gap-6">
                 <div className="relative">
                   <Image
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
-                    alt="Success Story"
+                    src="/sara.png"
+                    alt="Alyssa Bennett"
                     width={80}
                     height={80}
                     className="rounded-full object-cover ring-4 ring-blue-100 group-hover:ring-blue-200 transition-all duration-300"
@@ -1049,7 +1049,7 @@ export default function Home() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-3">
-                    <h4 className="font-bold text-xl text-slate-900">Sarah Martinez</h4>
+                    <h4 className="font-bold text-xl text-slate-900">Alyssa Bennett</h4>
                     <div className="flex gap-1">
                       {[...Array(5)].map((_, i) => (
                         <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -1057,8 +1057,7 @@ export default function Home() {
                     </div>
                   </div>
                   <p className="text-slate-600 mb-4 leading-relaxed">
-                    &quot;I&apos;ve won three $50 gift cards in the past two months! The surveys are actually interesting 
-                    and knowing I&apos;m helping expand internet access makes it even more rewarding.&quot;
+                    &quot;I wasn’t sure what to expect, but I ended up loving it. I signed up in a few minutes, did my first survey, and it was super easy. Inviting friends is a nice bonus — they get tickets too! And this week… I actually won the lottery! Still can’t believe it.&quot;
                   </p>
                   <div className="flex items-center gap-4 text-sm text-slate-500">
                     <span className="flex items-center gap-1">
@@ -1067,7 +1066,7 @@ export default function Home() {
                     </span>
                     <span className="flex items-center gap-1">
                       <Target className="h-4 w-4" />
-                      3 Wins
+                      1 Win
                     </span>
                   </div>
                 </div>
@@ -1079,8 +1078,8 @@ export default function Home() {
               <div className="flex items-start gap-6">
                 <div className="relative">
                   <Image
-                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
-                    alt="Success Story"
+                    src="/rohan.png"
+                    alt="Rohan Mehra"
                     width={80}
                     height={80}
                     className="rounded-full object-cover ring-4 ring-emerald-100 group-hover:ring-emerald-200 transition-all duration-300"
@@ -1091,7 +1090,7 @@ export default function Home() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-3">
-                    <h4 className="font-bold text-xl text-slate-900">James Chen</h4>
+                    <h4 className="font-bold text-xl text-slate-900">Rohan Mehra</h4>
                     <div className="flex gap-1">
                       {[...Array(5)].map((_, i) => (
                         <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -1099,17 +1098,16 @@ export default function Home() {
                     </div>
                   </div>
                   <p className="text-slate-600 mb-4 leading-relaxed">
-                    &quot;The platform is incredibly user-friendly. I love how my survey responses contribute to 
-                    real connectivity projects. The reward system is just a bonus!&quot;
+                    &quot;I’ve been enjoying the surveys so far — they’re easy to complete and actually fun. I haven’t won yet, but I’m hoping to get that gift card soon! As someone from India, I’m really excited that free internet is finally becoming a reality here. Can’t wait to see what’s next!&quot;
                   </p>
                   <div className="flex items-center gap-4 text-sm text-slate-500">
                     <span className="flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
-                      Singapore
+                      Mumbai, India
                     </span>
                     <span className="flex items-center gap-1">
                       <Target className="h-4 w-4" />
-                      85 Surveys
+                      12 Surveys
                     </span>
                   </div>
                 </div>
