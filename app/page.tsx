@@ -993,9 +993,10 @@ export default function Home() {
                       }
                     }, 100);
                   }}
-                  className="border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 px-8 py-4 text-lg font-semibold transition-all duration-300 hover:scale-105"
+                  className="border-2 border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 px-4 sm:px-8 py-4 text-sm sm:text-lg font-semibold transition-all duration-300 hover:scale-105 whitespace-nowrap"
                 >
-                  No I Don&apos;t want to help
+                  <span className="block sm:hidden">No, I don&apos;t want to help</span>
+                  <span className="hidden sm:block">No I Don&apos;t want to help</span>
                 </Button>
               </div>
               
@@ -1385,8 +1386,14 @@ export default function Home() {
               {/* Company Information */}
               <div className="lg:col-span-2">
                 <div className="flex items-center group mb-6">
-                  <div className="bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full p-3 mr-4 group-hover:scale-110 transition-transform duration-300">
-                    <Globe className="h-8 w-8 text-white" />
+                  <div className="bg-white/10 backdrop-blur-md rounded-full p-3 mr-4 group-hover:bg-white/20 transition-all duration-300">
+                    <Image
+                      src="/main-logo.png"
+                      alt="0mninet Logo"
+                      width={32}
+                      height={32}
+                      className="rounded-lg"
+                    />
                   </div>
                   <div>
                     <h3 className={cn("text-3xl font-bold text-white", font.className)}>0mninet</h3>
@@ -1398,34 +1405,17 @@ export default function Home() {
                   Join our mission to connect the unconnected while earning amazing prizes.
                 </p>
                 
-                {/* Social Media Links */}
+                {/* Social Media Button */}
                 <div className="flex items-center gap-4">
                   <span className="text-slate-400 font-medium">Follow Us:</span>
-                  <div className="flex gap-4">
-                    <Link 
-                      href="https://facebook.com/0mninet" 
-                      target="_blank"
-                      className="bg-white/10 hover:bg-blue-600 p-3 rounded-full transition-all duration-300 hover:scale-110 group"
-                    >
-                      <svg className="h-5 w-5 text-white group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                      </svg>
-                    </Link>
-                    <Link 
-                      href="https://instagram.com/0mninet" 
-                      target="_blank"
-                      className="bg-white/10 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 p-3 rounded-full transition-all duration-300 hover:scale-110 group"
-                    >
-                      <Instagram className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
-                    </Link>
-                    <Link 
-                      href="https://youtube.com/@0mninet" 
-                      target="_blank"
-                      className="bg-white/10 hover:bg-red-600 p-3 rounded-full transition-all duration-300 hover:scale-110 group"
-                    >
-                      <Youtube className="h-5 w-5 text-white group-hover:scale-110 transition-transform" />
-                    </Link>
-                  </div>
+                  <Link 
+                    href="https://linktr.ee/0mninet" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-full transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-blue-500/25"
+                  >
+                    Our Socials
+                  </Link>
                 </div>
               </div>
 
