@@ -225,28 +225,28 @@ export default function Home() {
               </div>
               <span className={cn("text-2xl font-bold text-white", font.className)}>0mninet</span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               {!isAuthenticated ? (
                 <>
               <Link href="/auth/login">
                 <Button 
                   variant="ghost" 
-                  className="text-white hover:bg-white/20 border-2 border-white/30 hover:border-white/50 backdrop-blur-md transition-all duration-300 hover:scale-105 font-semibold"
+                  className="text-white hover:bg-white/20 border-2 border-white/30 hover:border-white/50 backdrop-blur-md transition-all duration-300 hover:scale-105 font-semibold text-sm sm:text-base px-3 sm:px-4 py-2"
                 >
                   Log In
                 </Button>
               </Link>
               <Link href="/auth/register">
-                    <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold">
+                    <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold text-sm sm:text-base px-3 sm:px-4 py-2">
                   <span>Sign Up</span>
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
               </Link>
                 </>
               ) : (
                 <Link href="/dashboard">
-                  <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold">
-                    <User className="mr-2 h-4 w-4" />
+                  <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold text-sm sm:text-base px-3 sm:px-4 py-2">
+                    <User className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     <span>My Account</span>
                   </Button>
                 </Link>
@@ -337,33 +337,75 @@ export default function Home() {
         </div>
         
         {/* Enhanced Bottom Stats Bar */}
-        <div className="relative z-10 w-full bg-white/5 backdrop-blur-xl border-t border-white/10 py-6">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="flex items-center justify-center group">
-              <div className="bg-white/10 rounded-full p-3 mr-4 group-hover:bg-white/20 transition-all duration-300">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-              <div className="text-white">
-                <p className="font-semibold text-lg">{stats.totalUsers}+ Participants</p>
-                <p className="text-sm text-white/70">Growing daily</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-center group">
-              <div className="bg-white/10 rounded-full p-3 mr-4 group-hover:bg-white/20 transition-all duration-300">
-                <Gift className="h-6 w-6 text-white" />
-              </div>
-              <div className="text-white">
-                <p className="font-semibold text-lg">$50 Gift Card</p>
-                <p className="text-sm text-white/70">Every Thursday</p>
+        <div className="relative z-10 w-full bg-white/5 backdrop-blur-xl border-t border-white/10 py-6 md:py-6">
+          {/* Mobile View - Stacked Cards */}
+          <div className="md:hidden max-w-sm mx-auto px-4 space-y-4">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 group hover:bg-white/15 transition-all duration-300">
+              <div className="flex items-center">
+                <div className="bg-emerald-500/20 rounded-xl p-3 mr-4 group-hover:bg-emerald-500/30 transition-all duration-300">
+                  <Users className="h-5 w-5 text-emerald-300" />
+                </div>
+                <div className="text-white">
+                  <p className="font-bold text-lg leading-tight">{stats.totalUsers}+ Participants</p>
+                  <p className="text-sm text-white/70 font-medium">Growing daily</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-center group">
-              <div className="bg-white/10 rounded-full p-3 mr-4 group-hover:bg-white/20 transition-all duration-300">
-                <Trophy className="h-6 w-6 text-white" />
+            
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 group hover:bg-white/15 transition-all duration-300">
+              <div className="flex items-center">
+                <div className="bg-blue-500/20 rounded-xl p-3 mr-4 group-hover:bg-blue-500/30 transition-all duration-300">
+                  <Gift className="h-5 w-5 text-blue-300" />
+                </div>
+                <div className="text-white">
+                  <p className="font-bold text-lg leading-tight">$50 Gift Card</p>
+                  <p className="text-sm text-white/70 font-medium">Every Thursday</p>
+                </div>
               </div>
-              <div className="text-white">
-                <p className="font-semibold text-lg">Last Winner: {stats.latestWinner}</p>
-                <p className="text-sm text-white/70">You could be next</p>
+            </div>
+            
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 group hover:bg-white/15 transition-all duration-300">
+              <div className="flex items-center">
+                <div className="bg-amber-500/20 rounded-xl p-3 mr-4 group-hover:bg-amber-500/30 transition-all duration-300">
+                  <Trophy className="h-5 w-5 text-amber-300" />
+                </div>
+                <div className="text-white min-w-0 flex-1">
+                  <p className="font-bold text-lg leading-tight truncate">Last Winner: {stats.latestWinner}</p>
+                  <p className="text-sm text-white/70 font-medium">You could be next</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop View - Original Layout */}
+          <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-3 gap-8">
+              <div className="flex items-center justify-start group">
+                <div className="bg-white/10 rounded-full p-3 mr-4 group-hover:bg-white/20 transition-all duration-300 flex-shrink-0">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-white text-left">
+                  <p className="font-semibold text-lg">{stats.totalUsers}+ Participants</p>
+                  <p className="text-sm text-white/70">Growing daily</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-start group">
+                <div className="bg-white/10 rounded-full p-3 mr-4 group-hover:bg-white/20 transition-all duration-300 flex-shrink-0">
+                  <Gift className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-white text-left">
+                  <p className="font-semibold text-lg">$50 Gift Card</p>
+                  <p className="text-sm text-white/70">Every Thursday</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-start group">
+                <div className="bg-white/10 rounded-full p-3 mr-4 group-hover:bg-white/20 transition-all duration-300 flex-shrink-0">
+                  <Trophy className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-white text-left">
+                  <p className="font-semibold text-lg">Last Winner: {stats.latestWinner}</p>
+                  <p className="text-sm text-white/70">You could be next</p>
+                </div>
               </div>
             </div>
           </div>

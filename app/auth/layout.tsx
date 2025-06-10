@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Globe } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
@@ -17,10 +17,16 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           <Link href="/" className="flex items-center group">
             <div className="bg-white/20 backdrop-blur-md rounded-full p-2 mr-3 group-hover:bg-white/30 transition-all duration-300 border border-white/30">
-              <Globe className="h-6 w-6 text-blue-700" />
+              <Image
+                src="/main-logo.png"
+                alt="Omninet Logo"
+                width={24}
+                height={24}
+                className="rounded-lg"
+              />
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
-              0mninet
+              Omninet
             </span>
           </Link>
           
