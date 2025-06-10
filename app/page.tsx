@@ -525,12 +525,12 @@ export default function Home() {
       
       
       {/* Enhanced Current Draw Section */}
-      <div className="bg-gradient-to-br from-white to-slate-50 py-24 md:py-32">
+      <div className="py-24 md:py-32" style={{ backgroundColor: '#4475EC' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           {/* Centered Title */}
           <div className="text-center mb-16">
             <h2 className={cn(
-              "text-4xl md:text-5xl font-bold text-slate-900 leading-tight",
+              "text-4xl md:text-5xl font-bold text-white leading-tight",
               font.className,
             )}>
               0mninet Weekly Lottery Status
@@ -539,14 +539,58 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <div>
-              {/* Countdown Timer Section - Moved Up */}
+              {/* New Lottery Draw Card */}
               <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl hover:shadow-2xl transition-all duration-300 mb-8">
                 <div className="text-center">
+                  {/* Header */}
                   <div className="flex items-center justify-center gap-3 mb-6">
                     <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
                     <p className="text-xl font-semibold text-slate-900">Drawing on Thursday, 18:30 IST</p>
                   </div>
+                  
+                  {/* Next Lottery Draw Badge */}
+                  <div className="inline-flex items-center px-6 py-3 bg-slate-100 rounded-full mb-6">
+                    <svg className="w-5 h-5 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-slate-700 font-medium">Next Lottery Draw</span>
+                  </div>
+
+                  {/* Amazon Gift Card Display */}
+                  <div className="bg-slate-900 rounded-2xl p-6 mb-6 relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                      <div className="text-left">
+                        <div className="text-white text-4xl font-bold mb-1">$50</div>
+                        <div className="text-white text-lg">gift card</div>
+                      </div>
+                      <div className="relative w-24 h-16">
+                        <Image
+                          src="/giftCard.png"
+                          alt="Amazon Gift Card"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                    </div>
+                    {/* Amazon logo styling */}
+                    <div className="absolute bottom-4 right-6">
+                      <span className="text-white text-xl font-bold">amazon</span>
+                      <div className="h-0.5 bg-orange-400 w-full mt-1 rounded"></div>
+                    </div>
+                  </div>
+
+                  {/* Countdown Timer */}
                   <CountdownTimer targetDate={nextDrawDate} theme="light" />
+
+                  {/* Participate Button */}
+                  <Link href="/auth/register" className="block mt-6">
+                    <Button 
+                      size="lg" 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 text-lg py-4 font-semibold rounded-2xl"
+                    >
+                      Participate
+                    </Button>
+                  </Link>
                 </div>
               </div>
 
@@ -712,7 +756,7 @@ export default function Home() {
               },
               {
                 question: "How many tickets can I earn per survey?",
-                answer: "You typically earn 1-3 tickets per completed survey, depending on the survey length and complexity. Bonus tickets are available for referring friends, social media engagement, and participating in special campaigns."
+                answer: "You earn 1 ticket for each completed survey. You can unlock additional tickets by referring friends, following us on social media, or simply completing more surveys.The more tickets you collect, the higher your chances of winning — and you can track everything directly from your personal dashboard."
               }
             ].map((faq, index) => (
               <div key={index} className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
