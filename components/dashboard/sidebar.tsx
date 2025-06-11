@@ -57,7 +57,7 @@ export const Sidebar = () => {
 
   return (
     <div className="h-full border-r flex flex-col overflow-y-auto bg-white shadow-sm">
-      <div className="p-6">
+      <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
         <Link href="/dashboard" className="flex items-center justify-center gap-3">
           <Image
             src="/main-logo.png"
@@ -77,7 +77,7 @@ export const Sidebar = () => {
             key={route.href}
             href={route.href}
             className={cn(
-              "flex items-center gap-x-2 text-slate-500 text-sm font-medium px-3 py-4 hover:text-indigo-600 hover:bg-slate-100/50 transition-all",
+              "flex items-center gap-x-2 text-slate-700 text-sm font-medium px-3 py-4 hover:text-indigo-600 hover:bg-slate-100/50 transition-all",
               pathname === route.href && "text-indigo-600 bg-slate-100"
             )}
           >
@@ -90,7 +90,7 @@ export const Sidebar = () => {
           <Link
             href="/admin"
             className={cn(
-              "flex items-center gap-x-2 text-slate-500 text-sm font-medium px-3 py-4 hover:text-indigo-600 hover:bg-slate-100/50 transition-all mt-2 border-t pt-2",
+              "flex items-center gap-x-2 text-slate-700 text-sm font-medium px-3 py-4 hover:text-indigo-600 hover:bg-slate-100/50 transition-all mt-2 border-t pt-2",
               pathname === "/admin" && "text-indigo-600 bg-slate-100"
             )}
           >
@@ -103,7 +103,7 @@ export const Sidebar = () => {
       {/* Back to Landing Button */}
       <div className="p-4 mt-auto border-t">
         <Link href="/">
-          <div className="flex items-center gap-x-2 text-slate-600 text-sm font-medium px-3 py-3 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
+          <div className="flex items-center gap-x-2 text-slate-700 text-sm font-medium px-3 py-3 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
             <Home className="h-5 w-5" />
             <span>Back to Landing</span>
           </div>

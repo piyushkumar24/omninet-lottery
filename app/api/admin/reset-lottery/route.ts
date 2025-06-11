@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { currentRole } from "@/lib/auth";
-import { UserRole } from "@prisma/client";
+import { UserRole, DrawStatus } from "@prisma/client";
 import { resetAllAvailableTickets } from "@/lib/ticket-utils";
 
 /**
@@ -38,15 +38,32 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔄 Starting lottery reset for draw ${drawId}`);
 
-    const result = await db.$transaction(async (tx) => {
-      // 1. Mark the draw as completed
-      const draw = await tx.draw.update({
-        where: { id: drawId },
-        data: { status: 'COMPLETED' }
+    const result = await withTransaction(async (tx) => {
+      // Get count of users that will be reset
+      const usersToReset = await tx.user.count({
+        where: {
+          availableTickets: { gt: 0 }
+        }
       });
 
-      // 2. Reset all users' available tickets to 0
-      const resetCount = await resetAllAvailableTickets();
+      // Reset all users' available tickets to 0
+      await tx.user.updateMany({
+        where: {
+          availableTickets: { gt: 0 }
+        },
+        data: {
+          availableTickets: 0
+        }
+      });
+
+      // Mark the draw as completed
+      await tx.draw.update({
+        where: { id: drawId },
+        data: { 
+          status: DrawStatus.COMPLETED,
+          updatedAt: new Date()
+        }
+      });
 
       // 3. Get stats for response
       const totalUsers = await tx.user.count();
@@ -56,17 +73,20 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Lottery reset completed:`);
       console.log(`   - Draw ${drawId} marked as COMPLETED`);
-      console.log(`   - Reset available tickets for ${resetCount} users`);
+      console.log(`   - Reset available tickets for ${usersToReset} users`);
       console.log(`   - Total users: ${totalUsers}`);
       console.log(`   - Total tickets earned all time: ${totalTicketsEarnedAllTime._sum.totalTicketsEarned || 0}`);
 
       return {
-        drawId: draw.id,
-        drawStatus: draw.status,
-        usersReset: resetCount,
+        drawId: drawId,
+        drawStatus: DrawStatus.COMPLETED,
+        usersReset: usersToReset,
         totalUsers,
         totalTicketsEarnedAllTime: totalTicketsEarnedAllTime._sum.totalTicketsEarned || 0,
       };
+    }, {
+      timeout: 10000, // 10 second timeout for this operation
+      maxWait: 3000,  // 3 second max wait
     });
 
     return NextResponse.json({
@@ -78,10 +98,21 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("❌ Error resetting lottery:", error);
     
+    // Handle specific transaction timeout errors
+    if (error instanceof Error && (error.message.includes("timed out") || error.message.includes("timeout"))) {
+      return new NextResponse(
+        JSON.stringify({
+          success: false,
+          message: "Reset operation timed out. Please try again.",
+        }),
+        { status: 408 }
+      );
+    }
+    
     return new NextResponse(
       JSON.stringify({
         success: false,
-        message: "Internal server error",
+        message: "Failed to reset lottery",
         error: error instanceof Error ? error.message : String(error),
       }),
       { status: 500 }
@@ -107,48 +138,44 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get current state of the lottery system
-    const [totalUsers, usersWithAvailableTickets, totalAvailableTickets, totalEarnedTickets, activeDraw] = await Promise.all([
-      db.user.count(),
-      db.user.count({
-        where: { availableTickets: { gt: 0 } }
-      }),
+    // Get statistics about tickets and users
+    const [
+      totalAvailableTickets,
+      totalEarnedTickets,
+      usersWithAvailableTickets,
+      totalUsers
+    ] = await Promise.all([
       db.user.aggregate({
         _sum: { availableTickets: true }
       }),
       db.user.aggregate({
         _sum: { totalTicketsEarned: true }
       }),
-      db.draw.findFirst({
-        where: { status: 'PENDING' },
-        orderBy: { drawDate: 'asc' }
-      })
+      db.user.count({
+        where: {
+          availableTickets: { gt: 0 }
+        }
+      }),
+      db.user.count()
     ]);
 
     return NextResponse.json({
       success: true,
       data: {
-        totalUsers,
-        usersWithAvailableTickets,
         totalAvailableTickets: totalAvailableTickets._sum.availableTickets || 0,
         totalEarnedTickets: totalEarnedTickets._sum.totalTicketsEarned || 0,
-        activeDraw: activeDraw ? {
-          id: activeDraw.id,
-          drawDate: activeDraw.drawDate,
-          status: activeDraw.status,
-          totalTickets: activeDraw.totalTickets
-        } : null,
-        lastResetNeeded: usersWithAvailableTickets > 0 && !activeDraw
+        usersWithAvailableTickets,
+        totalUsers,
       }
     });
 
   } catch (error) {
-    console.error("Error getting lottery reset status:", error);
+    console.error("Error fetching lottery reset stats:", error);
     
     return new NextResponse(
       JSON.stringify({
         success: false,
-        message: "Internal server error",
+        message: "Internal error",
       }),
       { status: 500 }
     );

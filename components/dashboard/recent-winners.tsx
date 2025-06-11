@@ -1,14 +1,17 @@
 "use client";
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Trophy, Crown, DollarSign, Ticket } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Trophy, User } from "lucide-react";
 import Image from "next/image";
-import { formatDate } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 
 interface Winner {
   id: string;
+  userId: string;
   drawDate: Date;
   prizeAmount: number;
+  couponCode: string | null;
   user: {
     name: string | null;
     image: string | null;
@@ -22,98 +25,66 @@ interface RecentWinnersProps {
 export const RecentWinners = ({ winners }: RecentWinnersProps) => {
   return (
     <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-      <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
-        <h3 className="text-lg font-semibold text-amber-800">Recent Winners</h3>
-        <div className="p-2 bg-amber-100 rounded-lg">
-          <Trophy className="w-5 h-5 text-amber-600" />
+      <CardHeader className="flex flex-row items-center justify-between pb-2 md:pb-3 space-y-0 p-4 md:p-6">
+        <CardTitle className="text-base md:text-lg font-semibold text-amber-800">Recent Winners</CardTitle>
+        <div className="p-1.5 md:p-2 bg-amber-100 rounded-lg">
+          <Trophy className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {winners.length === 0 ? (
-          <div className="text-center py-6 bg-white/70 rounded-xl border border-amber-200">
-            <div className="flex justify-center mb-3">
-              <div className="p-3 bg-amber-100 rounded-full">
-                <Trophy className="h-6 w-6 text-amber-600" />
-              </div>
-            </div>
-            <p className="text-sm font-medium text-amber-800 mb-1">No Winners Yet</p>
-            <p className="text-xs text-amber-600">Be the first to win the lottery!</p>
-          </div>
-        ) : (
-          <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
-            {winners.map((winner, index) => (
+      <CardContent className="px-4 pb-4 md:px-6 md:pb-6 flex flex-col h-[calc(100%-70px)]">
+        {winners.length > 0 ? (
+          <div className="space-y-3">
+            {winners.map((winner) => (
               <div 
                 key={winner.id} 
-                className="bg-white/70 rounded-xl p-4 border border-amber-200 hover:bg-white/90 transition-all duration-300"
+                className="flex items-center gap-3 p-3 bg-white/70 rounded-xl border border-amber-200 hover:bg-amber-50/50 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  {/* Winner Avatar */}
-                  <div className="relative">
-                    <div className="relative h-12 w-12">
-                      {winner.user.image ? (
-                        <Image
-                          src={winner.user.image}
-                          alt={winner.user.name || "Winner"}
-                          fill
-                          className="rounded-full object-cover border-2 border-amber-300"
-                        />
-                      ) : (
-                        <div className="h-12 w-12 bg-gradient-to-br from-amber-100 to-yellow-100 rounded-full flex items-center justify-center border-2 border-amber-300">
-                          <span className="text-amber-700 font-bold text-lg">
-                            {winner.user.name?.charAt(0) || "?"}
-                          </span>
-                        </div>
-                      )}
+                <div className="relative flex-shrink-0">
+                  {winner.user.image ? (
+                    <Image
+                      src={winner.user.image}
+                      alt={winner.user.name || "Winner"}
+                      width={40}
+                      height={40}
+                      className="rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                      <User className="w-5 h-5 text-amber-600" />
                     </div>
-                    {/* Crown for first winner */}
-                    {index === 0 && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center">
-                        <Crown className="h-3 w-3 text-yellow-800" />
-                      </div>
-                    )}
+                  )}
+                  <div className="absolute -bottom-1 -right-1 bg-amber-400 rounded-full p-0.5">
+                    <Trophy className="w-3 h-3 text-white" />
                   </div>
-
-                  {/* Winner Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-amber-900 truncate">
-                      {winner.user.name || "Anonymous Winner"}
-                    </p>
-                    <p className="text-xs text-amber-700">
-                      {formatDate(new Date(winner.drawDate), 'short')}
-                    </p>
-                  </div>
-
-                  {/* Prize Amount */}
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg px-2 py-1 border border-green-200">
-                      <DollarSign className="h-3 w-3 text-green-600" />
-                      <p className="text-sm font-bold text-green-800">{winner.prizeAmount}</p>
-                    </div>
-                    <p className="text-xs text-amber-600 mt-1">🏆 Winner</p>
-                  </div>
+                </div>
+                <div className="flex-grow min-w-0">
+                  <Link href="/dashboard/winners" className="font-medium text-amber-900 truncate hover:underline">
+                    {winner.user.name || "Anonymous User"}
+                  </Link>
+                  <p className="text-xs text-amber-700">
+                    Won ${winner.prizeAmount} • {formatDistanceToNow(new Date(winner.drawDate), { addSuffix: true })}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
-        )}
-        
-        {/* Increase Your Chances Message */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-full">
-              <Ticket className="h-4 w-4 text-blue-600" />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center p-4">
+            <div className="bg-amber-100 p-3 rounded-full mb-3">
+              <Trophy className="h-6 w-6 text-amber-600" />
             </div>
-            <p className="text-sm font-medium text-blue-700">
-              Increase your chances to win by earning more tickets!
+            <h3 className="text-lg font-semibold text-amber-800 mb-1">No Winners Yet</h3>
+            <p className="text-sm text-amber-700">
+              The first lottery drawing will happen soon!
             </p>
           </div>
-        </div>
+        )}
         
-        {/* Motivational Message */}
-        <div className="text-xs text-amber-600 text-center bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg p-3 border border-amber-200">
-          {winners.length === 0 
-            ? "🎯 Start earning tickets for your chance to be featured here!" 
-            : "🌟 Could you be our next winner? Keep earning tickets!"}
+        {/* Spacer to ensure consistent height */}
+        {winners.length > 0 && winners.length < 3 && <div className="flex-grow"></div>}
+        
+        <div className="mt-3 text-center text-xs text-amber-700 bg-amber-50/70 p-2 rounded-lg border border-amber-200">
+          New winners announced every Thursday
         </div>
       </CardContent>
     </Card>

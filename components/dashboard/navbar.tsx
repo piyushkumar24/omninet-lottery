@@ -15,7 +15,7 @@ export const Navbar = () => {
   const router = useRouter();
 
   return (
-    <div className="h-16 fixed inset-x-0 top-0 border-b border-slate-200 bg-white z-[100] flex justify-between items-center px-4 shadow-sm">
+    <div className="h-16 fixed inset-x-0 top-0 border-b border-slate-700 bg-black z-[100] flex justify-between items-center px-4 shadow-sm">
       <div className="flex items-center gap-x-4">
         <MobileSidebar />
         <Link href="/dashboard" className="flex items-center gap-3">
@@ -27,7 +27,7 @@ export const Navbar = () => {
             className="rounded-lg"
           />
           <h1 className="text-xl font-bold">
-            <span className="text-blue-600">0mninet</span> <span className="text-blue-600">Lottery</span>
+            <span className="text-white">0mninet</span> <span className="text-white">Lottery</span>
           </h1>
         </Link>
       </div>

@@ -726,6 +726,7 @@ export const CPXSurveyModal = ({
         <Button 
           disabled={isLoading || disabled}
           className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+          data-cpx-survey-button
         >
           {isLoading ? (
             <>

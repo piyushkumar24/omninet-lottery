@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { createOrGetNextDraw } from "@/data/draw";
 import { sendTicketApplicationEmail } from "@/lib/mail";
 import { awardTicketsToUser, applyAllTicketsToLottery } from "@/lib/ticket-utils";
@@ -20,7 +20,7 @@ export async function POST() {
       );
     }
 
-    // Check if user has completed at least one survey
+    // Check if user has completed at least one survey (outside transaction)
     const surveyTickets = await db.ticket.count({
       where: {
         userId: user.id,
@@ -35,7 +35,7 @@ export async function POST() {
       });
     }
     
-    // Check if the user has already followed on social media
+    // Check if the user has already followed on social media (outside transaction)
     const userRecord = await db.user.findUnique({
       where: { id: user.id },
       select: { 
@@ -52,89 +52,123 @@ export async function POST() {
       });
     }
 
-    // Get or create the current lottery draw
+    // Get or create the current lottery draw (outside transaction)
     const draw = await createOrGetNextDraw();
 
-    // Use transaction to ensure all operations succeed
-    const result = await db.$transaction(async (tx) => {
+    // Use optimized transaction with timeout handling
+    const result = await withTransaction(async (tx) => {
       // Mark user as having followed on social media
       await tx.user.update({
         where: { id: user.id },
         data: { socialMediaFollowed: true },
       });
 
-      // Award social media ticket using the new system
-      const awardResult = await awardTicketsToUser(user.id, 1, "SOCIAL");
-      
-      if (!awardResult.success) {
-        throw new Error("Failed to award social media ticket");
-      }
-
-      // Apply all available tickets to the current lottery
-      const appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);
-
-      // Log the social media ticket award
-      await tx.settings.create({
+      // Create the ticket directly in the transaction for speed
+      const ticket = await tx.ticket.create({
         data: {
-          key: `social_ticket_${awardResult.ticketIds[0]}`,
-          value: JSON.stringify({
-            userId: user.id,
-            ticketId: awardResult.ticketIds[0],
-            timestamp: new Date().toISOString(),
-          }),
-          description: "Social media follow ticket awarded",
+          userId: user.id,
+          source: "SOCIAL",
+          isUsed: false,
+          confirmationCode: `SOCIAL_${nanoid(8)}`,
+        },
+      });
+
+      // Update user's available tickets count
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          availableTickets: { increment: 1 },
+          totalTicketsEarned: { increment: 1 },
         },
       });
 
       return {
-        ticketId: awardResult.ticketIds[0],
-        availableTickets: awardResult.availableTickets,
-        totalTickets: awardResult.totalTickets,
-        appliedTickets,
-        confirmationCode: `SOCIAL_${awardResult.ticketIds[0]}`,
+        ticketId: ticket.id,
+        confirmationCode: ticket.confirmationCode,
       };
+    }, {
+      timeout: 8000, // 8 second timeout for this specific transaction
+      maxWait: 3000, // 3 second max wait
     });
 
-    // Send email notification
-    if (userRecord?.email) {
-      try {
-        await sendTicketApplicationEmail(
+    // Apply tickets to lottery outside of the main transaction to avoid timeout
+    try {
+      const appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);
+      
+      // Get updated user ticket counts
+      const updatedCounts = await db.user.findUnique({
+        where: { id: user.id },
+        select: {
+          availableTickets: true,
+          totalTicketsEarned: true,
+        },
+      });
+
+      // Send email notification asynchronously
+      if (userRecord?.email) {
+        // Don't await this to avoid blocking the response
+        sendTicketApplicationEmail(
           userRecord.email,
           {
             name: userRecord.name || "User",
             ticketCount: 1,
             drawDate: draw.drawDate,
-            confirmationCode: result.confirmationCode
+            confirmationCode: result.confirmationCode || `SOCIAL_${result.ticketId}`
           }
-        );
-        console.log('📧 Social media ticket email sent to user:', userRecord.email);
-      } catch (emailError) {
-        console.error('📧 Failed to send social media ticket email:', emailError);
+        ).catch(emailError => {
+          console.error('📧 Failed to send social media ticket email:', emailError);
+        });
       }
-    }
 
-    console.log('🎫 Social media ticket awarded:', {
-      userId: user.id,
-      ticketId: result.ticketId,
-      drawId: draw.id,
-    });
-    
-    return NextResponse.json({
-      success: true,
-      message: "🎉 Thanks for following us! Your ticket has been automatically applied to this week's lottery!",
-      data: {
+      console.log('🎫 Social media ticket awarded:', {
+        userId: user.id,
         ticketId: result.ticketId,
-        ticketCount: 1,
         drawId: draw.id,
-        availableTickets: result.availableTickets,
-        totalUserTickets: result.totalTickets,
-        appliedTickets: result.appliedTickets,
-        source: "SOCIAL",
-        appliedToLottery: true,
-      },
-    });
-  } catch (error) {
+      });
+      
+      return NextResponse.json({
+        success: true,
+        message: "🎉 Thanks for following us! Your ticket has been automatically applied to this week's lottery!",
+        data: {
+          ticketId: result.ticketId,
+          ticketCount: 1,
+          drawId: draw.id,
+          availableTickets: updatedCounts?.availableTickets || 0,
+          totalUserTickets: updatedCounts?.totalTicketsEarned || 0,
+          appliedTickets,
+          source: "SOCIAL",
+          appliedToLottery: true,
+        },
+      });
+    } catch (applyError) {
+      console.error("Error applying tickets to lottery:", applyError);
+      
+      // Even if applying fails, the ticket was still awarded
+      return NextResponse.json({
+        success: true,
+        message: "🎉 Thanks for following us! Your ticket has been awarded and will be applied to the lottery shortly.",
+        data: {
+          ticketId: result.ticketId,
+          ticketCount: 1,
+          drawId: draw.id,
+          source: "SOCIAL",
+          appliedToLottery: false,
+        },
+      });
+    }
+  } catch (error: any) {
     console.error("Error earning social media ticket:", error);
+    
+    // Handle specific transaction timeout errors
+    if (error.message.includes("timed out") || error.message.includes("timeout")) {
+      return new NextResponse(
+        JSON.stringify({
+          success: false,
+          message: "⏱️ The operation is taking longer than expected. Please try again in a moment.",
+        }),
+        { status: 408 }
+      );
+    }
     
     return new NextResponse(
       JSON.stringify({

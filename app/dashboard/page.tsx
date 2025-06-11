@@ -11,9 +11,9 @@ import { getUserAppliedTickets } from "@/lib/ticket-utils";
 import { SurveyCompletionAlert } from "@/components/dashboard/survey-completion-alert";
 import { NonWinnerBonusAlert } from "@/components/dashboard/NonWinnerBonusAlert";
 import { UserLotteryTickets } from "@/components/dashboard/user-lottery-tickets";
-import { NextLotteryDraw } from "@/components/dashboard/next-lottery-draw";
 import { RecentWinners } from "@/components/dashboard/recent-winners";
 import { WinnerBanner } from "@/components/dashboard/winner-banner";
+import { LotteryCountdown } from "@/components/dashboard/lottery-countdown";
 import { unstable_noStore } from "next/cache";
 
 export const metadata: Metadata = {
@@ -114,7 +114,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <DashboardWrapper>
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Winner Banner */}
         {user.hasWon && userWinner && (
           <WinnerBanner 
@@ -134,79 +134,40 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         )}
 
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">
+        <div className="mb-4 md:mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             Welcome, {user.name || "User"}!
           </h1>
         </div>
 
         {/* This Week's Lottery Section */}
-        <div className="relative bg-gradient-to-br from-white to-blue-50 border-2 border-blue-200 shadow-xl rounded-xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM4 8v6h12V8H4z"/>
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold">This Week&apos;s Lottery</h2>
-                  <p className="text-blue-100 mt-1">
-                    Tickets are automatically applied as you earn them
-                  </p>
-                </div>
+        <div className="relative bg-white shadow-xl rounded-xl overflow-hidden">
+          {/* Main Content Grid */}
+          <div className="p-4 md:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              {/* Lottery Countdown - New Component */}
+              <div className="w-full lg:col-span-1">
+                <LotteryCountdown 
+                  userId={user.id}
+                  drawDate={draw.drawDate}
+                  prizeAmount={draw.prizeAmount}
+                />
               </div>
               
-              {/* 0mninet Logo */}
-              <div className="flex items-center gap-3">
-                <Image
-                  src="/main-logo.png"
-                  alt="0mninet Logo"
-                  width={50}
-                  height={50}
-                  className="rounded-lg bg-white/10 p-2"
-                />
-                <div className="text-right">
-                  <div className="text-lg font-bold">0mninet</div>
-                  <div className="text-sm text-blue-100">Lottery System</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Your Lottery Tickets */}
-              <div className="lg:col-span-1">
+              <div className="w-full lg:col-span-1">
                 <UserLotteryTickets 
                   userId={user.id}
                   appliedTickets={availableTickets}
                   userParticipation={userParticipation}
                   drawId={draw.id}
                   surveyCompleted={surveyCompleted}
-                />
-              </div>
-              
-              {/* Next Lottery Draw */}
-              <div className="lg:col-span-1">
-                <NextLotteryDraw 
-                  draw={{
-                    id: draw.id,
-                    drawDate: draw.drawDate.toISOString(),
-                    prizeAmount: draw.prizeAmount,
-                    totalTickets: draw.totalTickets,
-                    status: draw.status,
-                  }}
-                  userTickets={availableTickets}
-                  isWinner={isRecentWinner}
+                  totalTicketsInDraw={draw.totalTickets || 1}
                 />
               </div>
               
               {/* Recent Winners */}
-              <div className="lg:col-span-1">
+              <div className="w-full lg:col-span-1">
                 <RecentWinners winners={recentWinners} />
               </div>
             </div>
@@ -214,12 +175,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
         
         {/* Earn Tickets Section */}
-        <div className="mt-8">
+        <div className="mt-4 md:mt-8">
           <EarnTickets userId={user.id} appliedTickets={availableTickets} />
         </div>
 
         {/* Newsletter Section */}
-        <div className="mt-8">
+        <div className="mt-4 md:mt-8">
           <NewsletterSection userId={user.id} />
         </div>
       </div>

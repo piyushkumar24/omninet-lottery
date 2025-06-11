@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { DrawStatus } from "@prisma/client";
 
 // Make this endpoint publicly accessible, without authentication
 export async function GET() {
@@ -7,8 +8,54 @@ export async function GET() {
     // Get lottery stats
     const totalUsers = await db.user.count();
     
-    // Get total tickets (both used and unused)
-    const totalTickets = await db.ticket.count();
+    // Find the current active draw
+    const currentDraw = await db.draw.findFirst({
+      where: {
+        status: DrawStatus.PENDING,
+      },
+      orderBy: {
+        drawDate: "asc",
+      },
+    });
+    
+    // Get the total active tickets in the current draw
+    let activeTicketsInDraw = 0;
+    
+    if (currentDraw) {
+      // Get the actual total tickets in the draw from all participations
+      const totalParticipations = await db.drawParticipation.aggregate({
+        where: {
+          drawId: currentDraw.id,
+        },
+        _sum: {
+          ticketsUsed: true,
+        },
+      });
+      
+      activeTicketsInDraw = totalParticipations._sum.ticketsUsed || 0;
+      
+      // If no participations yet, check for available tickets that could be applied
+      if (activeTicketsInDraw === 0) {
+        // Count all available (unused) tickets from all users
+        const availableTickets = await db.ticket.count({
+          where: {
+            isUsed: false,
+          },
+        });
+        
+        // For display purposes, show available tickets if no one has participated yet
+        activeTicketsInDraw = availableTickets;
+      }
+    } else {
+      // If no active draw, count all available tickets
+      const availableTickets = await db.ticket.count({
+        where: {
+          isUsed: false,
+        },
+      });
+      
+      activeTicketsInDraw = availableTickets;
+    }
     
     // Get latest winner
     const latestWinner = await db.winner.findFirst({
@@ -30,7 +77,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       totalUsers,
-      totalTickets: totalTickets, // Return total tickets, not just applied tickets
+      totalTickets: activeTicketsInDraw, // Return active tickets in the current draw
+      currentDrawId: currentDraw?.id || null,
       latestWinner: latestWinner?.user?.name || null,
       latestWinnerProfile: latestWinner?.user ? {
         name: latestWinner.user.name,
@@ -49,6 +97,7 @@ export async function GET() {
         message: "Internal server error",
         totalUsers: 0,
         totalTickets: 0,
+        currentDrawId: null,
         latestWinner: null,
         latestWinnerProfile: null,
         nextDrawDate: getNextThursday().toISOString(),

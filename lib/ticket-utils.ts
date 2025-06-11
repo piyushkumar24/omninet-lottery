@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
 import { dbQueryWithRetry } from "@/lib/db-utils";
 import { createOrGetNextDraw } from "@/data/draw";
 
@@ -96,7 +96,7 @@ export const awardTicketsToUser = async (
   ticketIds: string[];
 }> => {
   try {
-    const result = await db.$transaction(async (tx) => {
+    const result = await withTransaction(async (tx) => {
       // Create ticket records for history
       const ticketIds = [];
       for (let i = 0; i < ticketCount; i++) {
@@ -130,6 +130,9 @@ export const awardTicketsToUser = async (
         totalTickets: updatedUser.totalTicketsEarned,
         ticketIds,
       };
+    }, {
+      timeout: 6000, // 6 second timeout
+      maxWait: 2000, // 2 second max wait
     });
 
     console.log(`✅ Awarded ${ticketCount} ${source} tickets to user ${userId}`);
@@ -148,9 +151,11 @@ export const awardTicketsToUser = async (
 /**
  * Apply all available tickets to the current lottery
  * In the new system, this creates draw participation based on available tickets
+ * Optimized to use efficient queries and avoid long transactions
  */
 export const applyAllTicketsToLottery = async (userId: string, drawId: string): Promise<number> => {
   try {
+    // Get user's available tickets first
     const user = await db.user.findUnique({
       where: { id: userId },
       select: { availableTickets: true }
@@ -162,38 +167,50 @@ export const applyAllTicketsToLottery = async (userId: string, drawId: string): 
 
     const ticketsToApply = user.availableTickets;
 
-    // Create or update draw participation
-    await db.drawParticipation.upsert({
-      where: {
-        userId_drawId: {
+    // Use optimized transaction for draw participation
+    await withTransaction(async (tx) => {
+      // Create or update draw participation
+      await tx.drawParticipation.upsert({
+        where: {
+          userId_drawId: {
+            userId,
+            drawId,
+          },
+        },
+        update: {
+          ticketsUsed: ticketsToApply,
+          updatedAt: new Date(),
+        },
+        create: {
           userId,
           drawId,
-        },
-      },
-      update: {
-        ticketsUsed: ticketsToApply,
-        updatedAt: new Date(),
-      },
-      create: {
-        userId,
-        drawId,
-        ticketsUsed: ticketsToApply,
-      },
-    });
-
-    // Update draw total tickets
-    const currentDraw = await db.draw.findUnique({
-      where: { id: drawId },
-      select: { totalTickets: true }
-    });
-
-    if (currentDraw) {
-      await db.draw.update({
-        where: { id: drawId },
-        data: {
-          totalTickets: (currentDraw.totalTickets || 0) + ticketsToApply,
+          ticketsUsed: ticketsToApply,
         },
       });
+    }, {
+      timeout: 5000, // 5 second timeout
+      maxWait: 1500, // 1.5 second max wait
+    });
+
+    // Update draw total tickets separately to avoid long transaction
+    // This is less critical and can be done outside the main transaction
+    try {
+      const totalParticipations = await db.drawParticipation.aggregate({
+        where: { drawId },
+        _sum: { ticketsUsed: true },
+      });
+
+      const totalTickets = totalParticipations._sum.ticketsUsed || 0;
+
+      await db.draw.update({
+        where: { id: drawId },
+        data: { totalTickets },
+      });
+
+      console.log(`Updated draw ${drawId} total tickets to ${totalTickets}`);
+    } catch (updateError) {
+      console.error(`Error updating draw total tickets:`, updateError);
+      // Don't fail the whole operation if this fails
     }
 
     console.log(`Applied ${ticketsToApply} tickets to lottery for user ${userId}`);
@@ -251,7 +268,7 @@ export const resetUserTicketsForNextLottery = async (userId: string): Promise<nu
       },
     });
 
-    console.log(`Reset available tickets for user ${userId}: ${user.availableTickets} → 0`);
+    console.log(`Reset ${user.availableTickets} available tickets for user ${userId}`);
     return user.availableTickets;
   } catch (error) {
     console.error(`Error resetting tickets for user ${userId}:`, error);
@@ -260,37 +277,14 @@ export const resetUserTicketsForNextLottery = async (userId: string): Promise<nu
 };
 
 /**
- * Reset tickets for a lottery winner
- * In the new system, this resets available tickets to 0 (same as non-winners)
+ * Reset tickets for winners (in the new system, this just resets available tickets)
  */
 export const resetWinnerTickets = async (userId: string): Promise<number> => {
-  try {
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { availableTickets: true }
-    });
-
-    if (!user || user.availableTickets === 0) {
-      return 0;
-    }
-
-    await db.user.update({
-      where: { id: userId },
-      data: {
-        availableTickets: 0,
-      },
-    });
-
-    console.log(`Reset winner tickets for user ${userId}: ${user.availableTickets} → 0`);
-    return user.availableTickets;
-  } catch (error) {
-    console.error(`Error resetting winner tickets for user ${userId}:`, error);
-    return 0;
-  }
+  return await resetUserTicketsForNextLottery(userId);
 };
 
 /**
- * Verify user has enough tickets for participation
+ * Verify if a user has enough tickets to participate in lottery
  */
 export const verifyUserTicketAvailability = async (
   userId: string, 
@@ -300,18 +294,32 @@ export const verifyUserTicketAvailability = async (
   canParticipate: boolean;
   error?: string;
 }> => {
-  const availableTickets = await getUserAppliedTickets(userId);
-  
-  if (availableTickets < requestedTickets) {
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { availableTickets: true }
+    });
+
+    const available = user?.availableTickets || 0;
+
+    if (available < requestedTickets) {
+      return {
+        available,
+        canParticipate: false,
+        error: `Not enough tickets. You have ${available}, but need ${requestedTickets}`,
+      };
+    }
+
     return {
-      available: availableTickets,
+      available,
+      canParticipate: true,
+    };
+  } catch (error) {
+    console.error(`Error verifying ticket availability for user ${userId}:`, error);
+    return {
+      available: 0,
       canParticipate: false,
-      error: `Insufficient tickets! You have ${availableTickets} tickets, but requested ${requestedTickets}.`,
+      error: "Failed to check ticket availability",
     };
   }
-  
-  return {
-    available: availableTickets,
-    canParticipate: true,
-  };
 }; 

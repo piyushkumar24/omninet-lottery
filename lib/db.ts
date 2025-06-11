@@ -12,8 +12,8 @@ const isEdgeRuntime = () => {
 };
 
 // Connection retry settings
-const MAX_RETRIES = 5;
-const RETRY_DELAY_MS = 1000;
+const MAX_RETRIES = 3; // Reduced from 5 to avoid excessive retries
+const RETRY_DELAY_MS = 500; // Reduced delay
 
 // Connection error handler function (server-side only)
 const handleConnectionError = async (error: any, operation: Function, attempt = 1): Promise<any> => {
@@ -56,7 +56,12 @@ const createPrismaClient = () => {
         url: process.env.DATABASE_URL,
       },
     },
-    // Connection pool configuration is handled via connection URL params instead
+    // Add transaction timeout configuration
+    transactionOptions: {
+      maxWait: 10000, // 10 seconds max wait
+      timeout: 15000, // 15 seconds timeout (increased from default 5 seconds)
+      isolationLevel: 'ReadCommitted', // Use a more performant isolation level
+    },
   });
 
   // Enhance client with connection error handling
@@ -66,16 +71,26 @@ const createPrismaClient = () => {
         try {
           return await query(args);
         } catch (error: any) {
-          // Check if it's a connection error
+          // Check if it's a connection or transaction error
           if (
             error.message.includes("connection") || 
             error.message.includes("Closed") ||
             error.message.includes("timeout") ||
             error.message.includes("Connection pool") ||
+            error.message.includes("Transaction already closed") ||
+            error.message.includes("expired transaction") ||
             error.code === 'P1001' || // Connection error
             error.code === 'P1008' || // Operation timeout
-            error.code === 'P1017'    // Connection already closed
+            error.code === 'P1017' || // Connection already closed
+            error.code === 'P2028'    // Transaction timeout
           ) {
+            // For transaction timeout errors, don't retry - just fail fast
+            if (error.message.includes("Transaction already closed") || 
+                error.message.includes("expired transaction") ||
+                error.code === 'P2028') {
+              console.error(`Transaction timeout error in ${model}.${operation}:`, error.message);
+              throw new Error(`Database operation timed out. Please try again.`);
+            }
             return handleConnectionError(error, () => query(args));
           }
           throw error;
@@ -86,7 +101,6 @@ const createPrismaClient = () => {
 
   // Connection events for health management
   process.on('beforeExit', async () => {
-    console.log('Process beforeExit event, reconnecting database...');
     try {
       await client.$connect();
     } catch (error) {
@@ -131,4 +145,35 @@ export const disconnectDb = async () => {
   }
   
   await db.$disconnect();
+};
+
+// Helper function for safe database transactions with proper timeout handling
+export const withTransaction = async <T>(
+  operation: (tx: any) => Promise<T>,
+  options?: {
+    maxWait?: number;
+    timeout?: number;
+  }
+): Promise<T> => {
+  if (isEdgeRuntime()) {
+    throw new Error("Transactions cannot be used in Edge Runtime");
+  }
+
+  const transactionOptions = {
+    maxWait: options?.maxWait || 5000, // 5 seconds default
+    timeout: options?.timeout || 10000, // 10 seconds default
+    isolationLevel: 'ReadCommitted' as const,
+  };
+
+  try {
+    return await db.$transaction(operation, transactionOptions);
+  } catch (error: any) {
+    if (error.message.includes("Transaction already closed") || 
+        error.message.includes("expired transaction") ||
+        error.code === 'P2028') {
+      console.error('Transaction timeout error:', error.message);
+      throw new Error('Database operation timed out. Please try again.');
+    }
+    throw error;
+  }
 };
