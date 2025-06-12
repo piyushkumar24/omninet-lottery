@@ -13,89 +13,130 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-async function fixSocialTickets() {
-  console.log('Starting social media tickets fix...');
-  
+async function fixSocialMediaTickets() {
+  console.log('🔧 Starting to fix social media tickets...');
+
   try {
-    // Find all social media tickets that are marked as used
-    const socialTickets = await prisma.ticket.findMany({
+    // Get the next lottery draw
+    const nextDraw = await prisma.draw.findFirst({
       where: {
-        source: "SOCIAL",
-        isUsed: true
+        status: 'PENDING',
       },
-      select: {
-        id: true,
-        userId: true,
-        createdAt: true
-      }
-    });
-    
-    console.log(`Found ${socialTickets.length} used social media tickets`);
-    
-    if (socialTickets.length === 0) {
-      console.log('No social media tickets to fix');
-      return;
-    }
-    
-    // Fix the tickets by marking them as unused
-    const updateResult = await prisma.ticket.updateMany({
-      where: {
-        source: "SOCIAL",
-        isUsed: true
+      orderBy: {
+        drawDate: 'asc',
       },
-      data: {
-        isUsed: false,
-        drawId: null
-      }
     });
-    
-    console.log(`Fixed ${updateResult.count} social media tickets`);
-    
-    // Check if each user has only one social media ticket
-    const userCounts = {};
-    for (const ticket of socialTickets) {
-      userCounts[ticket.userId] = (userCounts[ticket.userId] || 0) + 1;
-    }
-    
-    const usersWithMultipleTickets = Object.entries(userCounts)
-      .filter(([_, count]) => count > 1)
-      .map(([userId, count]) => ({ userId, count }));
-    
-    if (usersWithMultipleTickets.length > 0) {
-      console.log(`Found ${usersWithMultipleTickets.length} users with multiple social media tickets`);
+
+    if (!nextDraw) {
+      console.log('❌ No pending draw found. Creating a new draw...');
       
-      for (const { userId, count } of usersWithMultipleTickets) {
-        console.log(`User ${userId} has ${count} social media tickets`);
-        
-        // Keep only the most recent ticket for each user
-        const userTickets = socialTickets
-          .filter(t => t.userId === userId)
-          .sort((a, b) => b.createdAt - a.createdAt);
-        
-        // Delete all but the most recent ticket
-        if (userTickets.length > 1) {
-          const ticketsToDelete = userTickets.slice(1).map(t => t.id);
-          
-          const deleteResult = await prisma.ticket.deleteMany({
-            where: {
-              id: {
-                in: ticketsToDelete
-              }
-            }
-          });
-          
-          console.log(`Deleted ${deleteResult.count} duplicate social media tickets for user ${userId}`);
+      // Create a new draw if none exists
+      const nextWeek = new Date();
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      
+      const newDraw = await prisma.draw.create({
+        data: {
+          drawDate: nextWeek,
+          status: 'PENDING',
+          prizeAmount: 50,
+          totalTickets: 0,
+        },
+      });
+      
+      console.log(`✅ Created new draw with ID: ${newDraw.id}`);
+      nextDrawId = newDraw.id;
+    } else {
+      console.log(`✅ Found next draw with ID: ${nextDraw.id}`);
+      nextDrawId = nextDraw.id;
+    }
+
+    // Find all social media tickets that don't have a drawId
+    const unassignedSocialTickets = await prisma.ticket.findMany({
+      where: {
+        source: 'SOCIAL',
+        drawId: null,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          }
         }
       }
+    });
+
+    console.log(`🎫 Found ${unassignedSocialTickets.length} unassigned social media tickets`);
+
+    // Process each ticket
+    for (const ticket of unassignedSocialTickets) {
+      console.log(`Processing ticket ${ticket.id} for user ${ticket.user.email || ticket.userId}`);
+      
+      // Update the ticket to assign it to the next draw
+      await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { drawId: nextDrawId },
+      });
+
+      // Check if a draw participation record exists
+      const existingParticipation = await prisma.drawParticipation.findUnique({
+        where: {
+          userId_drawId: {
+            userId: ticket.userId,
+            drawId: nextDrawId,
+          },
+        },
+      });
+
+      if (existingParticipation) {
+        // Update existing participation record
+        await prisma.drawParticipation.update({
+          where: { id: existingParticipation.id },
+          data: { ticketsUsed: existingParticipation.ticketsUsed + 1 },
+        });
+        console.log(`✅ Updated existing participation for user ${ticket.userId}`);
+      } else {
+        // Create new participation record
+        await prisma.drawParticipation.create({
+          data: {
+            userId: ticket.userId,
+            drawId: nextDrawId,
+            ticketsUsed: 1,
+          },
+        });
+        console.log(`✅ Created new participation for user ${ticket.userId}`);
+      }
     }
-    
+
+    // Update the draw's total tickets count
+    const totalParticipations = await prisma.drawParticipation.aggregate({
+      where: { drawId: nextDrawId },
+      _sum: { ticketsUsed: true },
+    });
+
+    const totalTickets = totalParticipations._sum.ticketsUsed || 0;
+
+    await prisma.draw.update({
+      where: { id: nextDrawId },
+      data: { totalTickets },
+    });
+
+    console.log(`✅ Updated draw ${nextDrawId} total tickets to ${totalTickets}`);
+    console.log('🎉 Successfully fixed social media tickets!');
   } catch (error) {
-    console.error('Error fixing social media tickets:', error);
+    console.error('❌ Error fixing social media tickets:', error);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-fixSocialTickets()
-  .then(() => console.log('Social media tickets fix completed'))
-  .catch(e => console.error('Script failed:', e)); 
+// Run the function
+fixSocialMediaTickets()
+  .catch(e => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(() => {
+    console.log('Script execution completed');
+  }); 

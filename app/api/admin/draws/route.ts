@@ -49,7 +49,14 @@ export async function GET() {
           where: {
             drawDate: draw.drawDate
           },
-          include: {
+          select: {
+            id: true,
+            userId: true,
+            ticketCount: true,
+            prizeAmount: true,
+            claimed: true,
+            couponCode: true,
+            drawDate: true,
             user: {
               select: {
                 id: true,

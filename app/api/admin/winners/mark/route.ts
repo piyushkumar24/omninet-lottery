@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { resetWinnerTickets } from "@/lib/ticket-utils";
+import { sendNonWinnerEmail } from "@/lib/mail";
 
 /**
  * Mark User as Winner Endpoint
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     // Check if draw exists
     const draw = await db.draw.findUnique({
       where: { id: drawId },
-      select: { id: true, status: true, prizeAmount: true }
+      select: { id: true, status: true, prizeAmount: true, drawDate: true }
     });
 
     if (!draw) {
@@ -135,6 +136,53 @@ export async function POST(request: NextRequest) {
 
     // Reset ALL tickets for the winner
     const resetCount = await resetWinnerTickets(userId);
+
+    // Send non-winner emails to all participants who didn't win
+    try {
+      // Get all participants for this draw
+      const participants = await db.drawParticipation.findMany({
+        where: {
+          drawId: drawId,
+          userId: {
+            not: userId // Exclude the winner
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      });
+      
+      console.log(`Sending non-winner emails to ${participants.length} participants`);
+      
+      // Send emails in parallel (don't wait for all to complete)
+      const emailPromises = participants.map(async (participant) => {
+        if (participant.user.email) {
+          try {
+            await sendNonWinnerEmail(
+              participant.user.email,
+              participant.user.name || "User",
+              draw.drawDate,
+              participant.userId
+            );
+            console.log(`Non-winner email sent to ${participant.user.email}`);
+          } catch (emailError) {
+            console.error(`Failed to send non-winner email to ${participant.user.email}:`, emailError);
+          }
+        }
+      });
+      
+      // Don't await all emails - let them send in background
+      Promise.allSettled(emailPromises);
+    } catch (error) {
+      console.error("Error sending non-winner emails:", error);
+      // Don't fail the entire operation if emails fail
+    }
 
     return NextResponse.json({
       success: true,

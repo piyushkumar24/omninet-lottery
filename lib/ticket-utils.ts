@@ -212,6 +212,18 @@ export const applyAllTicketsToLottery = async (userId: string, drawId: string): 
           ticketsUsed: ticketsToApply,
         },
       });
+
+      // Update tickets to associate them with the draw
+      await tx.ticket.updateMany({
+        where: {
+          userId,
+          isUsed: false,
+          drawId: null, // Only update tickets not already assigned to a draw
+        },
+        data: {
+          drawId,
+        },
+      });
     }, {
       timeout: 5000, // 5 second timeout
       maxWait: 1500, // 1.5 second max wait

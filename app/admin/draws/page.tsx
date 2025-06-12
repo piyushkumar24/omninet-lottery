@@ -28,6 +28,7 @@ interface DrawData {
       email: string | null;
       image?: string | null;
     };
+    claimed?: boolean;
   }>;
   participants: Array<{
     id: string;
@@ -147,7 +148,7 @@ export default function DrawsPage() {
       userImage: winner.user.image || null,
       ticketCount: draw.totalTickets,
       prizeAmount: winner.prizeAmount,
-      claimed: false, // This would come from the winner record in a real implementation
+      claimed: winner.claimed || false, // Use the actual claimed status from the winner record
       drawDate: new Date(draw.drawDate),
       createdAt: new Date(draw.createdAt),
     }))
