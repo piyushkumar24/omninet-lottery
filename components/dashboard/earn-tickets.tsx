@@ -509,7 +509,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               </Badge>
             </div>
             
-            <CardContent className="pt-8 md:pt-6 pr-20 md:pr-6">
+            <CardContent className="pt-8 pr-24 md:pt-8 md:pr-28">
               <div className="flex items-center mb-4">
                 <div className={`p-3 rounded-full mr-4 ${
                   socialMediaFollowed
