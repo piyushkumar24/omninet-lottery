@@ -93,7 +93,7 @@ export const LoginForm = () => {
   };
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-[600px] mx-auto">
       <CardWrapper
         headerLabel="Welcome back"
         backButtonLabel="Don't have an account?"
@@ -103,9 +103,9 @@ export const LoginForm = () => {
         <Form {...form}>
           <form 
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-6"
+            className="space-y-8 py-6"
           >
-            <div className="space-y-4">
+            <div className="space-y-6">
               {showTwoFactor && (
                 <FormField
                   control={form.control}
@@ -197,7 +197,7 @@ export const LoginForm = () => {
             <Button
               disabled={isPending}
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white py-3 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white py-5 text-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {isPending ? (
                 <div className="flex items-center gap-2">

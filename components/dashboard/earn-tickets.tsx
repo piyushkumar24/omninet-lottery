@@ -292,11 +292,11 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Earn Tickets & Increase Your chance</CardTitle>
+        <CardTitle className="text-xl md:text-2xl">Earn Tickets & Increase Your chance</CardTitle>
         <CardDescription>{getStatusMessage()}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           
           {/* Method 1: Complete Survey - Now with Guaranteed Ticket System */}
           <Card className="relative overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -307,22 +307,22 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               </Badge>
             </div>
             
-            <CardContent className="pt-8 md:pt-6 pr-20 md:pr-6">
+            <CardContent className="pt-6 px-4 md:pt-6 md:px-6">
               <div className="flex items-center mb-4">
-                <div className="bg-blue-100 p-3 rounded-full mr-4">
-                  <ClipboardList className="h-6 w-6 text-blue-600" />
+                <div className="bg-blue-100 p-2 md:p-3 rounded-full mr-3 md:mr-4 flex-shrink-0">
+                  <ClipboardList className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg text-blue-800">Complete a Survey</h3>
-                  <p className="text-sm text-blue-700">Get 1 ticket for sharing your opinion</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-base md:text-lg text-blue-800 truncate">Complete a Survey</h3>
+                  <p className="text-xs md:text-sm text-blue-700 truncate">Get 1 ticket for sharing your opinion</p>
                 </div>
               </div>
               
-              <div className="mb-4 space-y-2">
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs">
                   🎫 1 Ticket Reward
                 </Badge>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs">
                   Repeatable
                 </Badge>
               </div>
@@ -419,24 +419,24 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               </Badge>
             </div>
             
-            <CardContent className="pt-8 md:pt-6 pr-20 md:pr-6">
+            <CardContent className="pt-6 px-4 md:pt-6 md:px-6">
               <div className="flex items-center mb-4">
-                <div className={`p-3 rounded-full mr-4 ${
+                <div className={`p-2 md:p-3 rounded-full mr-3 md:mr-4 flex-shrink-0 ${
                   hasSurveyTicket ? 'bg-blue-100' : 'bg-gray-100'
                 }`}>
                   {hasSurveyTicket ? (
-                    <Users className="h-6 w-6 text-blue-600" />
+                    <Users className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
                   ) : (
-                    <span className="text-2xl">✉</span>
+                    <span className="text-xl md:text-2xl">✉</span>
                   )}
                 </div>
-                <div className="flex-1">
-                  <h3 className={`font-bold text-lg ${
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-bold text-base md:text-lg truncate ${
                     hasSurveyTicket ? 'text-blue-800' : 'text-gray-600'
                   }`}>
                     Invite a Friend
                   </h3>
-                  <p className={`text-sm ${
+                  <p className={`text-xs md:text-sm truncate ${
                     hasSurveyTicket 
                       ? 'text-blue-700' 
                       : 'text-gray-500'
@@ -452,8 +452,8 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               <div className="mb-4">
                 <Badge variant="secondary" className={
                   hasSurveyTicket 
-                    ? "bg-blue-100 text-blue-700 border-blue-300"
-                    : "bg-gray-100 text-gray-600 border-gray-300"
+                    ? "bg-blue-100 text-blue-700 border-blue-300 text-xs"
+                    : "bg-gray-100 text-gray-600 border-gray-300 text-xs"
                 }>
                   {hasSurveyTicket ? "Repeatable" : "Locked"}
                 </Badge>
@@ -462,7 +462,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               <Button 
                 onClick={handleReferralClick}
                 disabled={!hasSurveyTicket}
-                className={`w-full font-semibold ${
+                className={`w-full font-semibold text-xs md:text-sm py-2 ${
                   hasSurveyTicket
                     ? 'bg-blue-600 hover:bg-blue-700 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -500,8 +500,8 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
             <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10">
               <Badge variant="secondary" className={
                 socialMediaFollowed
-                  ? "bg-green-100 text-green-700 border-green-300 text-xs font-medium px-2 py-1"
-                  : hasSurveyTicket 
+                  ? "bg-gray-100 text-gray-600 border-gray-300 text-xs font-medium px-2 py-1"
+                  : hasSurveyTicket
                     ? "bg-purple-100 text-purple-700 border-purple-300 text-xs font-medium px-2 py-1"
                     : "bg-gray-100 text-gray-600 border-gray-300 text-xs font-medium px-2 py-1"
               }>
@@ -509,44 +509,44 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               </Badge>
             </div>
             
-            <CardContent className="pt-8 pr-24 md:pt-8 md:pr-28">
+            <CardContent className="pt-6 px-4 md:pt-6 md:px-6">
               <div className="flex items-center mb-4">
-                <div className={`p-3 rounded-full mr-4 ${
+                <div className={`p-2 md:p-3 rounded-full mr-3 md:mr-4 flex-shrink-0 ${
                   socialMediaFollowed
                     ? 'bg-gray-100'
-                    : hasSurveyTicket 
-                      ? 'bg-purple-100' 
+                    : hasSurveyTicket
+                      ? 'bg-purple-100'
                       : 'bg-gray-100'
                 }`}>
                   {socialMediaFollowed ? (
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+                    <CheckCircle className="h-5 w-5 md:h-6 md:w-6 text-gray-500" />
                   ) : hasSurveyTicket ? (
-                    <Share2 className="h-6 w-6 text-purple-600" />
+                    <Instagram className="h-5 w-5 md:h-6 md:w-6 text-purple-600" />
                   ) : (
-                    <span className="text-2xl">🤳</span>
+                    <Lock className="h-5 w-5 md:h-6 md:w-6 text-gray-500" />
                   )}
                 </div>
-                <div className="flex-1">
-                  <h3 className={`font-bold text-lg ${
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-bold text-base md:text-lg truncate ${
                     socialMediaFollowed
                       ? 'text-gray-600'
-                      : hasSurveyTicket 
-                        ? 'text-purple-800' 
+                      : hasSurveyTicket
+                        ? 'text-purple-800'
                         : 'text-gray-600'
                   }`}>
-                    Follow Us on Social Media
+                    Follow on Social Media
                   </h3>
-                  <p className={`text-sm ${
+                  <p className={`text-xs md:text-sm truncate ${
                     socialMediaFollowed
                       ? 'text-gray-500'
-                      : hasSurveyTicket 
-                        ? 'text-purple-700' 
+                      : hasSurveyTicket
+                        ? 'text-purple-700'
                         : 'text-gray-500'
                   }`}>
                     {socialMediaFollowed
-                      ? "You've already earned your social media ticket!"
-                      : hasSurveyTicket 
-                        ? "Follow us on any platform and earn 1 extra ticket"
+                      ? "You've already claimed this reward"
+                      : hasSurveyTicket
+                        ? "Earn 1 ticket by following our social media"
                         : "Unlock this feature by completing your first survey"
                     }
                   </p>
@@ -556,70 +556,87 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               <div className="mb-4">
                 <Badge variant="secondary" className={
                   socialMediaFollowed
-                    ? "bg-green-100 text-green-700 border-green-300"
-                    : hasSurveyTicket 
-                      ? "bg-purple-100 text-purple-700 border-purple-300"
-                      : "bg-gray-100 text-gray-600 border-gray-300"
+                    ? "bg-gray-100 text-gray-600 border-gray-300 text-xs"
+                    : hasSurveyTicket
+                      ? "bg-purple-100 text-purple-700 border-purple-300 text-xs"
+                      : "bg-gray-100 text-gray-600 border-gray-300 text-xs"
                 }>
-                  {socialMediaFollowed ? "Completed" : hasSurveyTicket ? "One-Time Only" : "Locked"}
+                  {socialMediaFollowed
+                    ? "Claimed"
+                    : hasSurveyTicket
+                      ? "One-time"
+                      : "Locked"
+                  }
                 </Badge>
               </div>
               
-              {socialMediaFollowed ? (
-                <Button 
-                  disabled
-                  className="w-full bg-green-100 text-green-700 font-semibold cursor-not-allowed"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Completed
-                </Button>
-              ) : hasSurveyTicket ? (
+              {/* Social Media Buttons */}
+              {!socialMediaFollowed && hasSurveyTicket ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="flex gap-2 justify-center">
                     <Button
-                      variant="outline"
-                      size="sm"
                       onClick={() => openSocialMedia('instagram')}
-                      className="p-2 border-purple-300 hover:bg-purple-50"
-                    >
-                      <Instagram className="h-4 w-4 text-purple-600" />
-                    </Button>
-                    <Button
                       variant="outline"
                       size="sm"
+                      className="flex-1 bg-gradient-to-r from-pink-50 to-purple-50 border-pink-200 hover:border-pink-300 hover:bg-pink-100 text-pink-600"
+                    >
+                      <Instagram className="h-4 w-4 mr-1" />
+                      <span className="text-xs">Instagram</span>
+                    </Button>
+                    <Button
                       onClick={() => openSocialMedia('facebook')}
-                      className="p-2 border-purple-300 hover:bg-purple-50"
-                    >
-                      <Facebook className="h-4 w-4 text-purple-600" />
-                    </Button>
-                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openSocialMedia('youtube')}
-                      className="p-2 border-purple-300 hover:bg-purple-50"
+                      className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:border-blue-300 hover:bg-blue-100 text-blue-600"
                     >
-                      <Youtube className="h-4 w-4 text-purple-600" />
+                      <Facebook className="h-4 w-4 mr-1" />
+                      <span className="text-xs">Facebook</span>
                     </Button>
                   </div>
-                  <Button 
+                  <Button
+                    onClick={() => openSocialMedia('youtube')}
+                    variant="outline"
+                    size="sm"
+                    className="w-full bg-gradient-to-r from-red-50 to-rose-50 border-red-200 hover:border-red-300 hover:bg-red-100 text-red-600"
+                  >
+                    <Youtube className="h-4 w-4 mr-1" />
+                    <span className="text-xs">YouTube</span>
+                  </Button>
+                  <Button
                     onClick={handleSocialFollowComplete}
                     disabled={loading === "SOCIAL"}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs md:text-sm py-2"
                   >
-                    {loading === "SOCIAL" ? "Processing..." : "I followed — Get my ticket"}
+                    {loading === "SOCIAL" ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Confirm You Followed
+                      </>
+                    )}
                   </Button>
                 </div>
               ) : (
                 <Button 
                   disabled
-                  className="w-full bg-gray-300 text-gray-500 cursor-not-allowed font-semibold"
+                  className={`w-full font-semibold text-xs md:text-sm py-2 ${
+                    socialMediaFollowed
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
-                  Unlock by completing your first survey
+                  {socialMediaFollowed
+                    ? "Already Claimed"
+                    : "Unlock by completing your first survey"
+                  }
                 </Button>
               )}
             </CardContent>
           </Card>
-
         </div>
       </CardContent>
     </Card>

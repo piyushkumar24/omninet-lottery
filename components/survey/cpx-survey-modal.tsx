@@ -723,10 +723,10 @@ export const CPXSurveyModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button 
-          disabled={isLoading || disabled}
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+        <Button
           data-cpx-survey-button
+          disabled={disabled || isLoading}
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-300"
         >
           {isLoading ? (
             <>

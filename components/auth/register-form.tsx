@@ -119,7 +119,7 @@ export const RegisterForm = () => {
   };
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-[600px] mx-auto">
       <CardWrapper
         headerLabel="Create your account"
         backButtonLabel="Already have an account?"
@@ -129,9 +129,9 @@ export const RegisterForm = () => {
         <Form {...form}>
           <form 
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-6"
+            className="space-y-8 py-6"
           >
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Full Name Field */}
               <FormField
                 control={form.control}
@@ -369,20 +369,22 @@ export const RegisterForm = () => {
 
             <FormError message={error} />
             
-            <Button
-              disabled={isPending || !captchaToken}
-              type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white py-3 text-lg font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              {isPending ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Creating account...
-                </div>
-              ) : (
-                "Sign Up & Confirm Your Email"
-              )}
-            </Button>
+            <div className="mt-6 space-y-6">
+              <Button
+                disabled={isPending || !captchaToken}
+                type="submit"
+                className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white py-5 text-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                {isPending ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Creating account...
+                  </div>
+                ) : (
+                  "Sign Up & Confirm Your Email"
+                )}
+              </Button>
+            </div>
           </form>
         </Form>
       </CardWrapper>

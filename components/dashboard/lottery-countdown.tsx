@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Ticket } from "lucide-react";
+import { Ticket, Clock } from "lucide-react";
 import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
 
 interface LotteryCountdownProps {
@@ -110,23 +110,74 @@ export const LotteryCountdown = ({
     return num.toString().padStart(2, '0');
   };
 
+  // Define time units for consistent display with landing page
+  const timeUnits = [
+    { value: timeLeft.days, label: "Days", color: "from-emerald-500 to-emerald-600" },
+    { value: timeLeft.hours, label: "Hours", color: "from-blue-500 to-blue-600" },
+    { value: timeLeft.minutes, label: "Minutes", color: "from-purple-500 to-purple-600" },
+    { value: timeLeft.seconds, label: "Seconds", color: "from-orange-500 to-orange-600" },
+  ];
+
   return (
     <Card className="bg-blue-600 text-white rounded-3xl border-0 overflow-hidden shadow-lg h-full">
       <CardContent className="p-4 md:p-6 space-y-3 md:space-y-4 flex flex-col h-full">
-        {/* Drawing Header */}
-        <div className="flex flex-col items-center space-y-1 md:space-y-2">
-          <div className="flex items-center">
-            <span className="text-lg md:text-xl font-semibold">Drawing on Thursday,</span>
+        {/* Drawing Header - Styled to match landing page */}
+        <div className="flex items-center justify-center mb-6">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl px-6 py-3 flex items-center gap-3">
+            <Clock className="h-6 w-6 text-white animate-pulse" />
+            <span className="text-lg font-semibold">Next Lottery Draw</span>
           </div>
-          <div className="text-2xl md:text-3xl font-bold">18:30 IST</div>
         </div>
         
-        {/* Next Lottery Draw */}
-        <div className="bg-white text-blue-900 rounded-full py-2 md:py-3 px-4 md:px-6 flex items-center justify-center space-x-2">
-          <div className="w-5 h-5 md:w-6 md:h-6 rounded-full border-2 border-blue-900 flex items-center justify-center">
-            <div className="w-2 h-2 md:w-3 md:h-3 bg-blue-900 rounded-full"></div>
+        {/* Main content */}
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-3xl p-6 md:p-8">
+          <div className="grid grid-cols-4 gap-3 md:gap-6">
+            {timeUnits.map((unit, index) => (
+              <div key={unit.label} className="flex flex-col items-center group">
+                {/* Number display */}
+                <div className={`
+                  bg-gradient-to-br ${unit.color} 
+                  text-white rounded-2xl w-full
+                  py-2 md:py-4 text-center 
+                  shadow-lg shadow-black/10
+                  transition-all duration-300 
+                  group-hover:scale-105 group-hover:shadow-xl
+                  relative overflow-hidden
+                `}>
+                  {/* Animated background pattern */}
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  
+                  {/* Number */}
+                  <span className="text-2xl md:text-4xl font-bold relative z-10 font-mono">
+                    {formatNumber(unit.value)}
+                  </span>
+                  
+                  {/* Subtle glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+                </div>
+                
+                {/* Label */}
+                <span className="mt-3 text-sm md:text-base font-medium text-white/80 transition-colors duration-300 group-hover:text-opacity-100">
+                  {unit.label}
+                </span>
+              </div>
+            ))}
           </div>
-          <span className="text-base md:text-xl font-bold">Next Lottery Draw</span>
+
+          {/* Additional info */}
+          <div className="mt-6 pt-6 border-t border-white/20">
+            <div className="text-center">
+              <p className="text-sm text-white/80 font-medium">
+                Next draw: Thursday at 18:30 IST
+              </p>
+              <div className="flex items-center justify-center mt-2 gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-white/80">
+                  Weekly lottery - tickets reset after each draw
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Prize Amount */}
@@ -137,26 +188,6 @@ export const LotteryCountdown = ({
               <img src="/amazon-logo.png" alt="Amazon" className="h-6 md:h-8" />
               <span className="text-xl md:text-2xl">gift card</span>
             </div>
-          </div>
-        </div>
-
-        {/* Countdown Timer */}
-        <div className="grid grid-cols-4 gap-1 md:gap-2">
-          <div className="bg-blue-500 rounded-lg p-1 md:p-2 text-center">
-            <div className="text-xl md:text-3xl font-bold">{formatNumber(timeLeft.days)}</div>
-            <div className="text-xs md:text-sm">Days</div>
-          </div>
-          <div className="bg-blue-500 rounded-lg p-1 md:p-2 text-center">
-            <div className="text-xl md:text-3xl font-bold">{formatNumber(timeLeft.hours)}</div>
-            <div className="text-xs md:text-sm">Hours</div>
-          </div>
-          <div className="bg-blue-500 rounded-lg p-1 md:p-2 text-center">
-            <div className="text-xl md:text-3xl font-bold">{formatNumber(timeLeft.minutes)}</div>
-            <div className="text-xs md:text-sm">Minutes</div>
-          </div>
-          <div className="bg-blue-500 rounded-lg p-1 md:p-2 text-center">
-            <div className="text-xl md:text-3xl font-bold">{formatNumber(timeLeft.seconds)}</div>
-            <div className="text-xs md:text-sm">Seconds</div>
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Share, User, Check, Info, Users, Gift, TrendingUp, ExternalLink, Mail, Ticket } from "lucide-react";
+import { Copy, Share, User, Check, Info, Users, Gift, TrendingUp, ExternalLink, Mail, Ticket, Lock } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface Referral {
@@ -39,6 +39,7 @@ export default function ReferralPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
+  const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const referralLink = referralCode ? `${baseUrl}/?ref=${referralCode}` : 'Loading...';
@@ -47,8 +48,21 @@ export default function ReferralPage() {
     if (session?.user?.id) {
       fetchReferralData();
       fetchReferralCode();
+      checkSurveyCompletion();
     }
   }, [session?.user?.id]);
+
+  const checkSurveyCompletion = async () => {
+    try {
+      const response = await fetch('/api/user/status');
+      if (response.ok) {
+        const data = await response.json();
+        setHasCompletedSurvey(data.hasSurveyTicket || false);
+      }
+    } catch (error) {
+      console.error("Error checking survey completion status:", error);
+    }
+  };
 
   const fetchReferralData = async () => {
     try {
@@ -102,7 +116,7 @@ export default function ReferralPage() {
   };
 
   const copyToClipboard = async () => {
-    if (!referralCode) return;
+    if (!referralCode || !hasCompletedSurvey) return;
     
     try {
       await navigator.clipboard.writeText(referralLink);
@@ -135,7 +149,7 @@ export default function ReferralPage() {
   };
 
   const shareViaEmail = () => {
-    if (!referralCode) return;
+    if (!referralCode || !hasCompletedSurvey) return;
     
     const subject = encodeURIComponent("Join me in the 0mninet Lottery");
     const body = encodeURIComponent(`Hey, I thought you might be interested in the 0mninet lottery platform. You can win Amazon gift cards by completing surveys while supporting digital inclusion initiatives worldwide. Use my referral link to sign up: ${referralLink}`);
@@ -244,168 +258,165 @@ export default function ReferralPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6 space-y-4 md:space-y-6">
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Input 
-                  value={referralLink} 
-                  readOnly 
-                  className="font-mono text-xs md:text-sm bg-slate-50 border-2 border-slate-200 focus:border-blue-500"
-                  disabled={isLoading || !referralCode}
-                />
+            {hasCompletedSurvey ? (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Input 
+                    value={referralLink} 
+                    readOnly 
+                    className="bg-white border-2 border-blue-100 focus:border-blue-300 text-sm md:text-base flex-1"
+                  />
+                  <Button 
+                    onClick={copyToClipboard}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button 
+                    onClick={shareViaEmail}
+                    variant="outline"
+                    className="flex-1 border-blue-200 text-blue-700 hover:bg-blue-50 font-medium"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Share via Email
+                  </Button>
+                  <Button 
+                    onClick={() => window.open(referralLink, '_blank')}
+                    variant="outline"
+                    className="flex-1 border-blue-200 text-blue-700 hover:bg-blue-50 font-medium"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open Link
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 md:p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-amber-100 p-2 rounded-full">
+                    <Lock className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-amber-800">Complete a Survey First</h3>
+                    <p className="text-sm text-amber-700">You need to complete your first survey to unlock your referral link</p>
+                  </div>
+                </div>
                 <Button 
-                  onClick={copyToClipboard} 
-                  disabled={isLoading || !referralCode}
-                  variant={isCopied ? "outline" : "default"}
-                  className={`min-w-[120px] ${
-                    isCopied 
-                      ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' 
-                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg'
-                  }`}
+                  onClick={() => window.location.href = '/dashboard'}
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold mt-2"
                 >
-                  {isCopied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy Link
-                    </>
-                  )}
+                  Go to Dashboard to Complete a Survey
                 </Button>
               </div>
-              
-              <div className="flex justify-center">
-                <Button
-                  onClick={shareViaEmail}
-                  disabled={isLoading || !referralCode}
-                  variant="outline"
-                  className="bg-gradient-to-r from-slate-50 to-blue-50 border-2 border-blue-200 hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 text-blue-700 font-medium text-xs md:text-sm"
-                >
-                  <Mail className="h-3 w-3 md:h-4 md:w-4 mr-2" />
-                  Share via Email
-                  <ExternalLink className="h-3 w-3 md:h-4 md:w-4 ml-2" />
-                </Button>
-              </div>
-            </div>
+            )}
             
-            <div className="bg-blue-50 p-3 md:p-4 rounded-lg border border-blue-200 mt-4">
-              <h3 className="font-semibold text-blue-800 flex items-center gap-2 mb-2 text-sm md:text-base">
-                <Gift className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
-                How to Earn Referral Tickets
-              </h3>
-              <ol className="text-xs md:text-sm text-blue-700 space-y-1 md:space-y-2 ml-5 md:ml-6 list-decimal">
-                <li>Share your unique referral link with friends</li>
-                <li>When they sign up using your link, they become your referral</li>
-                <li>When your referral completes their first survey, you earn a referral ticket</li>
-                <li>Your ticket is automatically entered into the current lottery draw</li>
-                <li>Track your referrals and earned tickets in this dashboard</li>
-              </ol>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-blue-800 mb-2">How Referrals Work</h3>
+                  <ul className="text-blue-700 text-sm space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold">1.</span>
+                      <span>Share your unique referral link with friends</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold">2.</span>
+                      <span>When they sign up using your link, they become your referral</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold">3.</span>
+                      <span>Once they complete their first survey, you both earn a lottery ticket</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold">4.</span>
+                      <span>The more friends you refer, the more tickets you can earn!</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
         
-        {/* Referrals List */}
+        {/* Recent Referrals */}
         <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-200 py-4 px-4 md:py-6 md:px-6">
-            <CardTitle className="flex items-center gap-2 text-green-800">
-              <Gift className="h-5 w-5 md:h-6 md:w-6" />
-              Your Referrals & Tickets
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 py-4 px-4 md:py-6 md:px-6">
+            <CardTitle className="flex items-center gap-2 text-blue-800">
+              <User className="h-5 w-5 md:h-6 md:w-6" />
+              Your Referrals
             </CardTitle>
-            <CardDescription className="text-green-700 text-xs md:text-sm">
-              Track the friends you&apos;ve referred and see which ones have earned you tickets
+            <CardDescription className="text-blue-700 text-xs md:text-sm">
+              People who signed up using your referral link
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
-            {referrals.length > 0 && (
-              <div className="bg-white rounded-xl p-3 md:p-6 border border-slate-200 shadow-sm">
-                <h4 className="text-base md:text-lg font-semibold text-slate-800 mb-3 md:mb-4 flex items-center gap-2">
-                  <Users className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
-                  Your Referrals ({referrals.length})
-                </h4>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {referrals.map((referral) => (
-                    <div key={referral.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 md:w-8 md:h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <User className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
+            {referrals.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-blue-100">
+                      <th className="text-left py-2 px-2 text-sm font-semibold text-blue-800">Name</th>
+                      <th className="text-left py-2 px-2 text-sm font-semibold text-blue-800">Joined</th>
+                      <th className="text-left py-2 px-2 text-sm font-semibold text-blue-800">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {referrals.map((referral) => (
+                      <tr key={referral.id} className="border-b border-blue-50 hover:bg-blue-50/50">
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <div className="bg-blue-100 h-8 w-8 rounded-full flex items-center justify-center text-blue-700 font-semibold">
+                              {referral.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-800">{referral.name}</p>
+                              <p className="text-xs text-slate-500">{referral.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-slate-800 text-sm md:text-base">{referral.name}</p>
-                            <p className="text-xs md:text-sm text-slate-600">{referral.email}</p>
-                            <p className="text-xs text-slate-500">
-                              Joined {formatDate(new Date(referral.joinedAt), 'dateOnly')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="sm:text-right">
-                        {referral.hasCompletedSurvey ? (
-                          <>
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 mb-1 text-xs md:text-sm">
+                        </td>
+                        <td className="py-3 px-2 text-sm text-slate-600">
+                          {formatDate(new Date(referral.joinedAt))}
+                        </td>
+                        <td className="py-3 px-2">
+                          {referral.hasCompletedSurvey ? (
+                            <Badge className="bg-green-100 text-green-700 border-green-300 hover:bg-green-200">
                               <Check className="h-3 w-3 mr-1" />
-                              Completed Survey
+                              Qualified
                             </Badge>
-                            <p className="text-xs text-green-600 mt-1 md:mt-2">
-                              ✅ Qualified Referral #{referrals.filter(r => r.hasCompletedSurvey).findIndex(r => r.id === referral.id) + 1}
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 mb-1 text-xs md:text-sm">
-                              <Info className="h-3 w-3 mr-1" />
-                              Pending Survey
+                          ) : (
+                            <Badge variant="outline" className="border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100">
+                              Pending
                             </Badge>
-                            <p className="text-xs text-amber-600 mt-1 md:mt-2">
-                              Needs to complete survey to earn you a ticket
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-            
-            {referralStats.pendingReferrals > 0 && (
-              <div className="mt-4 md:mt-6 p-3 md:p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
-                <div className="flex items-start md:items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-lg flex-shrink-0">
-                    <Info className="h-4 w-4 md:h-5 md:w-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-amber-800 text-sm md:text-base">
-                      {referralStats.pendingReferrals} friend{referralStats.pendingReferrals === 1 ? '' : 's'} haven&apos;t completed surveys yet
-                    </p>
-                    <p className="text-xs md:text-sm text-amber-700 mt-1">
-                      Once they complete their first survey, you&apos;ll automatically earn referral tickets!
-                    </p>
-                  </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="bg-blue-50 rounded-full h-12 w-12 flex items-center justify-center mx-auto mb-3">
+                  <Users className="h-6 w-6 text-blue-500" />
                 </div>
-              </div>
-            )}
-
-            {referrals.length === 0 && (
-              <div className="text-center py-8 md:py-16">
-                <div className="flex justify-center mb-4 md:mb-6">
-                  <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-100 rounded-full flex items-center justify-center">
-                    <Users className="h-8 w-8 md:h-10 md:w-10 text-slate-400" />
-                  </div>
-                </div>
-                <h3 className="text-xl md:text-2xl font-bold text-slate-800 mb-2 md:mb-3">No Referrals Yet</h3>
-                <p className="text-slate-600 text-base md:text-lg mb-4">
-                  You haven&apos;t referred anyone yet. Start sharing your link to earn tickets!
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">No Referrals Yet</h3>
+                <p className="text-slate-600 max-w-md mx-auto">
+                  Share your referral link with friends to start earning more tickets!
                 </p>
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 md:p-6 max-w-md mx-auto">
-                  <p className="text-blue-800 font-medium mb-2">🚀 Get Started</p>
-                  <p className="text-blue-700 text-xs md:text-sm">
-                    Copy your referral link above and share it with friends on social media, 
-                    email, or messaging apps. Every friend who completes their first survey earns you a lottery ticket!
-                  </p>
-                </div>
               </div>
             )}
           </CardContent>
