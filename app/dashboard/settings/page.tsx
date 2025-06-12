@@ -251,38 +251,40 @@ const SettingsPage = () => {
                     </div>
                   )}
 
-                  {/* Role Field */}
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2 text-slate-700 font-medium text-base">
-                          <Shield className="h-4 w-4 text-purple-600" />
-                          Account Role
-                        </FormLabel>
-                        <Select
-                          disabled={isPending}
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="bg-white/90 border-2 border-gray-200 focus:border-purple-500 transition-colors h-12 text-base">
-                              <SelectValue placeholder="Select your role" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value={UserRole.ADMIN}>Administrator</SelectItem>
-                            <SelectItem value={UserRole.USER}>User</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-sm text-slate-500">
-                          Your current role in the system
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Role Field - Only visible to admins */}
+                  {user?.role === UserRole.ADMIN && (
+                    <FormField
+                      control={form.control}
+                      name="role"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2 text-slate-700 font-medium text-base">
+                            <Shield className="h-4 w-4 text-purple-600" />
+                            Account Role
+                          </FormLabel>
+                          <Select
+                            disabled={isPending}
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="bg-white/90 border-2 border-gray-200 focus:border-purple-500 transition-colors h-12 text-base">
+                                <SelectValue placeholder="Select your role" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value={UserRole.ADMIN}>Administrator</SelectItem>
+                              <SelectItem value={UserRole.USER}>User</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className="text-sm text-slate-500">
+                            Your current role in the system
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   {/* Two Factor Authentication */}
                   {user?.isOAuth === false && (
