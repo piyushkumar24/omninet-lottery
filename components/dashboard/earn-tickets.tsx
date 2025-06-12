@@ -300,7 +300,14 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
           
           {/* Method 1: Complete Survey - Now with Guaranteed Ticket System */}
           <Card className="relative overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
-            <CardContent className="pt-6">
+            {/* Step Indicator */}
+            <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs font-medium px-2 py-1">
+                Step 1 of 3
+              </Badge>
+            </div>
+            
+            <CardContent className="pt-8 md:pt-6 pr-20 md:pr-6">
               <div className="flex items-center mb-4">
                 <div className="bg-blue-100 p-3 rounded-full mr-4">
                   <ClipboardList className="h-6 w-6 text-blue-600" />
@@ -401,7 +408,18 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50' 
               : 'border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50'
           }`}>
-            <CardContent className="pt-6">
+            {/* Step Indicator */}
+            <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10">
+              <Badge variant="secondary" className={
+                hasSurveyTicket 
+                  ? "bg-blue-100 text-blue-700 border-blue-300 text-xs font-medium px-2 py-1"
+                  : "bg-gray-100 text-gray-600 border-gray-300 text-xs font-medium px-2 py-1"
+              }>
+                Step 2 of 3
+              </Badge>
+            </div>
+            
+            <CardContent className="pt-8 md:pt-6 pr-20 md:pr-6">
               <div className="flex items-center mb-4">
                 <div className={`p-3 rounded-full mr-4 ${
                   hasSurveyTicket ? 'bg-blue-100' : 'bg-gray-100'
@@ -409,7 +427,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                   {hasSurveyTicket ? (
                     <Users className="h-6 w-6 text-blue-600" />
                   ) : (
-                    <Lock className="h-6 w-6 text-gray-500" />
+                    <span className="text-2xl">✉</span>
                   )}
                 </div>
                 <div className="flex-1">
@@ -478,7 +496,20 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                 ? 'border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50' 
                 : 'border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50'
           }`}>
-            <CardContent className="pt-6">
+            {/* Step Indicator */}
+            <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10">
+              <Badge variant="secondary" className={
+                socialMediaFollowed
+                  ? "bg-green-100 text-green-700 border-green-300 text-xs font-medium px-2 py-1"
+                  : hasSurveyTicket 
+                    ? "bg-purple-100 text-purple-700 border-purple-300 text-xs font-medium px-2 py-1"
+                    : "bg-gray-100 text-gray-600 border-gray-300 text-xs font-medium px-2 py-1"
+              }>
+                Step 3 of 3
+              </Badge>
+            </div>
+            
+            <CardContent className="pt-8 md:pt-6 pr-20 md:pr-6">
               <div className="flex items-center mb-4">
                 <div className={`p-3 rounded-full mr-4 ${
                   socialMediaFollowed
@@ -492,7 +523,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                   ) : hasSurveyTicket ? (
                     <Share2 className="h-6 w-6 text-purple-600" />
                   ) : (
-                    <Lock className="h-6 w-6 text-gray-500" />
+                    <span className="text-2xl">🤳</span>
                   )}
                 </div>
                 <div className="flex-1">

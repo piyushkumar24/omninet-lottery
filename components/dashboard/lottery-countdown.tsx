@@ -7,13 +7,11 @@ import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
 
 interface LotteryCountdownProps {
   userId: string;
-  drawDate: Date;
   prizeAmount: number;
 }
 
 export const LotteryCountdown = ({ 
   userId, 
-  drawDate,
   prizeAmount
 }: LotteryCountdownProps) => {
   const [timeLeft, setTimeLeft] = useState({
@@ -22,15 +20,71 @@ export const LotteryCountdown = ({
     minutes: 0,
     seconds: 0,
   });
-  
+
+  // Calculate next Thursday at 18:30 IST (same logic as landing page)
+  const getNextThursdayIST = () => {
+    const now = new Date();
+    
+    // Get day of week (0 = Sunday, 4 = Thursday)
+    const currentDay = now.getDay();
+    
+    // Calculate days until next Thursday
+    const daysUntilThursday = (4 - currentDay + 7) % 7;
+    
+    // If it's Thursday but after 18:30 IST, get next Thursday
+    if (daysUntilThursday === 0) {
+      // Convert to IST (UTC+5:30)
+      const hours = now.getUTCHours();
+      const minutes = now.getUTCMinutes();
+      const istTime = hours * 60 + minutes + 5 * 60 + 30; // Convert to minutes and add IST offset
+      const istHours = Math.floor(istTime / 60) % 24;
+      const istMinutes = istTime % 60;
+      
+      if (istHours > 18 || (istHours === 18 && istMinutes >= 30)) {
+        // It's past 18:30 IST, so get next Thursday
+        return new Date(
+          now.getFullYear(), 
+          now.getMonth(), 
+          now.getDate() + 7, 
+          18 - 5, // 18:00 IST in UTC
+          30 - 30, // 30 minutes in UTC
+          0,
+          0
+        );
+      }
+    }
+    
+    // Set to next Thursday at 18:30 IST (13:00 UTC)
+    const nextThursday = new Date(now);
+    nextThursday.setDate(now.getDate() + daysUntilThursday);
+    nextThursday.setUTCHours(13, 0, 0, 0); // 18:30 IST is 13:00 UTC
+    
+    return nextThursday;
+  };
+
   useEffect(() => {
-    const interval = setInterval(() => {
+    const updateCountdown = () => {
       const now = new Date();
-      const difference = drawDate.getTime() - now.getTime();
+      const nextDrawDate = getNextThursdayIST();
+      const difference = nextDrawDate.getTime() - now.getTime();
       
       if (difference <= 0) {
+        // When countdown reaches zero, restart for next Thursday
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-        clearInterval(interval);
+        // Wait a second and recalculate for next week
+        setTimeout(() => {
+          const newNextDrawDate = getNextThursdayIST();
+          const newDifference = newNextDrawDate.getTime() - new Date().getTime();
+          
+          if (newDifference > 0) {
+            const days = Math.floor(newDifference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((newDifference / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((newDifference / 1000 / 60) % 60);
+            const seconds = Math.floor((newDifference / 1000) % 60);
+            
+            setTimeLeft({ days, hours, minutes, seconds });
+          }
+        }, 1000);
         return;
       }
       
@@ -40,10 +94,16 @@ export const LotteryCountdown = ({
       const seconds = Math.floor((difference / 1000) % 60);
       
       setTimeLeft({ days, hours, minutes, seconds });
-    }, 1000);
+    };
+
+    // Initial calculation
+    updateCountdown();
+    
+    // Set up interval to update every second
+    const interval = setInterval(updateCountdown, 1000);
     
     return () => clearInterval(interval);
-  }, [drawDate]);
+  }, []);
 
   // Format numbers to always have two digits
   const formatNumber = (num: number) => {

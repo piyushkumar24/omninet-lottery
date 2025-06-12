@@ -149,7 +149,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <div className="w-full lg:col-span-1">
                 <LotteryCountdown 
                   userId={user.id}
-                  drawDate={draw.drawDate}
                   prizeAmount={draw.prizeAmount}
                 />
               </div>
