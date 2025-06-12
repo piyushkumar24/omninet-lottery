@@ -109,9 +109,11 @@ export async function POST(req: Request) {
     // Check if it's Sunday (day 0) to run the weekly draw
     const now = new Date();
     const isWeeklyDrawDay = now.getDay() === 0;
-    
-    // Weekly lottery draw - run if explicitly requested or if it's Sunday and task=all
-    if (task === "draw" || (task === "all" && isWeeklyDrawDay)) {
+
+    // Weekly lottery draw - run if explicitly requested or if it's Sunday
+    // Since we're limited to once daily execution, we'll always run health checks
+    // and only run the weekly draw on Sundays
+    if (task === "draw" || (isWeeklyDrawDay && (task === "all" || task === null))) {
       try {
         logger.info('Cron: Weekly draw check started', 'CRON');
         
