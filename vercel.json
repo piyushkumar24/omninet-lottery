@@ -29,11 +29,7 @@
   },
   "crons": [
     {
-      "path": "/api/cron/weekly-draw",
-      "schedule": "0 0 * * 0"
-    },
-    {
-      "path": "/api/health/database",
+      "path": "/api/cron/all-tasks",
       "schedule": "*/15 * * * *"
     }
   ],
