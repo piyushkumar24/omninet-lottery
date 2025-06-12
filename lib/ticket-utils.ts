@@ -84,6 +84,7 @@ export const getUserUsedTickets = async (userId: string): Promise<number> => {
 
 /**
  * Award tickets to a user (increases both available and total counts)
+ * RULE: Survey completion = EXACTLY 1 ticket (NO DECIMALS, NO EXCEPTIONS)
  */
 export const awardTicketsToUser = async (
   userId: string, 
@@ -96,6 +97,30 @@ export const awardTicketsToUser = async (
   ticketIds: string[];
 }> => {
   try {
+    // SAFETY CHECK: Ensure ticketCount is always a positive integer
+    if (!Number.isInteger(ticketCount) || ticketCount < 1) {
+      console.error(`❌ INVALID TICKET COUNT: ${ticketCount} for source ${source}, user ${userId}. Must be positive integer.`);
+      return {
+        success: false,
+        availableTickets: 0,
+        totalTickets: 0,
+        ticketIds: [],
+      };
+    }
+    
+    // SPECIAL RULE: Survey tickets must ALWAYS be exactly 1 (unless non-winner bonus = 2)
+    if (source === "SURVEY" && ticketCount !== 1 && ticketCount !== 2) {
+      console.error(`❌ SURVEY TICKET RULE VIOLATION: Attempted to award ${ticketCount} survey tickets. Must be 1 or 2 only.`);
+      return {
+        success: false,
+        availableTickets: 0,
+        totalTickets: 0,
+        ticketIds: [],
+      };
+    }
+    
+    console.log(`🎫 Awarding ${ticketCount} ${source} tickets to user ${userId} (VERIFIED INTEGER)`);
+    
     const result = await withTransaction(async (tx) => {
       // Create ticket records for history
       const ticketIds = [];

@@ -71,9 +71,10 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const nonWinnerToken = searchParams.get('token');
     let isNonWinnerBonus = false;
-    let ticketsToAward = 1; // Default: 1 ticket for survey completion
+    let ticketsToAward = 1; // DEFAULT: ALWAYS 1 ticket for survey completion - NO EXCEPTIONS
     let trackingRecord = null;
 
+    // RULE ENFORCEMENT: Survey completion = EXACTLY 1 ticket, unless non-winner bonus
     if (nonWinnerToken && nonWinnerToken.startsWith('nw_')) {
       try {
         trackingRecord = await db.settings.findUnique({
@@ -85,30 +86,43 @@ export async function POST(request: NextRequest) {
           
           if (trackingData.userId === user.id && !trackingData.bonusTicketsAwarded) {
             isNonWinnerBonus = true;
-            ticketsToAward = 2; // Award 2 tickets for non-winner email flow
+            ticketsToAward = 2; // Only exception: non-winner email bonus = 2 tickets
             
             console.log(`🎫 Non-winner bonus flow detected for user ${user.id}, awarding ${ticketsToAward} tickets`);
           }
         }
       } catch (error) {
         console.error('Error verifying non-winner token:', error);
+        // Fallback to default: 1 ticket
+        ticketsToAward = 1;
       }
+    }
+
+    // FINAL SAFETY CHECK: Ensure ticketsToAward is always a positive integer
+    if (!Number.isInteger(ticketsToAward) || ticketsToAward < 1) {
+      console.warn(`⚠️ Invalid ticketsToAward value: ${ticketsToAward}, resetting to 1`);
+      ticketsToAward = 1;
     }
 
     // Get or create the current draw
     const draw = await createOrGetNextDraw();
     
-    console.log(`🎫 Processing survey completion for user ${user.id}, awarding ${ticketsToAward} tickets`);
+    console.log(`🎫 Processing survey completion for user ${user.id}, awarding EXACTLY ${ticketsToAward} tickets (NO DECIMALS)`);
 
     const result = await db.$transaction(async (tx) => {
-      // Award survey completion tickets
+      // Award survey completion tickets - GUARANTEED INTEGER COUNT
       const awardResult = await awardTicketsToUser(user.id, ticketsToAward, "SURVEY");
       
       if (!awardResult.success) {
         throw new Error("Failed to award survey tickets to user");
       }
 
-      console.log(`✅ Awarded ${ticketsToAward} survey tickets to user ${user.id}`);
+      // VERIFICATION: Confirm exact ticket count was awarded
+      console.log(`✅ VERIFIED: Awarded exactly ${ticketsToAward} survey tickets to user ${user.id} (Expected: ${ticketsToAward}, Actual: ${awardResult.ticketIds.length})`);
+      
+      if (awardResult.ticketIds.length !== ticketsToAward) {
+        throw new Error(`TICKET COUNT MISMATCH: Expected ${ticketsToAward}, but awarded ${awardResult.ticketIds.length}`);
+      }
 
       // Apply all available tickets to the current lottery
       const appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);

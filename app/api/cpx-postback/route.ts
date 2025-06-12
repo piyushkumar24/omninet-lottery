@@ -106,11 +106,21 @@ export async function GET(request: NextRequest) {
 
     // Award survey ticket and handle referral logic
     const result = await db.$transaction(async (tx) => {
+      // RULE ENFORCEMENT: CPX survey completion = EXACTLY 1 ticket (NEVER use currencyAmount)
+      const SURVEY_TICKETS_TO_AWARD = 1; // FIXED VALUE - NOT BASED ON CURRENCY AMOUNT
+      
+      console.log(`🎫 CPX Postback: Awarding EXACTLY ${SURVEY_TICKETS_TO_AWARD} ticket (ignoring currencyAmount: ${currencyAmount})`);
+      
       // Award survey ticket to the user
-      const surveyAwardResult = await awardTicketsToUser(user.id, 1, "SURVEY");
+      const surveyAwardResult = await awardTicketsToUser(user.id, SURVEY_TICKETS_TO_AWARD, "SURVEY");
       
       if (!surveyAwardResult.success) {
         throw new Error("Failed to award survey ticket");
+      }
+      
+      // VERIFICATION: Confirm exact ticket count was awarded
+      if (surveyAwardResult.ticketIds.length !== SURVEY_TICKETS_TO_AWARD) {
+        throw new Error(`TICKET COUNT MISMATCH: Expected ${SURVEY_TICKETS_TO_AWARD}, but awarded ${surveyAwardResult.ticketIds.length}`);
       }
 
       // Apply all available tickets to the current lottery

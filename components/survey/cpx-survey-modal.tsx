@@ -122,9 +122,9 @@ export const CPXSurveyModal = ({
       if (data.success) {
         console.log('✅ Participation ticket successfully awarded:', data);
         
-        const ticketMessage = data.bonusTickets 
-          ? "🎉 2 BONUS tickets awarded for completing the survey!"
-          : "🎫 Lottery ticket awarded for participation!";
+        const ticketMessage = data.data?.ticketCount === 2 || data.bonusTickets
+          ? "🎉 2 LOTTERY TICKETS awarded for completing the survey!"
+          : "🎫 1 LOTTERY TICKET awarded for completing the survey!";
         
         toast.success(ticketMessage, {
           duration: 5000,
@@ -162,7 +162,7 @@ export const CPXSurveyModal = ({
         console.error('❌ Failed to award participation ticket:', data.message);
         
         // Show success toast anyway to prevent user confusion
-        toast.success("🎫 Lottery ticket will be awarded shortly!", {
+        toast.success("🎫 1 LOTTERY TICKET will be awarded shortly!", {
           duration: 4000,
         });
         setShowTicketReward(true);
@@ -182,7 +182,7 @@ export const CPXSurveyModal = ({
       console.error('❌ Error awarding participation ticket:', error);
       
       // Show success toast anyway to prevent user confusion
-      toast.success("🎫 Lottery ticket will be awarded shortly!", {
+      toast.success("🎫 1 LOTTERY TICKET will be awarded shortly!", {
         duration: 4000,
       });
       setShowTicketReward(true);
@@ -221,7 +221,7 @@ export const CPXSurveyModal = ({
       if (data.success) {
         console.log('✅ Force ticket award successful:', data);
         
-        toast.success("🎫 Lottery ticket awarded for participation!", {
+        toast.success("🎫 1 LOTTERY TICKET awarded for participation!", {
           duration: 4000,
         });
         setShowTicketReward(true);
