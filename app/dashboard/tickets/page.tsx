@@ -18,7 +18,8 @@ import {
   ArrowRight,
   Info,
   Eye,
-  CheckCircle2
+  CheckCircle2,
+  Plus
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { getUserDrawParticipations } from "@/data/draw";
@@ -139,22 +140,34 @@ export default async function TicketsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6 md:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">My Lottery Tickets</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800">My Lottery Tickets</h1>
           <p className="text-slate-600 mt-1">Track your tickets and lottery participation</p>
         </div>
-        <Link href="/dashboard">
-          <Button variant="outline" className="flex items-center gap-2">
-            <ArrowRight className="h-4 w-4" />
-            Back to Dashboard
-          </Button>
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Link href="/dashboard">
+            <Button 
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 transition-colors duration-200"
+            >
+              <ArrowRight className="h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          <Link href="/dashboard#earn-tickets-section" scroll={true}>
+            <Button 
+              className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 transition-colors duration-200"
+            >
+              <Plus className="h-4 w-4" />
+              Earn More Tickets
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Ticket Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-blue-800">Available Tickets</CardTitle>
@@ -238,8 +251,8 @@ export default async function TicketsPage() {
             {Object.keys(ticketCounts).length === 0 && (
               <div className="col-span-3 text-center py-6">
                 <p className="text-slate-600">No tickets earned yet</p>
-                <Link href="/dashboard">
-                  <Button className="mt-2" size="sm">
+                <Link href="/dashboard#earn-tickets-section" scroll={true}>
+                  <Button className="mt-2 bg-green-600 hover:bg-green-700" size="sm">
                     Start Earning Tickets
                   </Button>
                 </Link>
@@ -251,15 +264,20 @@ export default async function TicketsPage() {
 
       {/* Recent Ticket History */}
       <Card className="bg-white/80 backdrop-blur-sm border-2 border-white/50 shadow-xl">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-slate-600" />
-            <div>
-              <CardTitle className="text-slate-800">Recent Ticket History</CardTitle>
-              <p className="text-sm text-slate-600">Latest tickets you&apos;ve earned</p>
-            </div>
+            <CardTitle className="text-slate-800">Recent History</CardTitle>
           </div>
-          <TicketHistoryModal tickets={tickets} />
+          <TicketHistoryModal tickets={tickets}>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 text-sm px-3 py-2 h-auto transition-colors duration-200"
+            >
+              <Eye className="h-4 w-4" />
+              <span className="hidden sm:inline">View Complete History</span>
+              <span className="sm:hidden">View All</span>
+            </Button>
+          </TicketHistoryModal>
         </CardHeader>
         <CardContent className="p-4">
           {tickets.length === 0 ? (
@@ -305,7 +323,11 @@ export default async function TicketsPage() {
               {tickets.length > 5 && (
                 <div className="text-center pt-2">
                   <TicketHistoryModal tickets={tickets}>
-                    <Button variant="ghost" size="sm" className="text-indigo-600">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
                       View all {tickets.length} tickets
                     </Button>
                   </TicketHistoryModal>

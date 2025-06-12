@@ -174,7 +174,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
         
         {/* Earn Tickets Section */}
-        <div className="mt-4 md:mt-8">
+        <div id="earn-tickets-section" className="mt-4 md:mt-8">
           <EarnTickets userId={user.id} appliedTickets={availableTickets} />
         </div>
 

@@ -103,12 +103,12 @@ export const TicketHistoryModal = ({ tickets, children }: TicketHistoryModalProp
       <DialogTrigger asChild>
         {children || (
           <Button 
-            variant="outline" 
-            className="bg-gradient-to-r from-slate-50 to-blue-50 border-2 border-blue-200 hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 text-slate-700 font-medium transition-all duration-300 hover:shadow-md"
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 text-sm px-3 py-2 h-auto transition-colors duration-200"
             onClick={() => setOpen(true)}
           >
-            <Eye className="h-4 w-4 mr-2" />
-            View Complete History
+            <Eye className="h-4 w-4" />
+            <span className="hidden sm:inline">View Complete History</span>
+            <span className="sm:hidden">View All</span>
           </Button>
         )}
       </DialogTrigger>
@@ -243,7 +243,7 @@ export const TicketHistoryModal = ({ tickets, children }: TicketHistoryModalProp
           
           <Button
             onClick={() => setOpen(false)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
           >
             <X className="h-4 w-4 mr-2" />
             Close
