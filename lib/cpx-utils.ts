@@ -41,13 +41,16 @@ export function generateCPXSurveyURL(user: {
   const secureHash = generateCPXSecureHash(user.id);
   const baseUrl = getBaseUrl();
   
+  // Add timestamp to make each URL unique and prevent "already clicked" issues
+  const timestamp = Date.now();
+  
   const params = new URLSearchParams({
     app_id: CPX_CONFIG.APP_ID,
     ext_user_id: user.id,
     secure_hash: secureHash,
     username: user.name || '',
     email: user.email || '',
-    subid_1: '',
+    subid_1: timestamp.toString(), // Use timestamp as subid_1 to make each URL unique
     subid_2: '',
     redirect: `${baseUrl}/dashboard?survey=completed`,
     // Custom branding parameters
@@ -78,6 +81,7 @@ export function generateCPXSurveyURL(user: {
         content: " ticket" !important;
       }
     `),
+    _nocache: timestamp.toString(), // Add additional cache-busting parameter
   });
 
   return `${CPX_CONFIG.BASE_URL}?${params.toString()}`;

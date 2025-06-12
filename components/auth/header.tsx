@@ -31,7 +31,7 @@ export const Header = ({
           "text-3xl font-semibold text-white",
           font.className,
         )}>
-          Omninet
+          0mninet
         </h1>
       </div>
       <p className="text-muted-foreground text-sm">

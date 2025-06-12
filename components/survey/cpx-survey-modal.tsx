@@ -447,16 +447,57 @@ export const CPXSurveyModal = ({
     }
   }, [awardFallbackTicket, onSurveyComplete]);
 
+  // Function to clear CPX-related cookies
+  const clearCPXCookies = useCallback(() => {
+    try {
+      // Get all cookies
+      const cookies = document.cookie.split(';');
+      
+      // Find and remove any CPX-related cookies
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        
+        // Check if this is a CPX-related cookie
+        if (cookie.startsWith('cpx_') || 
+            cookie.includes('cpx-') || 
+            cookie.includes('_cpx') ||
+            cookie.includes('survey_')) {
+          
+          // Extract cookie name
+          const name = cookie.split('=')[0].trim();
+          
+          // Delete the cookie by setting expiration in the past
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          console.log(`🍪 Cleared CPX cookie: ${name}`);
+        }
+      }
+    } catch (e) {
+      console.error('Error clearing CPX cookies:', e);
+    }
+  }, []);
+
+  // Update the useEffect to call clearCPXCookies when modal opens
   useEffect(() => {
     if (isOpen && user) {
-      const url = generateCPXSurveyURL(user);
+      // Clear any CPX-related cookies first
+      clearCPXCookies();
+      
+      // Generate a unique user ID for each survey request to prevent "already clicked" issues
+      const uniqueUser = {
+        ...user,
+        id: user.id // We're using timestamp in the URL params now, so keep the original ID
+      };
+      
+      const url = generateCPXSurveyURL(uniqueUser);
       setSurveyUrl(url);
       setIframeLoading(true);
       setSurveyError(null);
       setTicketAwarded(false);
       setTicketId(null);
+      
+      console.log('🔄 Generated fresh survey URL with unique timestamp');
     }
-  }, [isOpen, user, retryCount]);
+  }, [isOpen, user, retryCount, clearCPXCookies]);
 
   // Setup continuous monitoring for "no surveys" message
   useEffect(() => {
@@ -509,7 +550,18 @@ export const CPXSurveyModal = ({
     setIframeLoading(true);
     setTicketAwarded(false);
     setTicketId(null);
-    toast("Refreshing survey...", {
+    
+    // Clear any CPX-related cookies first
+    clearCPXCookies();
+    
+    // Force a new survey URL with a fresh timestamp
+    const freshUrl = generateCPXSurveyURL({
+      ...user,
+      id: `${user.id}_${Date.now()}`.substring(0, 36) // Add timestamp but keep length reasonable
+    });
+    setSurveyUrl(freshUrl);
+    
+    toast("Loading a fresh survey...", {
       icon: "🔄",
       duration: 2000,
     });
