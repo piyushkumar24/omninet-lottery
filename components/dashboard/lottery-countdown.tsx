@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Ticket, Clock } from "lucide-react";
-import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
+import { Ticket, Clock, ExternalLink } from "lucide-react";
+
+import { generateCPXSurveyURL } from "@/lib/cpx-utils";
+import { toast } from "react-hot-toast";
+import { Button } from "@/components/ui/button";
 
 interface LotteryCountdownProps {
   userId: string;
@@ -193,30 +196,42 @@ export const LotteryCountdown = ({
 
         {/* Claim Your Ticket Button */}
         <div className="mt-auto">
-          <div className="relative">
-            {/* Hidden CPXSurveyModal */}
-            <div className="hidden">
-              <CPXSurveyModal
-                user={{ id: userId }}
-                onSurveyComplete={() => {}}
-              />
-            </div>
-            
-            {/* Custom Button to Replace CPX Modal Trigger */}
-            <button 
-              onClick={() => {
-                // Find and click the actual CPX modal button
-                const modalButton = document.querySelector('[data-cpx-survey-button]');
-                if (modalButton && modalButton instanceof HTMLButtonElement) {
-                  modalButton.click();
-                }
-              }}
-              className="w-full bg-gradient-to-r from-blue-400 to-blue-300 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-2 md:py-3 px-4 md:px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
-            >
-              <img src="/ticket-icon.png" alt="Ticket" className="h-4 w-4 md:h-5 md:w-5" />
-              <span className="text-base md:text-lg">Claim Your Ticket</span>
-            </button>
-          </div>
+          <Button 
+            onClick={() => {
+              try {
+                // Generate the CPX survey URL
+                const surveyUrl = generateCPXSurveyURL({ id: userId });
+                
+                // Open directly in new tab
+                window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+                
+                // Show user confirmation
+                toast.success("🔗 Survey opened in new tab! Complete it to earn your ticket.", {
+                  duration: 6000,
+                  icon: "🎫",
+                  style: {
+                    border: '2px solid #3b82f6',
+                    padding: '16px',
+                    fontSize: '14px',
+                  },
+                });
+              } catch (error) {
+                console.error("Error opening survey:", error);
+                toast.error("❌ Failed to open survey. Please try again.", {
+                  duration: 4000,
+                  style: {
+                    border: '2px solid #ef4444',
+                    padding: '16px',
+                    fontSize: '14px',
+                  },
+                });
+              }
+            }}
+            className="w-full bg-gradient-to-r from-blue-400 to-blue-300 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-2 md:py-3 px-4 md:px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
+          >
+            <ExternalLink className="h-4 w-4 md:h-5 md:w-5" />
+            <span className="text-base md:text-lg">Claim Your Ticket</span>
+          </Button>
         </div>
       </CardContent>
     </Card>

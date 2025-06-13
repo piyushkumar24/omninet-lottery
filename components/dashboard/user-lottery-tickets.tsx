@@ -1,12 +1,13 @@
 "use client";
 
-import { Ticket, Trophy, RefreshCw } from "lucide-react";
+import { Ticket, Trophy, RefreshCw, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TicketDebug } from "@/components/dashboard/ticket-debug";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
+import { generateCPXSurveyURL } from "@/lib/cpx-utils";
+import { toast } from "react-hot-toast";
 
 interface UserLotteryTicketsProps {
   userId: string;
@@ -206,35 +207,47 @@ export const UserLotteryTickets = ({
 
         {/* Claim Your Ticket Button */}
         <div>
-          <div className="relative">
-            {/* Hidden CPXSurveyModal */}
-            <div className="hidden">
-              <CPXSurveyModal
-                user={{ id: userId }}
-                onSurveyComplete={() => {
-                  // Refresh data after survey completion
-                  setTimeout(() => {
-                    fetchLotteryStatus(false);
-                  }, 2000);
-                }}
-              />
-            </div>
-            
-            {/* Custom Button to Replace CPX Modal Trigger */}
-            <button 
-              onClick={() => {
-                // Find and click the actual CPX modal button
-                const modalButton = document.querySelector('[data-cpx-survey-button]');
-                if (modalButton && modalButton instanceof HTMLButtonElement) {
-                  modalButton.click();
-                }
-              }}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
-            >
-              <img src="/ticket-icon.png" alt="Ticket" className="h-5 w-5" />
-              <span className="text-lg">Claim Your Ticket</span>
-            </button>
-          </div>
+          <Button 
+            onClick={() => {
+              try {
+                // Generate the CPX survey URL
+                const surveyUrl = generateCPXSurveyURL({ id: userId });
+                
+                // Open directly in new tab
+                window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+                
+                // Show user confirmation
+                toast.success("🔗 Survey opened in new tab! Complete it to earn your ticket.", {
+                  duration: 6000,
+                  icon: "🎫",
+                  style: {
+                    border: '2px solid #3b82f6',
+                    padding: '16px',
+                    fontSize: '14px',
+                  },
+                });
+                
+                // Refresh data after potential survey completion
+                setTimeout(() => {
+                  fetchLotteryStatus(false);
+                }, 2000);
+              } catch (error) {
+                console.error("Error opening survey:", error);
+                toast.error("❌ Failed to open survey. Please try again.", {
+                  duration: 4000,
+                  style: {
+                    border: '2px solid #ef4444',
+                    padding: '16px',
+                    fontSize: '14px',
+                  },
+                });
+              }
+            }}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
+          >
+            <ExternalLink className="h-5 w-5" />
+            <span className="text-lg">Claim Your Ticket</span>
+          </Button>
         </div>
         
         {/* Show ticket debug only if needed (survey completed and has discrepancy) or manually toggled */}
