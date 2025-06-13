@@ -20,7 +20,7 @@ import {
   Copy,
   Check
 } from "lucide-react";
-import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
+import { generateCPXSurveyURL } from "@/lib/cpx-utils";
 
 interface EarnTicketsProps {
   userId: string;
@@ -328,69 +328,55 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               </div>
               
               {userData ? (
-                <>
-                  <CPXSurveyModal 
-                    user={userData}
-                    onSurveyComplete={handleSurveyComplete}
-                    isLoading={loading === "SURVEY"}
-                  />
-                  
-                  {surveyAttempted && appliedTickets === 0 && !hasSurveyTicket && (
-                    <div className="mt-3 pt-3 border-t border-blue-100">
-                      <button
-                        onClick={async () => {
-                          try {
-                            setLoading("FORCE_AWARD");
-                            const response = await fetch('/api/tickets/force-award', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                            });
-                            
-                            const data = await response.json();
-                            
-                            if (data.success) {
-                              setHasSurveyTicket(true);
-                              
-                              toast.success("🎫 Ticket manually awarded!", {
-                                duration: 5000,
-                                icon: "🎯",
-                                style: {
-                                  border: '2px solid #3b82f6',
-                                  padding: '16px',
-                                  fontSize: '14px',
-                                },
-                              });
-                              
-                              router.refresh();
-                              
-                              setTimeout(() => {
-                                router.refresh();
-                                checkUserStatus();
-                              }, 2000);
-                            } else {
-                              toast.error("Failed to award ticket: " + data.message, {
-                                duration: 4000,
-                              });
-                            }
-                          } catch (error) {
-                            console.error("Error with force award:", error);
-                            toast.error("Error awarding ticket", {
-                              duration: 4000,
-                            });
-                          } finally {
-                            setLoading(null);
-                          }
-                        }}
-                        disabled={loading === "FORCE_AWARD"}
-                        className="w-full py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md border border-blue-200"
-                      >
-                        {loading === "FORCE_AWARD" ? "Processing..." : "Ticket not showing? Click here"}
-                      </button>
-                    </div>
+                <Button 
+                  onClick={() => {
+                    try {
+                      // Generate the CPX survey URL
+                      const surveyUrl = generateCPXSurveyURL(userData);
+                      
+                      // Open directly in new tab
+                      window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+                      
+                      // Mark survey as attempted and trigger completion callback
+                      handleSurveyComplete(false);
+                      
+                      // Show user confirmation
+                      toast.success("🔗 Survey opened in new tab! Complete it to earn your ticket.", {
+                        duration: 6000,
+                        icon: "🎫",
+                        style: {
+                          border: '2px solid #3b82f6',
+                          padding: '16px',
+                          fontSize: '14px',
+                        },
+                      });
+                    } catch (error) {
+                      console.error("Error opening survey:", error);
+                      toast.error("❌ Failed to open survey. Please try again.", {
+                        duration: 4000,
+                        style: {
+                          border: '2px solid #ef4444',
+                          padding: '16px',
+                          fontSize: '14px',
+                        },
+                      });
+                    }
+                  }}
+                  disabled={loading === "SURVEY"}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs md:text-sm py-2"
+                >
+                  {loading === "SURVEY" ? (
+                    <>
+                      <ClipboardList className="h-4 w-4 mr-2 animate-spin" />
+                      Opening Survey...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Go to Survey
+                    </>
                   )}
-                </>
+                </Button>
               ) : (
                 <Button 
                   disabled
