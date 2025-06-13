@@ -49,9 +49,13 @@ export async function GET(request: NextRequest) {
 
 /**
  * Survey Completion Handler
- * ALWAYS awards exactly 1 ticket for survey completion
- * Awards 2 tickets if from non-winner email
- * Awards referral ticket to referrer if this is user's first survey
+ * 
+ * CRITICAL: This endpoint should ONLY be used for:
+ * 1. Non-winner email bonus tickets (verified with token)
+ * 2. NOT for general "participation" tickets 
+ * 
+ * Regular survey completion tickets should ONLY come from CPX postback endpoint
+ * when status=1 (survey actually completed)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -67,14 +71,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for non-winner email tracking token
+    // Check for non-winner email tracking token - ONLY valid use case for this endpoint
     const { searchParams } = new URL(request.url);
     const nonWinnerToken = searchParams.get('token');
     let isNonWinnerBonus = false;
-    let ticketsToAward = 1; // DEFAULT: ALWAYS 1 ticket for survey completion - NO EXCEPTIONS
+    let ticketsToAward = 0; // Default: 0 tickets (no general participation awards)
     let trackingRecord = null;
 
-    // RULE ENFORCEMENT: Survey completion = EXACTLY 1 ticket, unless non-winner bonus
+    // ONLY award tickets for verified non-winner bonus scenarios
     if (nonWinnerToken && nonWinnerToken.startsWith('nw_')) {
       try {
         trackingRecord = await db.settings.findUnique({
@@ -86,23 +90,32 @@ export async function POST(request: NextRequest) {
           
           if (trackingData.userId === user.id && !trackingData.bonusTicketsAwarded) {
             isNonWinnerBonus = true;
-            ticketsToAward = 2; // Only exception: non-winner email bonus = 2 tickets
+            ticketsToAward = 2; // Non-winner bonus = 2 tickets
             
             console.log(`🎫 Non-winner bonus flow detected for user ${user.id}, awarding ${ticketsToAward} tickets`);
           }
         }
       } catch (error) {
         console.error('Error verifying non-winner token:', error);
-        // Fallback to default: 1 ticket
-        ticketsToAward = 1;
+        ticketsToAward = 0; // No tickets for invalid tokens
       }
     }
 
-    // FINAL SAFETY CHECK: Ensure ticketsToAward is always a positive integer
-    if (!Number.isInteger(ticketsToAward) || ticketsToAward < 1) {
-      console.warn(`⚠️ Invalid ticketsToAward value: ${ticketsToAward}, resetting to 1`);
-      ticketsToAward = 1;
+    // CRITICAL: Reject general participation ticket requests
+    if (!isNonWinnerBonus) {
+      console.log(`🚫 General participation ticket request rejected for user ${user.id} - tickets only awarded for completed surveys via CPX postback`);
+      
+      return new NextResponse(
+        JSON.stringify({
+          success: false,
+          message: "Tickets are only awarded for completed surveys verified by CPX Research",
+          error: "PARTICIPATION_TICKETS_DISABLED"
+        }),
+        { status: 403 }
+      );
     }
+
+    console.log(`✅ Processing legitimate non-winner bonus ticket award for user ${user.id}`);
 
     // Get or create the current draw
     const draw = await createOrGetNextDraw();

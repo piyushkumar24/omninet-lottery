@@ -63,268 +63,74 @@ export const CPXSurveyModal = ({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const messageCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Award fallback ticket - declared early for dependencies
-  const awardFallbackTicket = useCallback(async () => {
+  // Check if user already has tickets from legitimate CPX completion
+  const checkForExistingTickets = useCallback(async () => {
     try {
-      console.log('🔄 Trying fallback ticket award...');
+      console.log('🔄 Checking for existing tickets from CPX completion...');
       setVerifyingTicket(true);
       
-      const fallbackResponse = await fetch('/api/tickets/force-award', {
-        method: 'POST',
+      const verifyResponse = await fetch(`/api/tickets/verify-all?t=${Date.now()}`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
         },
       });
       
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json();
-        console.log('✅ Fallback ticket award successful:', fallbackData);
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json();
         
-        setTicketAwarded(true);
-        setTicketId(fallbackData.data?.ticketId);
-        
-        setTimeout(() => {
+        if (verifyData.data.surveyTickets > 0) {
+          console.log('✅ Found existing survey tickets from legitimate completion:', verifyData.data.surveyTickets);
+          setTicketAwarded(true);
           router.refresh();
-        }, 1000);
-        
-        return true;
-      } else {
-        console.error('❌ Fallback ticket award failed');
-        return false;
+          return true;
+        }
       }
+      
+      return false;
     } catch (error) {
-      console.error('❌ Error in fallback ticket award:', error);
+      console.error('❌ Error checking for existing tickets:', error);
       return false;
     } finally {
       setVerifyingTicket(false);
     }
   }, [router]);
 
-  // Award participation ticket function
-  const awardParticipationTicket = useCallback(async () => {
-    try {
-      console.log('🎫 Attempting to award participation ticket...');
-      
-      // Add non-winner token to the request URL if available
-      const url = nonWinnerToken 
-        ? `/api/survey/complete?token=${nonWinnerToken}`
-        : '/api/survey/complete';
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+  // Function to show survey completion confirmation - tickets come via CPX postback only
+  const showSurveyCompletionMessage = useCallback(() => {
+    console.log('✅ Survey completion detected - tickets will be awarded via CPX postback');
+    
+    // Show user that survey is completed and ticket will be processed
+    toast.success("🎉 Survey completed! Your ticket will be awarded shortly.", {
+      duration: 5000,
+    });
 
-      const data = await response.json();
-      
-      if (data.success) {
-        console.log('✅ Participation ticket successfully awarded:', data);
-        
-        const ticketMessage = data.data?.ticketCount === 2 || data.bonusTickets
-          ? "🎉 2 LOTTERY TICKETS awarded for completing the survey!"
-          : "🎫 1 LOTTERY TICKET awarded for completing the survey!";
-        
-        toast.success(ticketMessage, {
-          duration: 5000,
-        });
-
-        // Store notification data for dashboard wrapper
-        localStorage.setItem('ticket_awarded', JSON.stringify({
-          source: 'SURVEY',
-          count: data.data?.ticketCount || (data.bonusTickets ? 2 : 1),
-        }));
-
-        setShowTicketReward(true);
-        setTicketAwarded(true);
-        setTicketId(data.data?.ticketId || data.data?.ticketIds?.[0]);
-        
-        setTimeout(() => {
-          if (onSurveyComplete) {
-            onSurveyComplete(true);
-          }
-          // Force refresh dashboard to show updated ticket count
-          router.refresh();
-
-          // Trigger notification after refresh
-          setTimeout(() => {
-            window.dispatchEvent(new StorageEvent('storage', {
-              key: 'ticket_awarded',
-              newValue: JSON.stringify({
-                source: 'SURVEY',
-                count: data.data?.ticketCount || (data.bonusTickets ? 2 : 1),
-              }),
-            }));
-          }, 500);
-        }, 1500);
-      } else {
-        console.error('❌ Failed to award participation ticket:', data.message);
-        
-        // Show success toast anyway to prevent user confusion
-        toast.success("🎫 1 LOTTERY TICKET will be awarded shortly!", {
-          duration: 4000,
-        });
-        setShowTicketReward(true);
-        
-        // Try fallback ticket award through verification endpoint
-        console.log('🔄 Trying fallback ticket award method...');
-        await awardFallbackTicket();
-        
-        setTimeout(() => {
-          if (onSurveyComplete) {
-            onSurveyComplete(true);
-          }
-          router.refresh();
-        }, 1500);
+    setShowTicketReward(true);
+    setTicketAwarded(true);
+    
+    setTimeout(() => {
+      if (onSurveyComplete) {
+        onSurveyComplete(true);
       }
-    } catch (error) {
-      console.error('❌ Error awarding participation ticket:', error);
-      
-      // Show success toast anyway to prevent user confusion
-      toast.success("🎫 1 LOTTERY TICKET will be awarded shortly!", {
-        duration: 4000,
-      });
-      setShowTicketReward(true);
-      
-      // Try fallback ticket award
-      console.log('🔄 Trying fallback ticket award after error...');
-      await awardFallbackTicket();
-      
-      setTimeout(() => {
-        if (onSurveyComplete) {
-          onSurveyComplete(true);
-        }
-        router.refresh();
-      }, 1500);
-    }
-  }, [nonWinnerToken, onSurveyComplete, router, awardFallbackTicket]);
+      // Refresh to show tickets awarded via CPX postback
+      router.refresh();
+    }, 2000);
+  }, [onSurveyComplete, router]);
 
-  // Special handler for when no surveys are available
+  // Handler for when no surveys are available - DO NOT award tickets
   const handleNoSurveysAvailable = useCallback(async () => {
-    try {
-      console.log('🔍 No surveys available, forcing ticket award...');
-      
-      // Call the special force-award endpoint
-      const response = await fetch('/api/survey/force-award', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason: 'no_surveys_available'
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        console.log('✅ Force ticket award successful:', data);
-        
-        toast.success("🎫 1 LOTTERY TICKET awarded for participation!", {
-          duration: 4000,
-        });
-        setShowTicketReward(true);
-        setTicketAwarded(true);
-        setTicketId(data.data?.ticketId);
-        
-        setTimeout(() => {
-          if (onSurveyComplete) {
-            onSurveyComplete(true);
-          }
-          // Force refresh dashboard to show updated ticket count
-          router.refresh();
-          
-          // Second refresh after a delay to ensure UI is updated
-          setTimeout(() => {
-            router.refresh();
-          }, 2000);
-        }, 1500);
-      } else {
-        console.error('❌ Force ticket award failed:', data.message);
-        
-        // Try force-award endpoint as a last resort
-        console.log('🔄 Trying emergency force award method...');
-        const forceResponse = await fetch('/api/tickets/force-award', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        const forceData = await forceResponse.json();
-        
-        if (forceData.success) {
-          console.log('✅ Emergency force ticket award successful:', forceData);
-          toast.success("🎫 Lottery ticket awarded through backup method!", {
-            duration: 4000,
-          });
-          setShowTicketReward(true);
-          setTicketAwarded(true);
-          setTicketId(forceData.data?.ticketId);
-          
-          setTimeout(() => {
-            if (onSurveyComplete) {
-              onSurveyComplete(true);
-            }
-            router.refresh();
-            
-            setTimeout(() => {
-              router.refresh();
-            }, 2000);
-          }, 1500);
-          
-          return;
-        }
-        
-        // If all else fails, try regular award as fallback
-        await awardParticipationTicket();
-      }
-    } catch (error) {
-      console.error('❌ Error in force ticket award:', error);
-      
-      // Try emergency force award
-      try {
-        console.log('🔄 Trying emergency force award after error...');
-        const emergencyResponse = await fetch('/api/tickets/force-award', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (emergencyResponse.ok) {
-          const emergencyData = await emergencyResponse.json();
-          console.log('✅ Emergency force ticket successful:', emergencyData);
-          
-          toast.success("🎫 Lottery ticket awarded through emergency method!", {
-            duration: 4000,
-          });
-          setShowTicketReward(true);
-          setTicketAwarded(true);
-          setTicketId(emergencyData.data?.ticketId);
-          
-          setTimeout(() => {
-            if (onSurveyComplete) {
-              onSurveyComplete(true);
-            }
-            router.refresh();
-            
-            setTimeout(() => {
-              router.refresh();
-            }, 2000);
-          }, 1500);
-          
-          return;
-        }
-      } catch (emergencyError) {
-        console.error('❌ Emergency force award failed:', emergencyError);
-      }
-      
-      // Fall back to regular ticket award as last resort
-      await awardParticipationTicket();
-    }
-  }, [awardParticipationTicket, onSurveyComplete, router]);
+    console.log('🔍 No surveys available - showing message to user (no ticket awarded)');
+    
+    // Show message to user that no surveys are available
+    toast("No surveys available at the moment. Please try again later.", {
+      icon: "📝",
+      duration: 5000,
+    });
+    
+    setSurveyError("no_surveys");
+    
+    // Do not award any tickets - tickets should only come from completed surveys via CPX postback
+  }, []);
 
   // Check for "no surveys available" messages continuously
   const checkForNoSurveysMessage = useCallback(() => {
@@ -400,12 +206,12 @@ export const CPXSurveyModal = ({
     }
   }, [handleNoSurveysAvailable]);
 
-  // Verify ticket was awarded
+  // Verify ticket was awarded through legitimate CPX completion
   const verifyTicketAwarded = useCallback(async () => {
     try {
       setVerifyingTicket(true);
       
-      // First check using verify-all endpoint for accurate ticket information
+      // Check using verify-all endpoint for accurate ticket information
       const verifyResponse = await fetch(`/api/tickets/verify-all?t=${Date.now()}`, {
         method: 'GET',
         headers: {
@@ -433,19 +239,19 @@ export const CPXSurveyModal = ({
           
           return true;
         } else {
-          console.log('⚠️ No survey tickets found during verification');
+          console.log('⚠️ No survey tickets found during verification - tickets only awarded for completed surveys');
+          return false;
         }
       }
       
-      // If verification fails or no tickets found, try to award a ticket manually
-      return await awardFallbackTicket();
+      return false;
     } catch (error) {
       console.error('Error verifying ticket:', error);
-      return await awardFallbackTicket();
+      return false;
     } finally {
       setVerifyingTicket(false);
     }
-  }, [awardFallbackTicket, onSurveyComplete]);
+  }, [onSurveyComplete]);
 
   // Function to clear CPX-related cookies
   const clearCPXCookies = useCallback(() => {
@@ -573,103 +379,17 @@ export const CPXSurveyModal = ({
       onSurveyComplete(false);
     }
     
-    // Only try to award if not already showing reward
-    if (!showTicketReward) {
-      try {
-        console.log('🎫 Attempting to award participation ticket on close...');
-        
-        // Add non-winner token to the request URL if available
-        const url = nonWinnerToken 
-          ? `/api/survey/complete?token=${nonWinnerToken}`
-          : '/api/survey/complete';
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        const data = await response.json();
-        
-        if (data.success) {
-          console.log('✅ Participation ticket successfully awarded:', data);
-          
-          const ticketMessage = data.bonusTickets 
-            ? "🎉 2 BONUS tickets awarded!"
-            : "🎫 Lottery ticket awarded!";
-          
-          toast.success(ticketMessage, {
-            duration: 4000,
-          });
-          setShowTicketReward(true);
-          setTicketAwarded(true);
-          setTicketId(data.data?.ticketId || data.data?.ticketIds?.[0]);
-          
-          // Allow time for ticket reward message to be seen
-          setTimeout(() => {
-            setIsOpen(false);
-            
-            // Force refresh to show updated ticket count
-            router.refresh();
-            
-            // Second refresh after a delay to ensure UI is updated
-            setTimeout(() => {
-              if (onSurveyComplete) {
-                onSurveyComplete(true);
-              }
-            }, 1000);
-          }, 2000);
-          
-          return; // Exit early since we're handling the close with a delay
-        } else {
-          console.error('❌ Failed to award participation ticket:', data.message);
-          
-          // Try fallback method
-          console.log('🔄 Trying force award method...');
-          const forceResponse = await fetch('/api/tickets/force-award', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
-          
-          const forceData = await forceResponse.json();
-          
-          if (forceData.success) {
-            console.log('✅ Force ticket award successful:', forceData);
-            toast.success("🎫 Lottery ticket awarded through backup method!", {
-              duration: 4000,
-            });
-            
-            // Close after a delay
-            setTimeout(() => {
-              setIsOpen(false);
-              router.refresh();
-              
-              setTimeout(() => {
-                if (onSurveyComplete) {
-                  onSurveyComplete(true);
-                }
-              }, 1000);
-            }, 2000);
-            
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error awarding participation ticket:', error);
-      }
-    }
+    // DO NOT award tickets when modal is closed - tickets should only come from CPX postback for completed surveys
+    console.log('🚫 Modal closed - no participation ticket awarded (tickets only awarded for completed surveys via CPX postback)');
     
-    // If we reach here, either ticket was already awarded or fallbacks failed
+    // Close the modal immediately
     setIsOpen(false);
     setIframeLoading(true);
     setSurveyError(null);
     setRetryCount(0);
     setShowTicketReward(false);
     
-    // Force refresh to show updated ticket count in case a ticket was awarded
+    // Refresh to show any tickets that may have been awarded through legitimate CPX postback
     router.refresh();
   };
 
@@ -693,8 +413,8 @@ export const CPXSurveyModal = ({
             iframeUrl.includes('status=success')) {
           console.log('Survey completion detected from URL parameters:', iframeUrl);
           
-          // Award ticket on successful completion
-          awardParticipationTicket();
+          // Show completion message - ticket will come via CPX postback
+          showSurveyCompletionMessage();
           return;
         }
       }
@@ -717,8 +437,8 @@ export const CPXSurveyModal = ({
             console.log('Survey completion detected from content:', 
               iframeContent.substring(0, 100) + '...');
             
-            // Award ticket on successful completion
-            awardParticipationTicket();
+            // Show completion message - ticket will come via CPX postback
+            showSurveyCompletionMessage();
             return;
           }
           

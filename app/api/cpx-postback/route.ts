@@ -10,15 +10,17 @@ import { awardTicketsToUser, applyAllTicketsToLottery } from "@/lib/ticket-utils
  * CPX Research Postback Handler
  * 
  * This endpoint receives notifications from CPX Research when a user completes a survey.
- * It validates the request, awards tickets to the user, and automatically applies them to the current lottery.
+ * It validates the request, awards tickets ONLY for completed surveys (status=1), and automatically applies them to the current lottery.
  * 
  * Expected parameters from CPX:
- * - status: 1 (completed) or 0 (not completed)
+ * - status: 1 (completed) or 0 (not completed/disqualified)
  * - trans_id: unique transaction ID
  * - user_id: our ext_user_id (user ID from our database)
  * - amount_usd: amount earned in USD
  * - hash: secure hash for validation
  * - ip_click: IP address of the user
+ * 
+ * CRITICAL: Only status=1 (completed) surveys should receive tickets!
  */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -55,6 +57,37 @@ export async function GET(request: NextRequest) {
     
     return new NextResponse("Missing required parameters", { status: 400 });
   }
+
+  // CRITICAL CHECK: Only award tickets for completed surveys (status=1)
+  if (status !== '1') {
+    console.log(`⚠️ Survey not completed (status=${status}), no ticket will be awarded for user ${userId}, transaction ${transId}`);
+    
+    // Log the incomplete survey attempt for tracking
+    try {
+      await db.settings.create({
+        data: {
+          key: `cpx_incomplete_${transId}`,
+          value: JSON.stringify({
+            userId,
+            transId,
+            status,
+            currencyName,
+            currencyAmount,
+            ip,
+            reason: status === '0' ? 'disqualified' : 'incomplete',
+            processedAt: new Date().toISOString(),
+          }),
+          description: `CPX Research incomplete survey ${transId} - no ticket awarded`,
+        },
+      });
+    } catch (logError) {
+      console.error('❌ Failed to log incomplete survey:', logError);
+    }
+    
+    return new NextResponse("Survey not completed - no ticket awarded", { status: 200 });
+  }
+
+  console.log(`✅ Survey completed successfully (status=1) for user ${userId}, proceeding with ticket award`);
 
   try {
     // Find user by ID
@@ -104,12 +137,12 @@ export async function GET(request: NextRequest) {
     // Get current draw
     const draw = await createOrGetNextDraw();
 
-    // Award survey ticket and handle referral logic
+    // Award survey ticket and handle referral logic - ONLY for completed surveys (status=1)
     const result = await db.$transaction(async (tx) => {
       // RULE ENFORCEMENT: CPX survey completion = EXACTLY 1 ticket (NEVER use currencyAmount)
       const SURVEY_TICKETS_TO_AWARD = 1; // FIXED VALUE - NOT BASED ON CURRENCY AMOUNT
       
-      console.log(`🎫 CPX Postback: Awarding EXACTLY ${SURVEY_TICKETS_TO_AWARD} ticket (ignoring currencyAmount: ${currencyAmount})`);
+      console.log(`🎫 CPX Postback: Awarding EXACTLY ${SURVEY_TICKETS_TO_AWARD} ticket for COMPLETED survey (status=1, ignoring currencyAmount: ${currencyAmount})`);
       
       // Award survey ticket to the user
       const surveyAwardResult = await awardTicketsToUser(user.id, SURVEY_TICKETS_TO_AWARD, "SURVEY");
@@ -126,13 +159,14 @@ export async function GET(request: NextRequest) {
       // Apply all available tickets to the current lottery
       const appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);
 
-      console.log('🎯 Survey ticket awarded and applied:', {
+      console.log('🎯 Survey ticket awarded and applied for COMPLETED survey:', {
         userId: user.id,
         ticketIds: surveyAwardResult.ticketIds,
         availableTickets: surveyAwardResult.availableTickets,
         totalTickets: surveyAwardResult.totalTickets,
         appliedTickets,
         drawId: draw.id,
+        status: 'completed'
       });
 
       let referralTicketAwarded = false;

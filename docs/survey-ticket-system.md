@@ -1,167 +1,140 @@
 # Survey Ticket System Guide
 
-This document explains how the guaranteed ticket system works and how to troubleshoot issues with ticket awards.
+This document explains how the proper survey ticket system works and ensures tickets are only awarded for legitimate survey completions.
 
 ## Overview
 
-The lottery application awards tickets to users who complete surveys through CPX Research. The system has been enhanced to ensure that **every user always receives a ticket** when they attempt to complete a survey, regardless of:
+The lottery application awards tickets to users who **successfully complete** surveys through CPX Research. The system has been designed to ensure that tickets are **ONLY** awarded when:
 
-- Whether surveys are available
-- Whether the user qualifies for a survey
-- Whether the survey is completed successfully
-- Whether there are technical issues
+- A survey is fully completed (CPX status = 1)
+- CPX Research confirms the completion via postback
+- The user was not disqualified during the survey
+
+**CRITICAL**: Tickets are NOT awarded for:
+- Incomplete surveys (status ≠ 1)
+- Disqualified users (DQ)
+- Simply opening or closing survey modals
+- "No surveys available" scenarios
+- Participation without completion
 
 ## How It Works
 
-The ticket award process involves several components:
+The ticket award process involves a single, secure component:
 
-1. **CPX Survey Modal**: The frontend component that loads the survey iframe and handles user interactions
-2. **CPX Postback Endpoint**: The backend API that receives notifications when surveys are completed
-3. **Fallback API**: A secondary system that awards tickets if the postback fails
-4. **Force Award API**: A special system that guarantees tickets when no surveys are available
-5. **Verification System**: Tools to verify that tickets are properly awarded
+1. **CPX Postback Endpoint**: The ONLY legitimate way to receive tickets - when CPX Research sends a postback notification with status=1 (completed survey)
 
-### Guaranteed Ticket Logic
+### Strict Completion Logic
 
-The system uses multiple fallback mechanisms to ensure tickets are always awarded:
+The system uses a single, secure mechanism to ensure tickets are only awarded for legitimate completions:
 
-- When a survey is completed successfully, the CPX postback awards a ticket
-- When a survey is incomplete (user disqualified), the CPX postback still awards a ticket
-- When no surveys are available, the force-award API directly awards a ticket
-- When the survey iframe fails to load, the fallback API awards a ticket
-- When the user closes the survey modal, a participation ticket is awarded
+- **Survey Completed (status=1)**: CPX postback awards exactly 1 ticket and applies it to the current lottery
+- **Survey Incomplete (status≠1)**: No ticket awarded, transaction logged for tracking
+- **Survey Disqualified**: No ticket awarded
+- **No surveys available**: No ticket awarded
+- **Modal closed without completion**: No ticket awarded
 
-### Special "No Surveys Available" Handling
+### Survey Completion Flow
 
-The system has enhanced detection for "no surveys available" scenarios:
+1. User clicks "Go to Survey" button
+2. CPX Research survey loads in iframe
+3. User completes survey successfully
+4. CPX Research sends postback to `/api/cpx-postback` with status=1
+5. System validates completion status
+6. If status=1: Awards 1 ticket, applies to lottery, sends confirmation email
+7. If status≠1: Logs attempt, no ticket awarded
 
-1. **Continuous Message Monitoring**: The system continuously scans the survey iframe for messages like "Unfortunately we could not find a survey for your profile" and automatically awards a ticket when detected
-2. **Direct Claim Button**: Users can click "No Surveys Found? Claim Ticket" to immediately get a ticket
-3. **Force Award Endpoint**: A specialized API endpoint `/api/survey/force-award` that specifically handles the no-surveys scenario
-4. **Automatic Award**: When "no surveys available" is detected, a ticket is automatically awarded without requiring user action
+## Security Features
+
+### Disabled Endpoints
+
+The following endpoints have been disabled to prevent improper ticket awarding:
+
+- `/api/survey/force-award` - Force awarding disabled
+- `/api/tickets/force-award` - Force awarding disabled  
+- `/api/survey/complete` - Only accepts verified non-winner bonus tokens
+
+### Frontend Protections
+
+- Modal no longer awards "participation tickets"
+- No automatic awarding for disqualified users
+- No awarding for "no surveys available" scenarios
+- Completion detection relies on CPX postback only
 
 ## Troubleshooting
 
-If users report that they are not receiving tickets after completing surveys, follow these steps:
+If users report that they are not receiving tickets after completing surveys:
 
-### 1. Check Recent Tickets
+### 1. Verify Survey Completion
 
-Use the ticket verification API to check if the user has received any recent tickets:
+Check server logs for CPX postback:
+- Look for successful postback with status=1
+- Verify user ID matches
+- Check transaction was processed
+
+### 2. Check CPX Integration
+
+Ensure CPX Research is properly configured:
+- Postback URL is correct: `yoursite.com/api/cpx-postback`
+- Secure hash validation is working
+- CPX is sending postbacks for completed surveys
+
+### 3. Review Completion Status
+
+Only surveys with status=1 should award tickets:
+- status=1: Completed successfully ✅
+- status=0: Disqualified/incomplete ❌
+- Other status: Error/incomplete ❌
+
+### 4. Manual Investigation
+
+Use admin-only endpoints for legitimate issues:
+- `/api/tickets/test-award` (admin only)
+- Server logs for transaction tracking
+- Database verification of ticket records
+
+## Valid Ticket Sources
+
+Tickets can ONLY be awarded through these legitimate means:
+
+1. **Survey Completion**: CPX postback with status=1
+2. **Referral Rewards**: When referred user completes their first survey
+3. **Social Media**: Following official social accounts (separate system)
+4. **Non-Winner Bonus**: Verified email bonus with token
+5. **Admin Manual**: Admin-only test/correction tickets
+
+## Configuration
+
+### CPX Research Settings
+
+Ensure these parameters are configured:
 
 ```
-GET /api/tickets/verify
+Postback URL: https://yoursite.com/api/cpx-postback
+Security Hash: Enabled
+Status Parameter: Required
+Transaction ID: Required
 ```
 
-This endpoint returns:
-- Total ticket count
-- Recent tickets (last 30 minutes)
-- Active draw information
-- User's participation in the active draw
+### Status Codes
 
-### 2. Test Ticket Award Process
+Only status=1 awards tickets:
+- `1`: Survey completed successfully → Award ticket
+- `0`: User disqualified → No ticket  
+- Other: Error/incomplete → No ticket
 
-Use the verification script to test the ticket award process:
+## Error Handling
 
-```bash
-# Make the script executable
-chmod +x scripts/verify-tickets.js
+The system logs all attempts for audit purposes:
 
-# Run the script with the user's ID
-node scripts/verify-tickets.js <userId>
-```
+- **Completed surveys**: Full transaction logged with ticket details
+- **Incomplete surveys**: Logged with reason (disqualified/incomplete)
+- **Invalid requests**: Logged with error details
 
-This script allows you to:
-- Test the CPX postback endpoint
-- Test the fallback API
-- Verify recent tickets
+## Best Practices
 
-### 3. Check Server Logs
+1. **Monitor Completion Rates**: Track status=1 vs other statuses
+2. **Review Logs Regularly**: Check for unusual patterns
+3. **Validate CPX Setup**: Ensure postbacks are working
+4. **User Education**: Inform users tickets only come from completed surveys
 
-Examine the server logs for any errors related to ticket awards. The logs include comprehensive information about:
-- CPX postback requests
-- Transaction processing
-- Error handling
-
-### 4. Manual Ticket Award
-
-If needed, you can manually award a ticket to a user:
-
-```
-POST /api/tickets/test-award
-{
-  "userId": "<userId>",
-  "source": "SURVEY",
-  "note": "Manual award due to technical issue"
-}
-```
-
-This endpoint is admin-only and creates a ticket with proper logging.
-
-## Common Issues and Solutions
-
-### "Ticket Shown as Credited but Not Actually Awarded"
-
-This issue typically occurs when:
-1. The CPX postback fails to process the transaction
-2. The user closes the modal before the ticket is fully processed
-3. Database transaction errors occur
-
-**Solution**: The enhanced system now:
-- Verifies ticket award 5 seconds after showing success
-- Automatically tries the fallback API if verification fails
-- Forces page refresh to show updated ticket count
-
-### "No Surveys Available" Error
-
-When no surveys are available, users should still receive a ticket for their participation.
-
-**Solution**: The modal now:
-- Detects "no surveys available" messages
-- Shows a clear message that the user will still get a ticket
-- Provides a "Claim Your Ticket" button that triggers the fallback API
-
-### Duplicate Tickets
-
-To prevent duplicate tickets, the system:
-- Checks for recent tickets (within last 3-5 minutes)
-- Uses transaction IDs for tracking
-- Logs comprehensive information about each award
-
-## System Components
-
-### Frontend Components
-
-- **CPXSurveyModal**: The main survey interface with error handling
-- **EarnTickets**: Dashboard component for survey access
-
-### Backend Endpoints
-
-- **/api/cpx-postback**: Processes CPX Research postbacks
-- **/api/survey/complete**: Fallback API for manual ticket awards
-- **/api/tickets/verify**: Verifies ticket awards
-- **/api/tickets/test-award**: Admin endpoint for testing
-
-## Testing
-
-To test the entire ticket system:
-
-1. Start the development server
-2. Open the dashboard and click "Go to Survey"
-3. Complete a survey or simulate different error states
-4. Verify that a ticket is awarded in all scenarios
-5. Check that the ticket count increases on the dashboard
-
-You can also use the verification script for automated testing.
-
-## Technical Details
-
-The enhanced system uses:
-
-- Database transactions with retry logic
-- Real-time ticket verification
-- Multiple fallback mechanisms
-- Comprehensive error handling and logging
-- Automatic page refreshing
-- Visual feedback for users
-
-This ensures a robust ticket award system that fulfills the requirement of awarding exactly 1 ticket for every survey attempt. 
+This ensures a fair and secure survey reward system where tickets are only awarded for legitimate survey completions verified by CPX Research. 
