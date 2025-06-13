@@ -177,9 +177,9 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
     }
 
     const urls = {
-      instagram: "https://instagram.com",
-      facebook: "https://facebook.com", 
-      youtube: "https://youtube.com"
+      instagram: "https://www.instagram.com/0mninet?utm_source=qr&igsh=MXRhNnUzaWNmazVvYQ==",
+      facebook: "https://www.facebook.com/share/191DUXdJtT/", 
+      youtube: "https://youtube.com/@0mninetconnect?si=FlEmTD2QpCh4O6r2"
     };
     
     window.open(urls[platform as keyof typeof urls], '_blank');
@@ -301,13 +301,13 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
           {/* Method 1: Complete Survey - Now with Guaranteed Ticket System */}
           <Card className="relative overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
             {/* Step Indicator */}
-            <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10">
+            <div className="absolute top-2 right-2 md:top-3 md:right-3 z-10">
               <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-300 text-xs font-medium px-2 py-1">
                 Step 1 of 3
               </Badge>
             </div>
             
-            <CardContent className="pt-6 px-4 md:pt-6 md:px-6">
+            <CardContent className="pt-8 px-4 md:pt-10 md:px-6">
               <div className="flex items-center mb-4">
                 <div className="bg-blue-100 p-2 md:p-3 rounded-full mr-3 md:mr-4 flex-shrink-0">
                   <ClipboardList className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
@@ -409,7 +409,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               : 'border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50'
           }`}>
             {/* Step Indicator */}
-            <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10">
+            <div className="absolute top-2 right-2 md:top-3 md:right-3 z-10">
               <Badge variant="secondary" className={
                 hasSurveyTicket 
                   ? "bg-blue-100 text-blue-700 border-blue-300 text-xs font-medium px-2 py-1"
@@ -419,7 +419,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               </Badge>
             </div>
             
-            <CardContent className="pt-6 px-4 md:pt-6 md:px-6">
+            <CardContent className="pt-8 px-4 md:pt-10 md:px-6">
               <div className="flex items-center mb-4">
                 <div className={`p-2 md:p-3 rounded-full mr-3 md:mr-4 flex-shrink-0 ${
                   hasSurveyTicket ? 'bg-blue-100' : 'bg-gray-100'
@@ -497,7 +497,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                 : 'border-gray-200 bg-gradient-to-br from-gray-50 to-slate-50'
           }`}>
             {/* Step Indicator */}
-            <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10">
+            <div className="absolute top-2 right-2 md:top-3 md:right-3 z-10">
               <Badge variant="secondary" className={
                 socialMediaFollowed
                   ? "bg-gray-100 text-gray-600 border-gray-300 text-xs font-medium px-2 py-1"
@@ -509,7 +509,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               </Badge>
             </div>
             
-            <CardContent className="pt-6 px-4 md:pt-6 md:px-6">
+            <CardContent className="pt-8 px-4 md:pt-10 md:px-6">
               <div className="flex items-center mb-4">
                 <div className={`p-2 md:p-3 rounded-full mr-3 md:mr-4 flex-shrink-0 ${
                   socialMediaFollowed
@@ -564,7 +564,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                   {socialMediaFollowed
                     ? "Claimed"
                     : hasSurveyTicket
-                      ? "One-time"
+                      ? "🎫 1 Ticket Reward"
                       : "Locked"
                   }
                 </Badge>
@@ -573,39 +573,76 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
               {/* Social Media Buttons */}
               {!socialMediaFollowed && hasSurveyTicket ? (
                 <div className="space-y-3">
-                  <div className="flex gap-2 justify-center">
+                  <div className="text-center mb-3">
+                    <p className="text-xs text-purple-600 font-medium">Follow us on these platforms:</p>
+                  </div>
+                  
+                  {/* Desktop Layout: 3 buttons in one row */}
+                  <div className="hidden md:flex gap-2 justify-between">
                     <Button
                       onClick={() => openSocialMedia('instagram')}
                       variant="outline"
                       size="sm"
-                      className="flex-1 bg-gradient-to-r from-pink-50 to-purple-50 border-pink-200 hover:border-pink-300 hover:bg-pink-100 text-pink-600"
+                      className="flex-1 bg-gradient-to-r from-pink-50 to-purple-50 border-pink-200 hover:border-pink-300 hover:bg-pink-100 text-pink-600 text-xs px-2 py-2"
                     >
-                      <Instagram className="h-4 w-4 mr-1" />
-                      <span className="text-xs">Instagram</span>
+                      <Instagram className="h-4 w-4 mr-1 flex-shrink-0" />
+                      <span className="truncate">Instagram</span>
                     </Button>
                     <Button
                       onClick={() => openSocialMedia('facebook')}
                       variant="outline"
                       size="sm"
-                      className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:border-blue-300 hover:bg-blue-100 text-blue-600"
+                      className="flex-1 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:border-blue-300 hover:bg-blue-100 text-blue-600 text-xs px-2 py-2"
                     >
-                      <Facebook className="h-4 w-4 mr-1" />
-                      <span className="text-xs">Facebook</span>
+                      <Facebook className="h-4 w-4 mr-1 flex-shrink-0" />
+                      <span className="truncate">Facebook</span>
+                    </Button>
+                    <Button
+                      onClick={() => openSocialMedia('youtube')}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 bg-gradient-to-r from-red-50 to-rose-50 border-red-200 hover:border-red-300 hover:bg-red-100 text-red-600 text-xs px-2 py-2"
+                    >
+                      <Youtube className="h-4 w-4 mr-1 flex-shrink-0" />
+                      <span className="truncate">YouTube</span>
                     </Button>
                   </div>
-                  <Button
-                    onClick={() => openSocialMedia('youtube')}
-                    variant="outline"
-                    size="sm"
-                    className="w-full bg-gradient-to-r from-red-50 to-rose-50 border-red-200 hover:border-red-300 hover:bg-red-100 text-red-600"
-                  >
-                    <Youtube className="h-4 w-4 mr-1" />
-                    <span className="text-xs">YouTube</span>
-                  </Button>
+                  
+                  {/* Mobile Layout: Stacked buttons */}
+                  <div className="md:hidden space-y-2">
+                    <Button
+                      onClick={() => openSocialMedia('instagram')}
+                      variant="outline"
+                      size="sm"
+                      className="w-full bg-gradient-to-r from-pink-50 to-purple-50 border-pink-200 hover:border-pink-300 hover:bg-pink-100 text-pink-600"
+                    >
+                      <Instagram className="h-4 w-4 mr-2" />
+                      <span className="text-xs">Follow on Instagram</span>
+                    </Button>
+                    <Button
+                      onClick={() => openSocialMedia('facebook')}
+                      variant="outline"
+                      size="sm"
+                      className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:border-blue-300 hover:bg-blue-100 text-blue-600"
+                    >
+                      <Facebook className="h-4 w-4 mr-2" />
+                      <span className="text-xs">Follow on Facebook</span>
+                    </Button>
+                    <Button
+                      onClick={() => openSocialMedia('youtube')}
+                      variant="outline"
+                      size="sm"
+                      className="w-full bg-gradient-to-r from-red-50 to-rose-50 border-red-200 hover:border-red-300 hover:bg-red-100 text-red-600"
+                    >
+                      <Youtube className="h-4 w-4 mr-2" />
+                      <span className="text-xs">Subscribe on YouTube</span>
+                    </Button>
+                  </div>
+                  
                   <Button
                     onClick={handleSocialFollowComplete}
                     disabled={loading === "SOCIAL"}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs md:text-sm py-2"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs md:text-sm py-2 mt-3"
                   >
                     {loading === "SOCIAL" ? (
                       <>
