@@ -1057,7 +1057,7 @@ export default function Home() {
                     </div>
                   </div>
                   <p className="text-slate-600 mb-4 leading-relaxed">
-                    &quot;I wasn’t sure what to expect, but I ended up loving it. I signed up in a few minutes, did my first survey, and it was super easy. Inviting friends is a nice bonus — they get tickets too! And this week… I actually won the lottery! Still can’t believe it.&quot;
+                    &quot;I wasn't sure what to expect, but I ended up loving it. I signed up in a few minutes, did my first survey, and it was super easy. Inviting friends is a nice bonus — they get tickets too! And this week… I actually won the lottery! Still can't believe it.&quot;
                   </p>
                   <div className="flex items-center gap-4 text-sm text-slate-500">
                     <span className="flex items-center gap-1">
@@ -1098,7 +1098,7 @@ export default function Home() {
                     </div>
                   </div>
                   <p className="text-slate-600 mb-4 leading-relaxed">
-                    &quot;I’ve been enjoying the surveys so far — they’re easy to complete and actually fun. I haven’t won yet, but I’m hoping to get that gift card soon! As someone from India, I’m really excited that free internet is finally becoming a reality here. Can’t wait to see what’s next!&quot;
+                    &quot;I've been enjoying the surveys so far — they're easy to complete and actually fun. I haven't won yet, but I'm hoping to get that gift card soon! As someone from India, I'm really excited that free internet is finally becoming a reality here. Can't wait to see what's next!&quot;
                   </p>
                   <div className="flex items-center gap-4 text-sm text-slate-500">
                     <span className="flex items-center gap-1">
@@ -1506,9 +1506,15 @@ export default function Home() {
                       Platform Active
                     </span>
                     <span>•</span>
-                    <span>Secure & Verified</span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                      Secure & Verified
+                    </span>
                     <span>•</span>
-                    <span>Global Community</span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                      Global Community
+                    </span>
                   </div>
                 </div>
                 
