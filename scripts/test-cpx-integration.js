@@ -14,8 +14,8 @@ const CPX_CONFIG = {
   APP_ID: '27172',
   SECURE_HASH_KEY: 'mZ6JNyV7SeZh9CMPwU9mKe24A0IyfAxC',
   BASE_URL: 'https://offers.cpx-research.com/index.php',
-  POSTBACK_URL: 'https://7c8d-2406-7400-81-8352-8c1b-f1a9-16a5-f8c3.ngrok-free.app/api/cpx-postback',
-  APP_URL: 'https://7c8d-2406-7400-81-8352-8c1b-f1a9-16a5-f8c3.ngrok-free.app',
+  POSTBACK_URL: 'https://0mninetlottery.com/api/cpx-postback',
+  APP_URL: 'https://0mninetlottery.com',
 };
 
 // Test user data - Replace with actual user ID from your database

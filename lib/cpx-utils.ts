@@ -5,16 +5,16 @@ const getBaseUrl = () => {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  // In server-side context, use environment variable or default
-  return process.env.NEXT_PUBLIC_APP_URL || 'https://7c8d-2406-7400-81-8352-8c1b-f1a9-16a5-f8c3.ngrok-free.app';
+  // In server-side context, use environment variable or production default
+  return process.env.NEXT_PUBLIC_APP_URL || 'https://0mninetlottery.com';
 };
 
 const CPX_CONFIG = {
   APP_ID: '27172',
   SECURE_HASH_KEY: 'mZ6JNyV7SeZh9CMPwU9mKe24A0IyfAxC',
   BASE_URL: 'https://offers.cpx-research.com/index.php',
-  POSTBACK_BASE_URL: 'https://7c8d-2406-7400-81-8352-8c1b-f1a9-16a5-f8c3.ngrok-free.app',
-  REDIRECT_URL: 'https://7c8d-2406-7400-81-8352-8c1b-f1a9-16a5-f8c3.ngrok-free.app/dashboard?survey=completed',
+  POSTBACK_BASE_URL: 'https://0mninetlottery.com',
+  REDIRECT_URL: 'https://0mninetlottery.com/dashboard?survey=completed',
   // 0mninet brand colors
   BRAND_BLUE: '#3b82f6',
   BRAND_DARK_BLUE: '#1d4ed8',

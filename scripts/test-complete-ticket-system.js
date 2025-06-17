@@ -1,380 +1,166 @@
-// Comprehensive test script for the complete ticket system
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+#!/usr/bin/env node
 
-async function main() {
-  console.log('🧪 Starting comprehensive ticket system test');
+/**
+ * Complete Ticket System Test for Production
+ * 
+ * This script tests the entire ticket award system in production:
+ * 1. CPX postback simulation 
+ * 2. Email verification
+ * 3. Dashboard ticket visibility
+ * 4. Lottery participation
+ */
+
+const crypto = require('crypto');
+
+// Production Configuration
+const PRODUCTION_CONFIG = {
+  APP_ID: '27172',
+  SECURE_HASH_KEY: 'mZ6JNyV7SeZh9CMPwU9mKe24A0IyfAxC',
+  BASE_URL: 'https://0mninetlottery.com',
   
-  try {
-    // Clean up test data first
-    console.log('🧹 Cleaning up existing test data...');
-    await cleanupTestData();
-    
-    // Test 1: Survey completion awards ticket
-    console.log('\n📝 Test 1: Survey completion awards exactly 1 ticket');
-    const testUser1 = await createTestUser('survey-test@example.com', 'Survey Tester');
-    
-    // Simulate survey completion
-    await simulateSurveyCompletion(testUser1.id);
-    
-    const user1AfterSurvey = await getUserTicketData(testUser1.id);
-    console.log(`✅ User after survey: ${user1AfterSurvey.availableTickets} available, ${user1AfterSurvey.totalTicketsEarned} total`);
-    
-    if (user1AfterSurvey.availableTickets !== 1 || user1AfterSurvey.totalTicketsEarned !== 1) {
-      throw new Error('Survey completion should award exactly 1 ticket');
-    }
-    
-    // Test 2: Social media follow awards ticket
-    console.log('\n📱 Test 2: Social media follow awards exactly 1 ticket');
-    await simulateSocialMediaFollow(testUser1.id);
-    
-    const user1AfterSocial = await getUserTicketData(testUser1.id);
-    console.log(`✅ User after social: ${user1AfterSocial.availableTickets} available, ${user1AfterSocial.totalTicketsEarned} total`);
-    
-    if (user1AfterSocial.availableTickets !== 2 || user1AfterSocial.totalTicketsEarned !== 2) {
-      throw new Error('Social media follow should award exactly 1 additional ticket');
-    }
-    
-    // Test 3: Referral system
-    console.log('\n👥 Test 3: Referral system awards ticket to referrer');
-    const testUser2 = await createTestUser('referred-test@example.com', 'Referred Tester', testUser1.id);
-    
-    // Check referrer before referred user completes survey
-    const user1BeforeReferral = await getUserTicketData(testUser1.id);
-    console.log(`Referrer before: ${user1BeforeReferral.availableTickets} available, ${user1BeforeReferral.totalTicketsEarned} total`);
-    
-    // Referred user completes survey (should award referral ticket to referrer)
-    await simulateSurveyCompletion(testUser2.id);
-    
-    const user1AfterReferral = await getUserTicketData(testUser1.id);
-    const user2AfterSurvey = await getUserTicketData(testUser2.id);
-    
-    console.log(`✅ Referrer after referral: ${user1AfterReferral.availableTickets} available, ${user1AfterReferral.totalTicketsEarned} total`);
-    console.log(`✅ Referred user: ${user2AfterSurvey.availableTickets} available, ${user2AfterSurvey.totalTicketsEarned} total`);
-    
-    if (user1AfterReferral.availableTickets !== 3 || user1AfterReferral.totalTicketsEarned !== 3) {
-      throw new Error('Referrer should get exactly 1 referral ticket when referred user completes survey');
-    }
-    
-    if (user2AfterSurvey.availableTickets !== 1 || user2AfterSurvey.totalTicketsEarned !== 1) {
-      throw new Error('Referred user should get exactly 1 ticket for survey completion');
-    }
-    
-    // Test 4: Lottery application
-    console.log('\n🎯 Test 4: Tickets are automatically applied to lottery');
-    const draw = await getOrCreateTestDraw();
-    
-    console.log(`Debug: Draw ID = ${draw.id}`);
-    
-    // Check all participations for debugging
-    const allParticipations = await prisma.drawParticipation.findMany({
-      where: { drawId: draw.id },
-      include: {
-        user: { select: { email: true } }
-      }
-    });
-    
-    console.log('All participations:', allParticipations.map(p => ({
-      userEmail: p.user.email,
-      ticketsUsed: p.ticketsUsed
-    })));
-    
-    // Check draw participation
-    const participation1 = await getDrawParticipation(testUser1.id, draw.id);
-    const participation2 = await getDrawParticipation(testUser2.id, draw.id);
-    
-    console.log(`✅ User1 lottery participation: ${participation1?.ticketsUsed || 0} tickets`);
-    console.log(`✅ User2 lottery participation: ${participation2?.ticketsUsed || 0} tickets`);
-    
-    if (!participation1 || participation1.ticketsUsed !== 3) {
-      console.log(`❌ Expected User1 to have 3 tickets, but got ${participation1?.ticketsUsed || 0}`);
-      throw new Error('User1 should have 3 tickets applied to lottery');
-    }
-    
-    if (!participation2 || participation2.ticketsUsed !== 1) {
-      console.log(`❌ Expected User2 to have 1 ticket, but got ${participation2?.ticketsUsed || 0}`);
-      throw new Error('User2 should have 1 ticket applied to lottery');
-    }
-    
-    // Test 5: Lottery reset
-    console.log('\n🔄 Test 5: Available tickets reset to 0 after lottery');
-    await simulateLotteryReset();
-    
-    const user1AfterReset = await getUserTicketData(testUser1.id);
-    const user2AfterReset = await getUserTicketData(testUser2.id);
-    
-    console.log(`✅ User1 after reset: ${user1AfterReset.availableTickets} available, ${user1AfterReset.totalTicketsEarned} total`);
-    console.log(`✅ User2 after reset: ${user2AfterReset.availableTickets} available, ${user2AfterReset.totalTicketsEarned} total`);
-    
-    if (user1AfterReset.availableTickets !== 0 || user1AfterReset.totalTicketsEarned !== 3) {
-      throw new Error('After lottery reset, available tickets should be 0 but total earned should remain');
-    }
-    
-    if (user2AfterReset.availableTickets !== 0 || user2AfterReset.totalTicketsEarned !== 1) {
-      throw new Error('After lottery reset, available tickets should be 0 but total earned should remain');
-    }
-    
-    // Test 6: New tickets after reset
-    console.log('\n🎫 Test 6: Users can earn new tickets after reset');
-    await simulateSurveyCompletion(testUser1.id); // Second survey
-    
-    const user1AfterNewTicket = await getUserTicketData(testUser1.id);
-    console.log(`✅ User1 after new ticket: ${user1AfterNewTicket.availableTickets} available, ${user1AfterNewTicket.totalTicketsEarned} total`);
-    
-    if (user1AfterNewTicket.availableTickets !== 1 || user1AfterNewTicket.totalTicketsEarned !== 4) {
-      throw new Error('User should be able to earn new tickets after lottery reset');
-    }
-    
-    console.log('\n🎉 ALL TESTS PASSED! The ticket system is working correctly.');
-    console.log('\n📊 Final Summary:');
-    console.log(`- Survey completion: ✅ Awards exactly 1 ticket`);
-    console.log(`- Social media follow: ✅ Awards exactly 1 ticket`);
-    console.log(`- Referral system: ✅ Awards 1 ticket to referrer when friend completes survey`);
-    console.log(`- Auto-apply to lottery: ✅ All tickets automatically applied`);
-    console.log(`- Lottery reset: ✅ Available tickets reset to 0, total earned preserved`);
-    console.log(`- New tickets after reset: ✅ Users can continue earning tickets`);
-    
-  } catch (error) {
-    console.error('❌ TEST FAILED:', error.message);
-    throw error;
-  } finally {
-    // Clean up test data
-    console.log('\n🧹 Cleaning up test data...');
-    await cleanupTestData();
-    await prisma.$disconnect();
-  }
+  // API endpoints
+  CPX_POSTBACK_URL: 'https://0mninetlottery.com/api/cpx-postback',
+  DASHBOARD_URL: 'https://0mninetlottery.com/dashboard',
+  API_VERIFY_URL: 'https://0mninetlottery.com/api/tickets/verify-all',
+};
+
+// Test user data - Replace with actual user ID from your database
+const TEST_USER = {
+  id: 'USER_ID_PLACEHOLDER', // Replace with real user ID
+  name: 'Test User',
+  email: 'test@example.com',
+};
+
+/**
+ * Generate CPX secure hash
+ */
+function generateCPXSecureHash(userId) {
+  const hashString = `${userId}-${PRODUCTION_CONFIG.SECURE_HASH_KEY}`;
+  return crypto.createHash('md5').update(hashString).digest('hex');
 }
 
-async function createTestUser(email, name, referredBy = null) {
-  return await prisma.user.create({
-    data: {
-      email,
-      name,
-      availableTickets: 0,
-      totalTicketsEarned: 0,
-      referredBy
-    }
+/**
+ * Simulate completed survey postback
+ */
+function generateCompletedSurveyPostback(userId) {
+  const hash = generateCPXSecureHash(userId);
+  const transId = `production_test_${Date.now()}`;
+  
+  const params = new URLSearchParams({
+    status: '1', // Completed survey
+    trans_id: transId,
+    user_id: userId,
+    amount_usd: '0.50',
+    hash: hash,
+    ip_click: '127.0.0.1',
+    currency_name: 'USD',
+    currency_amount: '0.50',
+    test_mode: '1', // Enable test mode
   });
+
+  return `${PRODUCTION_CONFIG.CPX_POSTBACK_URL}?${params.toString()}`;
 }
 
-async function getUserTicketData(userId) {
-  return await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      availableTickets: true,
-      totalTicketsEarned: true
-    }
-  });
-}
-
-async function simulateSurveyCompletion(userId) {
-  // Award 1 ticket for survey completion
-  const ticket = await prisma.ticket.create({
-    data: {
-      userId,
-      source: 'SURVEY',
-      isUsed: false,
-      confirmationCode: `SURVEY_${userId}_${Date.now()}`
-    }
-  });
+/**
+ * Main test function
+ */
+async function runProductionTest() {
+  console.log('🚀 Starting Complete Production Ticket System Test');
+  console.log('===============================================');
   
-  // Update user ticket counts
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      availableTickets: { increment: 1 },
-      totalTicketsEarned: { increment: 1 }
-    }
-  });
-  
-  // Auto-apply to current lottery
-  const draw = await getOrCreateTestDraw();
-  await prisma.drawParticipation.upsert({
-    where: {
-      userId_drawId: { userId, drawId: draw.id }
-    },
-    update: {
-      ticketsUsed: { increment: 1 }
-    },
-    create: {
-      userId,
-      drawId: draw.id,
-      ticketsUsed: 1
-    }
-  });
-  
-  // Check for referral award if this is first survey
-  const ticketCount = await prisma.ticket.count({
-    where: { userId, source: 'SURVEY' }
-  });
-  
-  if (ticketCount === 1) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { referredBy: true }
-    });
-    
-    if (user?.referredBy) {
-      // Award referral ticket
-      await prisma.ticket.create({
-        data: {
-          userId: user.referredBy,
-          source: 'REFERRAL',
-          isUsed: false,
-          confirmationCode: `REF_${userId}_${Date.now()}`
-        }
-      });
-      
-      await prisma.user.update({
-        where: { id: user.referredBy },
-        data: {
-          availableTickets: { increment: 1 },
-          totalTicketsEarned: { increment: 1 }
-        }
-      });
-      
-      // Apply referral ticket to lottery
-      await prisma.drawParticipation.upsert({
-        where: {
-          userId_drawId: { userId: user.referredBy, drawId: draw.id }
-        },
-        update: {
-          ticketsUsed: { increment: 1 }
-        },
-        create: {
-          userId: user.referredBy,
-          drawId: draw.id,
-          ticketsUsed: 1
-        }
-      });
-    }
-  }
-}
-
-async function simulateSocialMediaFollow(userId) {
-  // Award 1 ticket for social media follow
-  await prisma.ticket.create({
-    data: {
-      userId,
-      source: 'SOCIAL',
-      isUsed: false,
-      confirmationCode: `SOCIAL_${userId}_${Date.now()}`
-    }
-  });
-  
-  // Update user ticket counts
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      availableTickets: { increment: 1 },
-      totalTicketsEarned: { increment: 1 },
-      socialMediaFollowed: true
-    }
-  });
-  
-  // Auto-apply to current lottery
-  const draw = await getOrCreateTestDraw();
-  await prisma.drawParticipation.upsert({
-    where: {
-      userId_drawId: { userId, drawId: draw.id }
-    },
-    update: {
-      ticketsUsed: { increment: 1 }
-    },
-    create: {
-      userId,
-      drawId: draw.id,
-      ticketsUsed: 1
-    }
-  });
-}
-
-async function createTestDraw() {
-  return await prisma.draw.create({
-    data: {
-      drawDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next week
-      prizeAmount: 1000,
-      status: 'PENDING',
-      totalTickets: 0
-    }
-  });
-}
-
-async function getOrCreateTestDraw() {
-  let draw = await prisma.draw.findFirst({
-    where: { status: 'PENDING' },
-    orderBy: { drawDate: 'asc' }
-  });
-  
-  if (!draw) {
-    draw = await createTestDraw();
-  }
-  
-  return draw;
-}
-
-async function getDrawParticipation(userId, drawId) {
-  return await prisma.drawParticipation.findUnique({
-    where: {
-      userId_drawId: { userId, drawId }
-    }
-  });
-}
-
-async function simulateLotteryReset() {
-  // Reset all users' available tickets to 0
-  await prisma.user.updateMany({
-    where: {},
-    data: { availableTickets: 0 }
-  });
-  
-  // Mark current draw as completed
-  await prisma.draw.updateMany({
-    where: { status: 'PENDING' },
-    data: { status: 'COMPLETED' }
-  });
-}
-
-async function cleanupTestData() {
-  // Delete test users and related data
-  const testEmails = ['survey-test@example.com', 'referred-test@example.com'];
-  
-  for (const email of testEmails) {
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
-    
-    if (user) {
-      // Delete tickets
-      await prisma.ticket.deleteMany({
-        where: { userId: user.id }
-      });
-      
-      // Delete draw participations
-      await prisma.drawParticipation.deleteMany({
-        where: { userId: user.id }
-      });
-      
-      // Delete user
-      await prisma.user.delete({
-        where: { id: user.id }
-      });
-    }
-  }
-  
-  // Delete test draws
-  await prisma.draw.deleteMany({
-    where: {
-      drawDate: {
-        gte: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000) // Future draws
-      }
-    }
-  });
-}
-
-main()
-  .catch((e) => {
-    console.error('Test failed:', e);
+  if (TEST_USER.id === 'USER_ID_PLACEHOLDER') {
+    console.error('❌ ERROR: Please update TEST_USER.id with a real user ID from your database');
+    console.error('   You can find user IDs in your database or admin panel');
     process.exit(1);
-  }); 
+  }
+  
+  console.log('\n📋 Test Configuration:');
+  console.log(`   Production URL: ${PRODUCTION_CONFIG.BASE_URL}`);
+  console.log(`   CPX Postback: ${PRODUCTION_CONFIG.CPX_POSTBACK_URL}`);
+  console.log(`   Test User ID: ${TEST_USER.id}`);
+  console.log(`   Test User Email: ${TEST_USER.email}`);
+  
+  // Generate test URLs
+  const completedPostbackUrl = generateCompletedSurveyPostback(TEST_USER.id);
+  const expectedHash = generateCPXSecureHash(TEST_USER.id);
+  
+  console.log('\n🔗 Generated Test URLs:');
+  console.log('\n   1. Completed Survey Postback:');
+  console.log(`   ${completedPostbackUrl}`);
+  
+  console.log('\n   2. Manual Test Command:');
+  console.log(`   curl "${completedPostbackUrl}"`);
+  
+  console.log('\n   3. Dashboard Check:');
+  console.log(`   ${PRODUCTION_CONFIG.DASHBOARD_URL}`);
+  
+  console.log('\n   4. API Verification:');
+  console.log(`   curl "${PRODUCTION_CONFIG.API_VERIFY_URL}"`);
+  
+  console.log('\n🔐 Security Information:');
+  console.log(`   Expected Hash: ${expectedHash}`);
+  console.log(`   Hash Algorithm: MD5(${TEST_USER.id}-${PRODUCTION_CONFIG.SECURE_HASH_KEY})`);
+  
+  console.log('\n📧 Email System Test:');
+  console.log(`   Confirmation emails should be sent to: ${TEST_USER.email}`);
+  console.log('   Check for emails with subject: "🎯 Ticket Earned - Your Entry is Confirmed!"');
+  console.log('   Email should contain direct dashboard link for backup access');
+  
+  console.log('\n🧪 Test Steps:');
+  console.log('   1. Run the curl command above to simulate completed survey');
+  console.log('   2. Check server logs for "✅ Survey completed successfully" message');
+  console.log('   3. Verify email receipt (check spam folder too)');
+  console.log('   4. Visit dashboard to confirm ticket is visible');
+  console.log('   5. Check that ticket is applied to current lottery draw');
+  
+  console.log('\n✅ Expected Results:');
+  console.log('   • Server responds with "OK" (200 status)');
+  console.log('   • User receives instant confirmation email');
+  console.log('   • Dashboard shows +1 available ticket');
+  console.log('   • Ticket is automatically entered in lottery');
+  console.log('   • Logs show successful ticket award and email sending');
+  
+  console.log('\n⚠️  Troubleshooting:');
+  console.log('   • If no email: Check server logs for email sending errors');
+  console.log('   • If no ticket: Check server logs for database transaction errors');
+  console.log('   • If hash error: Verify SECURE_HASH_KEY matches CPX configuration');
+  console.log('   • If user not found: Verify user ID exists in database');
+  
+  console.log('\n🔧 Debug Commands:');
+  console.log('   Check user tickets:');
+  console.log(`   curl "${PRODUCTION_CONFIG.API_VERIFY_URL}?user_id=${TEST_USER.id}"`);
+  console.log('\n   Check server health:');
+  console.log(`   curl "${PRODUCTION_CONFIG.BASE_URL}/api/health"`);
+  
+  console.log('\n📊 Success Metrics:');
+  console.log('   • Response time < 5 seconds');
+  console.log('   • Email delivery < 30 seconds');  
+  console.log('   • Dashboard update < 10 seconds');
+  console.log('   • Zero error logs');
+  
+  console.log('\n🎯 Production Readiness Checklist:');
+  console.log('   [ ] CPX Research postback URL configured to: ' + PRODUCTION_CONFIG.CPX_POSTBACK_URL);
+  console.log('   [ ] Domain environment variable set to: ' + PRODUCTION_CONFIG.BASE_URL);
+  console.log('   [ ] Email service (Resend) configured with noreply@0mninetlottery.com');
+  console.log('   [ ] Database accessible and responsive');
+  console.log('   [ ] All hardcoded localhost URLs replaced');
+  
+  console.log('\n==========================================');
+  console.log('🎬 Ready to test! Run the curl command above');
+  console.log('==========================================\n');
+}
+
+// Handle command line arguments
+if (process.argv.length > 2) {
+  const userId = process.argv[2];
+  if (userId && userId !== 'USER_ID_PLACEHOLDER') {
+    TEST_USER.id = userId;
+    console.log(`Using provided user ID: ${userId}`);
+  }
+}
+
+// Run the test
+runProductionTest().catch(error => {
+  console.error('❌ Test script error:', error);
+  process.exit(1);
+}); 

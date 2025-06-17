@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
   const ip = searchParams.get('ip');
   const subId1 = searchParams.get('subid1');
   const subId2 = searchParams.get('subid2');
+  const receivedHash = searchParams.get('hash');
+  const testMode = searchParams.get('test_mode');
   
   console.log('📩 CPX Postback received:', {
     userId,
@@ -44,18 +46,35 @@ export async function GET(request: NextRequest) {
     ip,
     subId1,
     subId2,
+    receivedHash: receivedHash ? '***' + receivedHash.slice(-4) : 'none',
+    testMode,
+    url: request.url,
     timestamp: new Date().toISOString(),
   });
 
   // Validate required parameters
   if (!userId || !transId || !status) {
     console.error('❌ Missing required parameters in CPX postback:', {
-      userId,
-      transId,
-      status,
+      userId: !!userId,
+      transId: !!transId,
+      status: !!status,
     });
     
     return new NextResponse("Missing required parameters", { status: 400 });
+  }
+
+  // Validate hash for security (unless in test mode)
+  if (!testMode && receivedHash) {
+    const isValidHash = validateCPXPostbackHash(userId, receivedHash);
+    if (!isValidHash) {
+      console.error('❌ Invalid hash in CPX postback:', {
+        userId,
+        receivedHash: receivedHash ? '***' + receivedHash.slice(-4) : 'none',
+        expectedHash: '***' + generateCPXSecureHash(userId).slice(-4),
+      });
+      return new NextResponse("Invalid hash", { status: 403 });
+    }
+    console.log('✅ Hash validation passed for user:', userId);
   }
 
   // CRITICAL CHECK: Only award tickets for completed surveys (status=1)
@@ -90,7 +109,7 @@ export async function GET(request: NextRequest) {
   console.log(`✅ Survey completed successfully (status=1) for user ${userId}, proceeding with ticket award`);
 
   try {
-    // Find user by ID
+    // Find user by ID with more comprehensive selection
     const user = await db.user.findUnique({
       where: { id: userId },
       select: {
@@ -98,6 +117,9 @@ export async function GET(request: NextRequest) {
         name: true,
         email: true,
         referredBy: true,
+        availableTickets: true,
+        totalTicketsEarned: true,
+        isBlocked: true,
       },
     });
 
@@ -106,11 +128,18 @@ export async function GET(request: NextRequest) {
       return new NextResponse("User not found", { status: 404 });
     }
 
-    console.log('👤 User found:', {
+    if (user.isBlocked) {
+      console.error('❌ User is blocked, cannot award ticket:', userId);
+      return new NextResponse("User is blocked", { status: 403 });
+    }
+
+    console.log('👤 User found and validated:', {
       userId: user.id,
       userName: user.name,
       userEmail: user.email,
       referredBy: user.referredBy,
+      currentAvailableTickets: user.availableTickets,
+      totalTicketsEarned: user.totalTicketsEarned,
     });
 
     // Check if this is the user's first survey
@@ -275,9 +304,31 @@ export async function GET(request: NextRequest) {
             }
           );
           console.log('📧 Instant survey completion email sent to:', user.email);
+        } else {
+          console.warn('⚠️ User has no email address, skipping email notification:', user.id);
         }
       } catch (emailError) {
         console.error('📧 Failed to send survey completion email (non-critical):', emailError);
+        
+        // Try to send a backup email after a delay
+        setTimeout(async () => {
+          try {
+            if (user.email) {
+              await sendTicketApplicationEmail(
+                user.email,
+                {
+                  name: user.name || "User",
+                  ticketCount: 1,
+                  drawDate: draw.drawDate,
+                  confirmationCode: `SURVEY_${surveyAwardResult.ticketIds[0]}`,
+                }
+              );
+              console.log('📧 Backup email sent successfully after initial failure');
+            }
+          } catch (backupEmailError) {
+            console.error('📧 Backup email also failed:', backupEmailError);
+          }
+        }, 5000); // Try backup email after 5 seconds
       }
 
       // Send instant notification to frontend if user is active
@@ -333,6 +384,47 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('❌ Error processing CPX postback:', error);
     
+    // EMERGENCY MECHANISM: Award emergency ticket if main transaction fails
+    console.log('🚨 Attempting emergency ticket award due to transaction failure...');
+    
+    try {
+      const emergencyTicket = await awardEmergencyTicket(userId, transId);
+      
+      if (emergencyTicket) {
+        console.log('✅ Emergency ticket awarded successfully:', emergencyTicket.id);
+        
+        // Try to send confirmation email for emergency ticket
+        try {
+          const user = await db.user.findUnique({
+            where: { id: userId },
+            select: { email: true, name: true },
+          });
+          
+          if (user?.email) {
+            const draw = await createOrGetNextDraw();
+            await sendTicketApplicationEmail(
+              user.email,
+              {
+                name: user.name || "User",
+                ticketCount: 1,
+                drawDate: draw.drawDate,
+                confirmationCode: `EMERGENCY_${emergencyTicket.id}`,
+              }
+            );
+            console.log('📧 Emergency ticket confirmation email sent');
+          }
+        } catch (emergencyEmailError) {
+          console.error('📧 Failed to send emergency ticket email:', emergencyEmailError);
+        }
+        
+        return new NextResponse("Emergency ticket awarded", { status: 200 });
+      } else {
+        console.error('❌ Emergency ticket award also failed');
+      }
+    } catch (emergencyError) {
+      console.error('❌ Emergency ticket award failed:', emergencyError);
+    }
+    
     // Log the error for debugging
     try {
       await db.settings.create({
@@ -340,6 +432,7 @@ export async function GET(request: NextRequest) {
           key: `cpx_error_${transId}_${Date.now()}`,
           value: JSON.stringify({
             error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
             userId,
             transId,
             status,
@@ -402,16 +495,26 @@ async function awardReferralTicket(referrerId: string, referredUserId: string, d
 // Function to award emergency ticket
 async function awardEmergencyTicket(userId: string, transId: string) {
   try {
+    console.log('🚨 Starting emergency ticket award for user:', userId);
+    
     const draw = await createOrGetNextDraw();
     
-    // Create emergency ticket
-    const emergencyTicket = await db.ticket.create({
+    // Use the same ticket awarding logic as the main flow for consistency
+    const emergencyAwardResult = await awardTicketsToUser(userId, 1, "SURVEY");
+    
+    if (!emergencyAwardResult.success) {
+      console.error('❌ Emergency ticket award failed:', emergencyAwardResult);
+      return null;
+    }
+    
+    // Apply the emergency ticket to the lottery
+    const appliedTickets = await applyAllTicketsToLottery(userId, draw.id);
+    
+    // Update the ticket with emergency confirmation code
+    const emergencyTicket = await db.ticket.update({
+      where: { id: emergencyAwardResult.ticketIds[0] },
       data: {
-        userId: userId,
-        source: "SURVEY",
-        isUsed: false, // Set to false so it shows up on dashboard
-        drawId: null, // Don't assign to a draw yet
-        confirmationCode: `emergency_${transId}_${Date.now()}`,
+        confirmationCode: `EMERGENCY_${transId}_${Date.now()}`,
       },
     });
     
@@ -423,48 +526,20 @@ async function awardEmergencyTicket(userId: string, transId: string) {
           userId,
           ticketId: emergencyTicket.id,
           transId,
+          appliedTickets,
+          availableTickets: emergencyAwardResult.availableTickets,
+          totalTickets: emergencyAwardResult.totalTickets,
           timestamp: new Date().toISOString(),
         }),
         description: "Emergency ticket award from failed CPX postback",
       },
     });
     
-    // Update participation
-    const existingParticipation = await db.drawParticipation.findUnique({
-      where: {
-        userId_drawId: {
-          userId: userId,
-          drawId: draw.id,
-        },
-      },
-    });
-
-    if (existingParticipation) {
-      await db.drawParticipation.update({
-        where: { id: existingParticipation.id },
-        data: {
-          ticketsUsed: existingParticipation.ticketsUsed + 1,
-          updatedAt: new Date(),
-        },
-      });
-    } else {
-      await db.drawParticipation.create({
-        data: {
-          userId: userId,
-          drawId: draw.id,
-          ticketsUsed: 1,
-        },
-      });
-    }
-    
-    // Update draw total tickets
-    await db.draw.update({
-      where: { id: draw.id },
-      data: {
-        totalTickets: {
-          increment: 1,
-        },
-      },
+    console.log('✅ Emergency ticket awarded and applied to lottery:', {
+      ticketId: emergencyTicket.id,
+      userId,
+      drawId: draw.id,
+      appliedTickets,
     });
     
     return emergencyTicket;

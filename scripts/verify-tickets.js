@@ -14,12 +14,16 @@ const axios = require('axios');
 const readline = require('readline');
 const crypto = require('crypto');
 
-// Configuration - Update these to match your setup
+// Configuration
 const CONFIG = {
-  BASE_URL: 'http://localhost:3000',
-  CPX_APP_ID: '27172',
-  CPX_SECURE_HASH_KEY: 'mZ6JNyV7SeZh9CMPwU9mKe24A0IyfAxC',
-  CPX_POSTBACK_URL: 'http://localhost:3000/api/cpx-postback',
+  SECURE_HASH_KEY: 'mZ6JNyV7SeZh9CMPwU9mKe24A0IyfAxC',
+  BASE_URL: 'https://0mninetlottery.com',
+  
+  // API endpoints
+  CPX_POSTBACK_URL: 'https://0mninetlottery.com/api/cpx-postback',
+  SURVEY_COMPLETE_URL: 'https://0mninetlottery.com/api/survey/complete',
+  TICKETS_VERIFY_URL: 'https://0mninetlottery.com/api/tickets/verify',
+  TICKETS_VERIFY_ALL_URL: 'https://0mninetlottery.com/api/tickets/verify-all',
 };
 
 // Create readline interface
@@ -30,7 +34,7 @@ const rl = readline.createInterface({
 
 // Generate CPX secure hash
 function generateCPXSecureHash(userId) {
-  const hashString = `${userId}-${CONFIG.CPX_SECURE_HASH_KEY}`;
+  const hashString = `${userId}-${CONFIG.SECURE_HASH_KEY}`;
   return crypto.createHash('md5').update(hashString).digest('hex');
 }
 
@@ -140,7 +144,7 @@ async function testFallbackAPI(userId) {
     console.log('Note: This test requires being logged in as the target user');
     console.log('You should run this on the local development environment');
     
-    const fallbackUrl = `${CONFIG.BASE_URL}/api/survey/complete`;
+    const fallbackUrl = `${CONFIG.SURVEY_COMPLETE_URL}`;
     console.log(`URL: ${fallbackUrl}`);
     
     const response = await axios.post(fallbackUrl, {}, {
@@ -200,7 +204,7 @@ async function verifyTickets(userId) {
     console.log('Note: This test requires being logged in as the target user');
     console.log('You should run this on the local development environment');
     
-    const verifyUrl = `${CONFIG.BASE_URL}/api/tickets/verify`;
+    const verifyUrl = `${CONFIG.TICKETS_VERIFY_URL}`;
     console.log(`URL: ${verifyUrl}`);
     
     const response = await axios.get(verifyUrl, {
