@@ -18,9 +18,12 @@ import {
   Facebook,
   Youtube,
   Copy,
-  Check
+  Check,
+  Loader2,
+  ClipboardCheck
 } from "lucide-react";
 import { generateCPXSurveyURL } from "@/lib/cpx-utils";
+import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
 
 interface EarnTicketsProps {
   userId: string;
@@ -36,6 +39,7 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
   const [hasSurveyTicket, setHasSurveyTicket] = useState(false);
   const [surveyAttempted, setSurveyAttempted] = useState(false);
   const [referralLinkCopied, setReferralLinkCopied] = useState(false);
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
 
   useEffect(() => {
     checkUserStatus();
@@ -284,12 +288,13 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
   };
 
   const userData = session?.user ? {
-    id: session.user.id as string,
+    id: userId,
     name: session.user.name,
-    email: session.user.email,
+    email: session.user.email
   } : null;
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="text-xl md:text-2xl">Earn Tickets & Increase Your chance</CardTitle>
@@ -331,25 +336,43 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                 <Button 
                   onClick={() => {
                     try {
-                      // Generate the CPX survey URL
-                      const surveyUrl = generateCPXSurveyURL(userData);
+                      // Check if user is on mobile
+                      const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                       
-                      // Open directly in new tab
-                      window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+                      if (isMobile) {
+                        // Mobile: Open the survey modal popup
+                        setShowSurveyModal(true);
+                        
+                        toast.success("📱 Opening survey popup...", {
+                          duration: 2000,
+                          icon: "🎫",
+                          style: {
+                            border: '2px solid #3b82f6',
+                            padding: '16px',
+                            fontSize: '14px',
+                            maxWidth: '350px',
+                          },
+                        });
+                        
+                      } else {
+                        // Desktop: Generate the CPX survey URL and open in new tab
+                        const surveyUrl = generateCPXSurveyURL(userData);
+                        window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+                        
+                        toast.success("🔗 Survey opened in new tab! Complete it to earn your ticket.", {
+                          duration: 6000,
+                          icon: "🎫",
+                          style: {
+                            border: '2px solid #3b82f6',
+                            padding: '16px',
+                            fontSize: '14px',
+                          },
+                        });
+                        
+                        // Mark survey as attempted for desktop
+                        handleSurveyComplete(false);
+                      }
                       
-                      // Mark survey as attempted and trigger completion callback
-                      handleSurveyComplete(false);
-                      
-                      // Show user confirmation
-                      toast.success("🔗 Survey opened in new tab! Complete it to earn your ticket.", {
-                        duration: 6000,
-                        icon: "🎫",
-                        style: {
-                          border: '2px solid #3b82f6',
-                          padding: '16px',
-                          fontSize: '14px',
-                        },
-                      });
                     } catch (error) {
                       console.error("Error opening survey:", error);
                       toast.error("❌ Failed to open survey. Please try again.", {
@@ -367,13 +390,13 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
                 >
                   {loading === "SURVEY" ? (
                     <>
-                      <ClipboardList className="h-4 w-4 mr-2 animate-spin" />
-                      Opening Survey...
+                      <Loader2 className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2 animate-spin" />
+                      Processing...
                     </>
                   ) : (
                     <>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Go to Survey
+                      <ClipboardCheck className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                      📱 Start Survey
                     </>
                   )}
                 </Button>
@@ -663,5 +686,20 @@ export const EarnTickets = ({ userId, appliedTickets }: EarnTicketsProps) => {
         </div>
       </CardContent>
     </Card>
+
+    {/* Mobile Survey Modal */}
+    {userData && (
+      <CPXSurveyModal
+        user={userData}
+        open={showSurveyModal}
+        onOpenChange={setShowSurveyModal}
+        onSurveyComplete={(success) => {
+          handleSurveyComplete(success);
+        }}
+        isLoading={loading === "SURVEY"}
+        disabled={false}
+      />
+    )}
+    </>
   );
 }; 

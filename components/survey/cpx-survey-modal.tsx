@@ -41,6 +41,8 @@ interface CPXSurveyModalProps {
   isLoading?: boolean;
   disabled?: boolean;
   nonWinnerToken?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const CPXSurveyModal = ({ 
@@ -48,7 +50,9 @@ export const CPXSurveyModal = ({
   onSurveyComplete, 
   isLoading = false,
   disabled = false,
-  nonWinnerToken
+  nonWinnerToken,
+  open = false,
+  onOpenChange
 }: CPXSurveyModalProps) => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -62,6 +66,42 @@ export const CPXSurveyModal = ({
   const [ticketId, setTicketId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const messageCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle external control of modal state
+  useEffect(() => {
+    if (open !== undefined) {
+      setIsOpen(open);
+      if (open && !surveyUrl) {
+        // Generate survey URL when modal opens
+        const url = generateCPXSurveyURL(user);
+        setSurveyUrl(url);
+        setIframeLoading(true);
+        setSurveyError(null);
+      }
+    }
+  }, [open, user]); // Remove surveyUrl from dependencies to prevent infinite loop
+
+  // Handle internal modal state changes
+  const handleOpenChange = (newOpen: boolean) => {
+    setIsOpen(newOpen);
+    if (onOpenChange) {
+      onOpenChange(newOpen);
+    }
+    if (newOpen && !surveyUrl && open === undefined) {
+      // Generate survey URL when modal opens via internal trigger
+      const url = generateCPXSurveyURL(user);
+      setSurveyUrl(url);
+      setIframeLoading(true);
+      setSurveyError(null);
+    }
+    if (!newOpen) {
+      // Reset state when closing
+      setIframeLoading(true);
+      setSurveyError(null);
+      setShowTicketReward(false);
+      setVerifyingTicket(false);
+    }
+  };
 
   // Check if user already has tickets from legitimate CPX completion
   const checkForExistingTickets = useCallback(async () => {
@@ -429,10 +469,10 @@ export const CPXSurveyModal = ({
   const handleOpenInNewTab = () => {
     if (surveyUrl) {
       if (isMobile()) {
-        // Mobile: Open in same window with proper return navigation
-        toast.success("🔄 Opening survey in mobile view...", {
-          duration: 3000,
-          icon: "📱",
+        // Mobile: Keep survey embedded in the modal - DO NOT navigate away
+        toast.success("📱 Loading embedded survey...", {
+          duration: 2000,
+          icon: "🔄",
           style: {
             fontSize: '16px',
             padding: '16px',
@@ -441,20 +481,15 @@ export const CPXSurveyModal = ({
           },
         });
         
-        // Store return information
-        sessionStorage.setItem('survey_return_url', window.location.href);
-        sessionStorage.setItem('survey_mode', 'mobile');
+        // Just reload the iframe to ensure it works on mobile
+        setIframeLoading(true);
         
-        // Close the modal first
-        setIsOpen(false);
-        
-        // Navigate to survey in same window
-        setTimeout(() => {
-          window.location.href = surveyUrl;
-        }, 1000);
+        // Force iframe reload with mobile-optimized parameters
+        const mobileOptimizedUrl = `${surveyUrl}&mobile=1&embedded=1`;
+        setSurveyUrl(mobileOptimizedUrl);
         
       } else {
-        // Desktop: Keep existing behavior
+        // Desktop: Keep existing behavior (new tab)
         window.open(surveyUrl, '_blank', 'noopener,noreferrer');
         toast.success("Survey opened in new tab!");
       }
@@ -466,81 +501,11 @@ export const CPXSurveyModal = ({
     }
   };
 
-  // New function to handle mobile survey opening
-  const handleMobileSurveyOpen = () => {
-    // Store current location for return navigation
-    sessionStorage.setItem('survey_return_url', window.location.href);
-    sessionStorage.setItem('survey_mode', 'mobile');
-    
-    // Show mobile-specific loading message
-    toast.loading("🔄 Loading mobile survey...", {
-      duration: 2000,
-      style: {
-        fontSize: '16px',
-        padding: '16px',
-        maxWidth: '300px',
-      },
-    });
-    
-    // Open survey in same window after short delay
-    setTimeout(() => {
-      window.location.href = surveyUrl;
-    }, 1000);
-    
-    // Mark survey as attempted
-    if (onSurveyComplete) {
-      onSurveyComplete(false);
-    }
-  };
-
   // Enhanced mobile survey completion detection
   useEffect(() => {
-    // Check if user is returning from mobile survey
-    const surveyMode = sessionStorage.getItem('survey_mode');
-    const returnUrl = sessionStorage.getItem('survey_return_url');
-    
-    if (surveyMode === 'mobile' && returnUrl) {
-      // User is returning from mobile survey
-      sessionStorage.removeItem('survey_mode');
-      sessionStorage.removeItem('survey_return_url');
-      
-      // Start checking for ticket completion
-      checkForInstantTicket();
-      
-      // Show return message
-      toast.success("📱 Welcome back! Checking for survey completion...", {
-        duration: 4000,
-        style: {
-          fontSize: '16px',
-          padding: '16px',
-          maxWidth: '350px',
-          border: '2px solid #10b981',
-        },
-      });
-    }
-  }, []);
-
-  // Add mobile-specific return navigation
-  useEffect(() => {
-    // Listen for mobile back button or survey completion
-    const handleMobileReturn = () => {
-      const surveyMode = sessionStorage.getItem('survey_mode');
-      if (surveyMode === 'mobile') {
-        // User is returning from mobile survey
-        sessionStorage.removeItem('survey_mode');
-        sessionStorage.removeItem('survey_return_url');
-        
-        // Check for completion and show appropriate message
-        checkForInstantTicket();
-      }
-    };
-
-    // Listen for visibility change (when user returns to the app)
-    document.addEventListener('visibilitychange', handleMobileReturn);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleMobileReturn);
-    };
+    // Check if user is returning from mobile survey - this is no longer needed since we're not navigating away
+    // But keep the instant ticket checking functionality
+    checkForInstantTicket();
   }, []);
 
   const handleRetry = () => {
@@ -588,13 +553,8 @@ export const CPXSurveyModal = ({
     
     console.log('🚫 Modal closed - tickets only awarded for completed surveys via CPX postback');
     
-    // Close the modal immediately
-    setIsOpen(false);
-    setIframeLoading(true);
-    setSurveyError(null);
-    setRetryCount(0);
-    setShowTicketReward(false);
-    setVerifyingTicket(false);
+    // Close the modal using the new handler
+    handleOpenChange(false);
     
     // Refresh to show any tickets that may have been awarded through legitimate CPX postback
     router.refresh();
@@ -710,26 +670,29 @@ export const CPXSurveyModal = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button
-          data-cpx-survey-button
-          disabled={disabled || isLoading}
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-300"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <ClipboardCheck className="h-4 w-4 mr-2" />
-              Go to Survey
-            </>
-          )}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      {/* Only show DialogTrigger if not externally controlled */}
+      {open === undefined && (
+        <DialogTrigger asChild>
+          <Button
+            data-cpx-survey-button
+            disabled={disabled || isLoading}
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-300"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <ClipboardCheck className="h-4 w-4 mr-2" />
+                Go to Survey
+              </>
+            )}
+          </Button>
+        </DialogTrigger>
+      )}
       
       <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 shadow-2xl overflow-hidden flex flex-col sm:max-h-[90vh]">
         <DialogHeader className="border-b border-slate-200 pb-4 flex-shrink-0">
@@ -740,46 +703,66 @@ export const CPXSurveyModal = ({
               </div>
               <div>
                 <DialogTitle className="text-lg sm:text-2xl font-bold text-slate-800">
-                  Complete Survey & Earn Tickets
+                  {isMobile() ? "📱 Mobile Survey" : "Complete Survey & Earn Tickets"}
                 </DialogTitle>
                 <DialogDescription className="text-slate-600 text-sm sm:text-base mt-1">
-                  Answer a few questions and earn 1 lottery ticket
+                  {isMobile() ? "Embedded survey - stay in the app!" : "Answer a few questions and earn 1 lottery ticket"}
                 </DialogDescription>
               </div>
             </div>
             
-            {/* Mobile-Optimized Close Button - Always Visible */}
+            {/* Enhanced Mobile Close Button */}
             <div className="flex justify-center sm:justify-end">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleMobileClose}
-                className="flex items-center gap-2 bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 px-4 py-2 rounded-lg font-medium"
+                className="flex items-center gap-2 bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 px-4 py-2 rounded-lg font-medium shadow-sm"
               >
                 <X className="h-4 w-4" />
-                <span className="hidden sm:inline">Close</span>
-                <span className="sm:hidden">✕</span>
+                <span className="hidden sm:inline">Close Survey</span>
+                <span className="sm:hidden">✕ Close</span>
               </Button>
             </div>
           </div>
           
-          {/* How it Works - Mobile Optimized */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 sm:p-4 mt-4">
-            <div className="flex items-start gap-3">
-              <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">📋 How it Works</h3>
-                <ul className="text-blue-800 text-xs sm:text-sm space-y-1">
-                  <li>• Complete the survey questions honestly and thoroughly</li>
-                  <li>• Survey typically takes 2-5 minutes to complete</li>
-                  <li>• You'll earn 1 lottery ticket upon completion</li>
-                  <li className="text-green-700 font-medium">• Tickets are instantly credited to your account</li>
-                </ul>
+          {/* Mobile-Optimized Instructions */}
+          {isMobile() && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3 mt-4">
+              <div className="flex items-start gap-3">
+                <Shield className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-green-900 mb-2 text-sm">📱 Mobile Survey Mode</h3>
+                  <ul className="text-green-800 text-xs space-y-1">
+                    <li>• Survey loads directly in this window</li>
+                    <li>• No need to leave the main app</li>
+                    <li>• Use the close button above to return anytime</li>
+                    <li>• Complete the survey to earn your ticket instantly</li>
+                  </ul>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           
-          {/* Action Buttons - Mobile Optimized Layout */}
+          {/* Desktop Instructions */}
+          {!isMobile() && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 sm:p-4 mt-4">
+              <div className="flex items-start gap-3">
+                <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">📋 How it Works</h3>
+                  <ul className="text-blue-800 text-xs sm:text-sm space-y-1">
+                    <li>• Complete the survey questions honestly and thoroughly</li>
+                    <li>• Survey typically takes 2-5 minutes to complete</li>
+                    <li>• You'll earn 1 lottery ticket upon completion</li>
+                    <li className="text-green-700 font-medium">• Tickets are instantly credited to your account</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Action Buttons - Mobile vs Desktop */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center mt-4">
             <Button
               variant="outline"
@@ -789,34 +772,63 @@ export const CPXSurveyModal = ({
             >
               <RefreshCw className="h-4 w-4" />
               <span className="hidden sm:inline">Retry</span>
-              <span className="sm:hidden">🔄</span>
+              <span className="sm:hidden">🔄 Reload</span>
             </Button>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenInNewTab}
-              className="flex items-center justify-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 text-sm py-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              <span className="hidden sm:inline">Open in New Tab</span>
-              <span className="sm:hidden">📱 Start Survey</span>
-            </Button>
+            {!isMobile() && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenInNewTab}
+                className="flex items-center justify-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 text-sm py-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open in New Tab
+              </Button>
+            )}
+            
+            {isMobile() && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // Force iframe reload for mobile
+                  setIframeLoading(true);
+                  const currentUrl = surveyUrl;
+                  setSurveyUrl("");
+                  setTimeout(() => setSurveyUrl(currentUrl), 100);
+                }}
+                className="flex items-center justify-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 text-sm py-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                📱 Reload Survey
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
-          {/* Survey Frame Container - Mobile Optimized */}
-          <div className="relative bg-white rounded-xl border-2 border-slate-200 shadow-lg overflow-hidden m-2 sm:m-4 h-full" style={{ minHeight: 'calc(100vh - 450px)' }}>
+          {/* Survey Frame Container - Enhanced for Mobile */}
+          <div 
+            className="relative bg-white rounded-xl border-2 border-slate-200 shadow-lg overflow-hidden m-2 sm:m-4 h-full" 
+            style={{ 
+              minHeight: isMobile() ? 'calc(100vh - 350px)' : 'calc(100vh - 450px)',
+              height: isMobile() ? 'calc(100vh - 350px)' : 'auto'
+            }}
+          >
             
-            {/* Loading State - Mobile Optimized */}
+            {/* Enhanced Mobile Loading State */}
             {iframeLoading && (
               <div className="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center p-4">
                 <div className="flex flex-col items-center gap-3 mb-4">
                   <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600 animate-spin" />
                   <div className="text-center">
-                    <p className="text-lg sm:text-xl font-semibold text-slate-800">Loading Survey...</p>
-                    <p className="text-sm text-slate-600">Please wait while we prepare your survey</p>
+                    <p className="text-lg sm:text-xl font-semibold text-slate-800">
+                      {isMobile() ? "📱 Loading Mobile Survey..." : "Loading Survey..."}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      {isMobile() ? "Survey will load directly in this window" : "Please wait while we prepare your survey"}
+                    </p>
                   </div>
                 </div>
                 <div className="w-48 sm:w-64 bg-slate-200 rounded-full h-2 mb-6">
@@ -824,14 +836,16 @@ export const CPXSurveyModal = ({
                 </div>
                 
                 {/* Mobile-specific loading message */}
-                <div className="sm:hidden text-center">
-                  <p className="text-xs text-slate-500">
-                    📱 Mobile Tip: If the survey doesn't load, try the "New Tab" button above
-                  </p>
-                </div>
+                {isMobile() && (
+                  <div className="text-center bg-blue-50 rounded-lg p-3 max-w-xs">
+                    <p className="text-xs text-blue-700 font-medium">
+                      📱 Mobile Optimized: Survey loads directly in this interface - no new tabs!
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-
+            
             {/* Enhanced Mobile Ticket Reward Success State */}
             {showTicketReward && (
               <div className="absolute inset-0 bg-green-50 z-20 flex flex-col items-center justify-center p-4 sm:p-6">
@@ -862,15 +876,15 @@ export const CPXSurveyModal = ({
                     )}
                   </div>
                   
-                  {/* Mobile-specific action button */}
+                  {/* Mobile/Desktop action button */}
                   <Button
                     onClick={() => {
-                      setIsOpen(false);
-                      router.push('/dashboard');
+                      handleOpenChange(false);
+                      router.refresh();
                     }}
                     className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg"
                   >
-                    🎯 View My Dashboard
+                    🎯 {isMobile() ? "Return to Dashboard" : "View My Dashboard"}
                   </Button>
                 </div>
               </div>
@@ -887,14 +901,16 @@ export const CPXSurveyModal = ({
                 onError={handleIframeError}
                 className="rounded-lg w-full h-full"
                 title="CPX Research Survey"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox allow-downloads"
                 ref={iframeRef}
                 style={{ 
-                  minHeight: 'calc(100vh - 450px)',
+                  minHeight: isMobile() ? 'calc(100vh - 350px)' : 'calc(100vh - 450px)',
                   border: 'none',
-                  background: 'white'
+                  background: 'white',
+                  width: '100%',
+                  height: '100%'
                 }}
-                allow="fullscreen"
+                allow="fullscreen; camera; microphone; geolocation"
               />
             )}
           </div>
