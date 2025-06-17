@@ -7,6 +7,7 @@ import { Ticket, Clock, ExternalLink } from "lucide-react";
 import { generateCPXSurveyURL } from "@/lib/cpx-utils";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
+import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
 
 interface LotteryCountdownProps {
   userId: string;
@@ -23,6 +24,7 @@ export const LotteryCountdown = ({
     minutes: 0,
     seconds: 0,
   });
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
 
   // Calculate next Thursday at 18:30 IST (same logic as landing page)
   const getNextThursdayIST = () => {
@@ -199,22 +201,40 @@ export const LotteryCountdown = ({
           <Button 
             onClick={() => {
               try {
-                // Generate the CPX survey URL
-                const surveyUrl = generateCPXSurveyURL({ id: userId });
+                // Check if user is on mobile
+                const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
-                // Open directly in new tab
-                window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+                if (isMobile) {
+                  // Mobile: Open the survey modal popup
+                  setShowSurveyModal(true);
+                  
+                  toast.success("📱 Opening survey popup...", {
+                    duration: 2000,
+                    icon: "🎫",
+                    style: {
+                      border: '2px solid #3b82f6',
+                      padding: '16px',
+                      fontSize: '14px',
+                      maxWidth: '350px',
+                    },
+                  });
+                  
+                } else {
+                  // Desktop: Generate the CPX survey URL and open in new tab
+                  const surveyUrl = generateCPXSurveyURL({ id: userId });
+                  window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+                  
+                  toast.success("🔗 Survey opened in new tab! Complete it to earn your ticket.", {
+                    duration: 6000,
+                    icon: "🎫",
+                    style: {
+                      border: '2px solid #3b82f6',
+                      padding: '16px',
+                      fontSize: '14px',
+                    },
+                  });
+                }
                 
-                // Show user confirmation
-                toast.success("🔗 Survey opened in new tab! Complete it to earn your ticket.", {
-                  duration: 6000,
-                  icon: "🎫",
-                  style: {
-                    border: '2px solid #3b82f6',
-                    padding: '16px',
-                    fontSize: '14px',
-                  },
-                });
               } catch (error) {
                 console.error("Error opening survey:", error);
                 toast.error("❌ Failed to open survey. Please try again.", {
@@ -230,10 +250,22 @@ export const LotteryCountdown = ({
             className="w-full bg-gradient-to-r from-blue-400 to-blue-300 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-2 md:py-3 px-4 md:px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
           >
             <ExternalLink className="h-4 w-4 md:h-5 md:w-5" />
-            <span className="text-base md:text-lg">Claim Your Ticket</span>
+            <span className="text-base md:text-lg">📱 Claim Your Ticket</span>
           </Button>
         </div>
       </CardContent>
+
+      {/* Mobile Survey Modal */}
+      <CPXSurveyModal
+        user={{ id: userId }}
+        open={showSurveyModal}
+        onOpenChange={setShowSurveyModal}
+        onSurveyComplete={(success) => {
+          // Optional: Add any specific handling after survey completion
+        }}
+        isLoading={false}
+        disabled={false}
+      />
     </Card>
   );
 }; 

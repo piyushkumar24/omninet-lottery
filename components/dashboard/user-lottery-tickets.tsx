@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { generateCPXSurveyURL } from "@/lib/cpx-utils";
 import { toast } from "react-hot-toast";
+import { CPXSurveyModal } from "@/components/survey/cpx-survey-modal";
 
 interface UserLotteryTicketsProps {
   userId: string;
@@ -45,6 +46,7 @@ export const UserLotteryTickets = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lotteryStatus, setLotteryStatus] = useState<LotteryStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
 
   // Fetch lottery status from optimized endpoint
   const fetchLotteryStatus = async (showLoader = false) => {
@@ -210,27 +212,45 @@ export const UserLotteryTickets = ({
           <Button 
             onClick={() => {
               try {
-                // Generate the CPX survey URL
-                const surveyUrl = generateCPXSurveyURL({ id: userId });
+                // Check if user is on mobile
+                const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 
-                // Open directly in new tab
-                window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+                if (isMobile) {
+                  // Mobile: Open the survey modal popup
+                  setShowSurveyModal(true);
+                  
+                  toast.success("📱 Opening survey popup...", {
+                    duration: 2000,
+                    icon: "🎫",
+                    style: {
+                      border: '2px solid #3b82f6',
+                      padding: '16px',
+                      fontSize: '14px',
+                      maxWidth: '350px',
+                    },
+                  });
+                  
+                } else {
+                  // Desktop: Generate the CPX survey URL and open in new tab
+                  const surveyUrl = generateCPXSurveyURL({ id: userId });
+                  window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+                  
+                  toast.success("🔗 Survey opened in new tab! Complete it to earn your ticket.", {
+                    duration: 6000,
+                    icon: "🎫",
+                    style: {
+                      border: '2px solid #3b82f6',
+                      padding: '16px',
+                      fontSize: '14px',
+                    },
+                  });
+                  
+                  // Refresh data after potential survey completion for desktop
+                  setTimeout(() => {
+                    fetchLotteryStatus(false);
+                  }, 2000);
+                }
                 
-                // Show user confirmation
-                toast.success("🔗 Survey opened in new tab! Complete it to earn your ticket.", {
-                  duration: 6000,
-                  icon: "🎫",
-                  style: {
-                    border: '2px solid #3b82f6',
-                    padding: '16px',
-                    fontSize: '14px',
-                  },
-                });
-                
-                // Refresh data after potential survey completion
-                setTimeout(() => {
-                  fetchLotteryStatus(false);
-                }, 2000);
               } catch (error) {
                 console.error("Error opening survey:", error);
                 toast.error("❌ Failed to open survey. Please try again.", {
@@ -246,7 +266,7 @@ export const UserLotteryTickets = ({
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
           >
             <ExternalLink className="h-5 w-5" />
-            <span className="text-lg">Claim Your Ticket</span>
+            <span className="text-lg">📱 Claim Your Ticket</span>
           </Button>
         </div>
         
@@ -267,6 +287,19 @@ export const UserLotteryTickets = ({
           </div>
         )}
       </CardContent>
+
+      {/* Mobile Survey Modal */}
+      <CPXSurveyModal
+        user={{ id: userId }}
+        open={showSurveyModal}
+        onOpenChange={setShowSurveyModal}
+        onSurveyComplete={(success) => {
+          // Refresh lottery status after survey completion
+          fetchLotteryStatus(false);
+        }}
+        isLoading={false}
+        disabled={false}
+      />
     </Card>
   );
 }; 
