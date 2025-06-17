@@ -8,7 +8,7 @@ const domain = process.env.NEXT_PUBLIC_APP_URL;
 export const sendTwoFactorTokenEmail = async (email: string, token: string) => {
   try {
     const result = await resend.emails.send({
-      from: 'noreply@resend.dev',
+      from: 'noreply@0mninetlottery.com',
       to: email,
       subject: '2FA Code - 0MNINET',
       html: `
@@ -41,7 +41,7 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
 
   try {
     const result = await resend.emails.send({
-      from: 'noreply@resend.dev',
+      from: 'noreply@0mninetlottery.com',
       to: email,
       subject: 'Reset Your Password - 0MNINET',
       html: `
@@ -220,7 +220,7 @@ export const sendVerificationEmail = async (email: string, token: string, userNa
 
   try {
     const result = await resend.emails.send({
-      from: 'noreply@resend.dev',
+      from: 'noreply@0mninetlottery.com',
       to: email,
       subject: 'Confirmation Link – 0MNINET Lottery',
       html: emailHtml,
@@ -259,7 +259,7 @@ export const sendTicketApplicationEmail = async (
 
   try {
     const result = await resend.emails.send({
-      from: 'noreply@resend.dev',
+      from: 'noreply@0mninetlottery.com',
       to: email,
       subject: '🎯 Ticket Earned - Your Entry is Confirmed! - 0MNINET Lottery',
       html: `
@@ -515,7 +515,7 @@ export const sendWinnerNotificationEmail = async (
 
   try {
     const result = await resend.emails.send({
-      from: 'noreply@resend.dev',
+      from: 'noreply@0mninetlottery.com',
       to: email,
       subject: `🏆 CONGRATULATIONS! You Won the $${prizeAmount} Lottery Prize - 0MNINET`,
       html: emailHtml,
@@ -699,7 +699,7 @@ export const sendNonWinnerEmail = async (
 
   try {
     const result = await resend.emails.send({
-      from: 'noreply@resend.dev',
+      from: 'noreply@0mninetlottery.com',
       to: email,
       subject: 'Better Luck Next Time - Get 2 Bonus Tickets!',
       html: emailHtml,
