@@ -71,7 +71,7 @@ const nextConfig = {
   
   // Environment variable handling
   env: {
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://0mninetlottery.com',
   },
   
   // Deployment settings

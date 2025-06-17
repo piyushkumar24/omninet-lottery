@@ -321,7 +321,7 @@ async function main() {
     console.log('=== Ticket Award Testing Script ===');
     
     const userId = await question('Enter user ID to test: ');
-    const baseUrl = await question('Enter base URL (e.g., http://localhost:3000): ');
+    const baseUrl = await question('Enter base URL (e.g., https://0mninetlottery.com): ');
     
     console.log('\n=== Testing Options ===');
     console.log('1. Test emergency ticket award (direct DB)');
