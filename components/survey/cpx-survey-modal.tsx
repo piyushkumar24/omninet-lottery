@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,19 +67,38 @@ export const CPXSurveyModal = ({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const messageCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Create a stable mobile survey URL that never changes
+  const stableMobileSurveyUrl = useMemo(() => {
+    if (user && typeof window !== 'undefined') {
+      const isMobileDevice = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobileDevice) {
+        let url = generateCPXSurveyURL(user);
+        url += '&mobile=1&embedded=1&stable=1';
+        console.log('🔒 Generated stable mobile survey URL (will never change)');
+        return url;
+      }
+    }
+    return '';
+  }, [user]);
+
   // Handle external control of modal state
   useEffect(() => {
     if (open !== undefined) {
       setIsOpen(open);
       if (open && !surveyUrl) {
-        // Generate survey URL when modal opens
-        const url = generateCPXSurveyURL(user);
-        setSurveyUrl(url);
+        // Use stable URL for mobile, generate fresh for desktop
+        if (isMobile()) {
+          setSurveyUrl(stableMobileSurveyUrl);
+          console.log('📱 Using stable mobile survey URL');
+        } else {
+          let url = generateCPXSurveyURL(user);
+          setSurveyUrl(url);
+        }
         setIframeLoading(true);
         setSurveyError(null);
       }
     }
-  }, [open, user]); // Remove surveyUrl from dependencies to prevent infinite loop
+  }, [open, user, stableMobileSurveyUrl]); // Include stable URL for mobile
 
   // Handle internal modal state changes
   const handleOpenChange = (newOpen: boolean) => {
@@ -88,18 +107,23 @@ export const CPXSurveyModal = ({
       onOpenChange(newOpen);
     }
     if (newOpen && !surveyUrl && open === undefined) {
-      // Generate survey URL when modal opens via internal trigger
-      const url = generateCPXSurveyURL(user);
-      setSurveyUrl(url);
+      // Use stable URL for mobile, generate fresh for desktop
+      if (isMobile()) {
+        setSurveyUrl(stableMobileSurveyUrl);
+        console.log('📱 Using stable mobile survey URL (internal trigger)');
+      } else {
+        let url = generateCPXSurveyURL(user);
+        setSurveyUrl(url);
+      }
       setIframeLoading(true);
       setSurveyError(null);
     }
     if (!newOpen) {
-      // Reset state when closing
-      setIframeLoading(true);
+      // Reset state when closing - but don't reset iframe loading for mobile
       setSurveyError(null);
       setShowTicketReward(false);
       setVerifyingTicket(false);
+      // Don't reset iframe loading to prevent reloads
     }
   };
 
@@ -399,8 +423,14 @@ export const CPXSurveyModal = ({
     }
   }, []);
 
-  // Update the useEffect to call clearCPXCookies when modal opens
+  // Update the useEffect to call clearCPXCookies when modal opens - DISABLED FOR MOBILE
   useEffect(() => {
+    // SKIP THIS ENTIRELY FOR MOBILE - this is what causes the reloading!
+    if (isMobile()) {
+      console.log('Mobile detected - skipping URL regeneration to prevent reloading');
+      return;
+    }
+    
     if (isOpen && user) {
       // Clear any CPX-related cookies first
       clearCPXCookies();
@@ -422,18 +452,23 @@ export const CPXSurveyModal = ({
     }
   }, [isOpen, user, retryCount, clearCPXCookies]);
 
-  // Setup continuous monitoring for "no surveys" message
+  // Setup continuous monitoring for "no surveys" message - DISABLED FOR MOBILE
   useEffect(() => {
+    // Skip aggressive monitoring for mobile to prevent reloading issues
+    if (isMobile()) {
+      return;
+    }
+    
     if (isOpen && !surveyError && !showTicketReward && surveyUrl) {
       // Cleanup any existing interval first
       if (messageCheckIntervalRef.current) {
         clearInterval(messageCheckIntervalRef.current);
       }
       
-      // Set up continuous checking every 2 seconds
+      // Set up continuous checking every 5 seconds (less aggressive)
       messageCheckIntervalRef.current = setInterval(() => {
         checkForNoSurveysMessage();
-      }, 2000);
+      }, 5000);
     }
     
     return () => {
@@ -445,8 +480,13 @@ export const CPXSurveyModal = ({
     };
   }, [isOpen, surveyError, showTicketReward, surveyUrl, checkForNoSurveysMessage]);
 
-  // Verify ticket was awarded 5 seconds after showing success
+  // Verify ticket was awarded 5 seconds after showing success - DISABLED FOR MOBILE
   useEffect(() => {
+    // Skip verification for mobile to prevent any interference
+    if (isMobile()) {
+      return;
+    }
+    
     let timeoutId: NodeJS.Timeout;
     
     if (showTicketReward && !verifyingTicket) {
@@ -469,10 +509,10 @@ export const CPXSurveyModal = ({
   const handleOpenInNewTab = () => {
     if (surveyUrl) {
       if (isMobile()) {
-        // Mobile: Keep survey embedded in the modal - DO NOT navigate away
-        toast.success("📱 Loading embedded survey...", {
-          duration: 2000,
-          icon: "🔄",
+        // Mobile: Do nothing - survey is already embedded and loading
+        toast.success("📱 Survey is loading below...", {
+          duration: 1000,
+          icon: "📋",
           style: {
             fontSize: '16px',
             padding: '16px',
@@ -481,12 +521,7 @@ export const CPXSurveyModal = ({
           },
         });
         
-        // Just reload the iframe to ensure it works on mobile
-        setIframeLoading(true);
-        
-        // Force iframe reload with mobile-optimized parameters
-        const mobileOptimizedUrl = `${surveyUrl}&mobile=1&embedded=1`;
-        setSurveyUrl(mobileOptimizedUrl);
+        // DO NOT modify the URL or reload anything for mobile
         
       } else {
         // Desktop: Keep existing behavior (new tab)
@@ -501,11 +536,11 @@ export const CPXSurveyModal = ({
     }
   };
 
-  // Enhanced mobile survey completion detection
+  // Enhanced mobile survey completion detection - DISABLED to prevent instability
   useEffect(() => {
-    // Check if user is returning from mobile survey - this is no longer needed since we're not navigating away
-    // But keep the instant ticket checking functionality
-    checkForInstantTicket();
+    // Disabled automatic ticket checking to prevent iframe reloading issues
+    // Tickets will be handled via CPX postback or manual completion detection
+    console.log('Mobile survey modal loaded - ticket checking disabled for stability');
   }, []);
 
   const handleRetry = () => {
@@ -578,7 +613,13 @@ export const CPXSurveyModal = ({
       onSurveyComplete(false);
     }
     
-    // Check for URL parameters indicating survey completion
+    // For mobile, keep it simple - don't do aggressive checking that can cause instability
+    if (isMobile()) {
+      console.log('Mobile survey loaded successfully');
+      return;
+    }
+    
+    // Only do URL checking for desktop
     try {
       const iframe = iframeRef.current;
       if (iframe && iframe.contentWindow) {
@@ -589,8 +630,6 @@ export const CPXSurveyModal = ({
             iframeUrl.includes('status=complete') || 
             iframeUrl.includes('status=success')) {
           console.log('Survey completion detected from URL parameters:', iframeUrl);
-          
-          // Show completion message - ticket will come via CPX postback
           showSurveyCompletionMessage();
           return;
         }
@@ -599,68 +638,6 @@ export const CPXSurveyModal = ({
       // Cross-origin restrictions may prevent this check
       console.log('Cannot check iframe URL due to cross-origin restrictions');
     }
-    
-    // Check iframe content for survey completion or error messages
-    setTimeout(() => {
-      try {
-        const iframe = document.querySelector('iframe[title="CPX Research Survey"]') as HTMLIFrameElement;
-        if (iframe && iframe.contentDocument) {
-          const iframeContent = iframe.contentDocument.body.innerText.toLowerCase();
-          
-          // Check for survey success messages
-          if (iframeContent.includes('thank you for completing') || 
-              iframeContent.includes('survey completed') ||
-              iframeContent.includes('successfully completed')) {
-            console.log('Survey completion detected from content:', 
-              iframeContent.substring(0, 100) + '...');
-            
-            // Show completion message - ticket will come via CPX postback
-            showSurveyCompletionMessage();
-            return;
-          }
-          
-          // Check for no surveys message
-          if (iframeContent.includes('unfortunately we could not find a survey') || 
-              iframeContent.includes('we could not find a survey for your profile') ||
-              iframeContent.includes('try again in a few hours') ||
-              iframeContent.includes('no survey available')) {
-            console.log('No surveys available detected with message:', 
-              iframeContent.substring(0, 100) + '...');
-            setSurveyError("no_surveys");
-            
-            // For no surveys, award ticket automatically
-            setTimeout(() => {
-              handleNoSurveysAvailable();
-            }, 1500);
-            return;
-          }
-          
-          // Check for disqualification message
-          if (iframeContent.includes('unfortunately, you did not qualify') ||
-              iframeContent.includes('did not qualify for this survey') ||
-              iframeContent.includes('you have been disqualified')) {
-            console.log('Survey disqualification detected with message:', 
-              iframeContent.substring(0, 100) + '...');
-            setSurveyError("disqualified");
-            
-            // For disqualification, don't automatically award ticket
-            // User must click claim button manually
-            return;
-          }
-        }
-      } catch (e) {
-        // Cross-origin restrictions prevent this check, but that's okay
-        console.log('Cannot check iframe content due to cross-origin restrictions');
-      }
-      
-      // Set up a longer check for inactivity
-      const noActivityTimer = setTimeout(() => {
-        console.log('No activity detected for 15 seconds, checking survey status');
-        checkForNoSurveysMessage();
-      }, 15000);
-      
-      return () => clearTimeout(noActivityTimer);
-    }, 3000);
   };
 
   const handleIframeError = () => {
@@ -694,19 +671,19 @@ export const CPXSurveyModal = ({
         </DialogTrigger>
       )}
       
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 shadow-2xl overflow-hidden flex flex-col sm:max-h-[90vh]">
-        <DialogHeader className="border-b border-slate-200 pb-4 flex-shrink-0">
-          <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white shadow-lg">
-                <ClipboardCheck className="h-5 w-5 sm:h-6 sm:w-6" />
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[98vh] bg-white border-2 border-slate-200 shadow-2xl overflow-hidden flex flex-col">
+        <DialogHeader className={`border-b border-slate-200 flex-shrink-0 ${isMobile() ? 'pb-2 pt-2' : 'pb-4'}`}>
+          <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className={`p-1.5 sm:p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg text-white shadow-lg`}>
+                <ClipboardCheck className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
               <div>
-                <DialogTitle className="text-lg sm:text-2xl font-bold text-slate-800">
-                  {isMobile() ? "📱 Mobile Survey" : "Complete Survey & Earn Tickets"}
+                <DialogTitle className={`font-bold text-slate-800 ${isMobile() ? 'text-base' : 'text-lg sm:text-2xl'}`}>
+                  {isMobile() ? "📱 Survey" : "Complete Survey & Earn Tickets"}
                 </DialogTitle>
-                <DialogDescription className="text-slate-600 text-sm sm:text-base mt-1">
-                  {isMobile() ? "Embedded survey - stay in the app!" : "Answer a few questions and earn 1 lottery ticket"}
+                <DialogDescription className={`text-slate-600 mt-0.5 ${isMobile() ? 'text-xs' : 'text-sm sm:text-base'}`}>
+                  {isMobile() ? "Complete to earn lottery ticket" : "Answer a few questions and earn 1 lottery ticket"}
                 </DialogDescription>
               </div>
             </div>
@@ -717,34 +694,18 @@ export const CPXSurveyModal = ({
                 variant="outline"
                 size="sm"
                 onClick={handleMobileClose}
-                className="flex items-center gap-2 bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 px-4 py-2 rounded-lg font-medium shadow-sm"
+                className={`flex items-center gap-1.5 bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 rounded-lg font-medium shadow-sm ${isMobile() ? 'px-3 py-1.5 text-xs' : 'px-4 py-2'}`}
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Close Survey</span>
-                <span className="sm:hidden">✕ Close</span>
+                <span className="sm:hidden">Close</span>
               </Button>
             </div>
           </div>
           
-          {/* Mobile-Optimized Instructions */}
-          {isMobile() && (
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3 mt-4">
-              <div className="flex items-start gap-3">
-                <Shield className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-green-900 mb-2 text-sm">📱 Mobile Survey Mode</h3>
-                  <ul className="text-green-800 text-xs space-y-1">
-                    <li>• Survey loads directly in this window</li>
-                    <li>• No need to leave the main app</li>
-                    <li>• Use the close button above to return anytime</li>
-                    <li>• Complete the survey to earn your ticket instantly</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
+
           
-          {/* Desktop Instructions */}
+          {/* Desktop Instructions Only */}
           {!isMobile() && (
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 sm:p-4 mt-4">
               <div className="flex items-start gap-3">
@@ -762,20 +723,20 @@ export const CPXSurveyModal = ({
             </div>
           )}
           
-          {/* Action Buttons - Mobile vs Desktop */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRetry}
-              className="flex items-center justify-center gap-2 bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 text-sm py-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span className="hidden sm:inline">Retry</span>
-              <span className="sm:hidden">🔄 Reload</span>
-            </Button>
-            
-            {!isMobile() && (
+          {/* Action Buttons - Desktop Only */}
+          {!isMobile() && (
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRetry}
+                className="flex items-center justify-center gap-2 bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 text-sm py-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span className="hidden sm:inline">Retry</span>
+                <span className="sm:hidden">🔄 Reload</span>
+              </Button>
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -785,62 +746,37 @@ export const CPXSurveyModal = ({
                 <ExternalLink className="h-4 w-4" />
                 Open in New Tab
               </Button>
-            )}
-            
-            {isMobile() && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // Force iframe reload for mobile
-                  setIframeLoading(true);
-                  const currentUrl = surveyUrl;
-                  setSurveyUrl("");
-                  setTimeout(() => setSurveyUrl(currentUrl), 100);
-                }}
-                className="flex items-center justify-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 text-sm py-2"
-              >
-                <ExternalLink className="h-4 w-4" />
-                📱 Reload Survey
-              </Button>
-            )}
-          </div>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
           {/* Survey Frame Container - Enhanced for Mobile */}
           <div 
-            className="relative bg-white rounded-xl border-2 border-slate-200 shadow-lg overflow-hidden m-2 sm:m-4 h-full" 
+            className={`relative bg-white rounded-xl border-2 border-slate-200 shadow-lg overflow-hidden h-full ${isMobile() ? 'm-1' : 'm-2 sm:m-4'}`}
             style={{ 
-              minHeight: isMobile() ? 'calc(100vh - 350px)' : 'calc(100vh - 450px)',
-              height: isMobile() ? 'calc(100vh - 350px)' : 'auto'
+              minHeight: isMobile() ? 'calc(100vh - 150px)' : 'calc(100vh - 450px)',
+              height: isMobile() ? 'calc(100vh - 150px)' : 'auto'
             }}
           >
             
-            {/* Enhanced Mobile Loading State */}
+            {/* Mobile-Optimized Loading State */}
             {iframeLoading && (
               <div className="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center p-4">
                 <div className="flex flex-col items-center gap-3 mb-4">
                   <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600 animate-spin" />
                   <div className="text-center">
                     <p className="text-lg sm:text-xl font-semibold text-slate-800">
-                      {isMobile() ? "📱 Loading Mobile Survey..." : "Loading Survey..."}
+                      {isMobile() ? "📱 Loading Survey..." : "Loading Survey..."}
                     </p>
                     <p className="text-sm text-slate-600">
-                      {isMobile() ? "Survey will load directly in this window" : "Please wait while we prepare your survey"}
+                      {isMobile() ? "Please wait..." : "Please wait while we prepare your survey"}
                     </p>
                   </div>
                 </div>
-                <div className="w-48 sm:w-64 bg-slate-200 rounded-full h-2 mb-6">
-                  <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-                </div>
-                
-                {/* Mobile-specific loading message */}
-                {isMobile() && (
-                  <div className="text-center bg-blue-50 rounded-lg p-3 max-w-xs">
-                    <p className="text-xs text-blue-700 font-medium">
-                      📱 Mobile Optimized: Survey loads directly in this interface - no new tabs!
-                    </p>
+                {!isMobile() && (
+                  <div className="w-48 sm:w-64 bg-slate-200 rounded-full h-2 mb-6">
+                    <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
                   </div>
                 )}
               </div>
@@ -893,18 +829,19 @@ export const CPXSurveyModal = ({
             {/* Enhanced Mobile-Optimized Survey Iframe */}
             {surveyUrl && !surveyError && !showTicketReward && (
               <iframe
+                key={isMobile() ? 'mobile-survey-static' : surveyUrl} // Static key for mobile to prevent reloads
                 src={surveyUrl}
                 width="100%"
                 height="100%"
                 frameBorder="0"
-                onLoad={handleIframeLoad}
-                onError={handleIframeError}
+                onLoad={isMobile() ? () => setIframeLoading(false) : handleIframeLoad} // Simplified for mobile
+                onError={isMobile() ? () => setIframeLoading(false) : handleIframeError} // Simplified for mobile
                 className="rounded-lg w-full h-full"
                 title="CPX Research Survey"
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox allow-downloads"
                 ref={iframeRef}
                 style={{ 
-                  minHeight: isMobile() ? 'calc(100vh - 350px)' : 'calc(100vh - 450px)',
+                  minHeight: isMobile() ? 'calc(100vh - 150px)' : 'calc(100vh - 450px)',
                   border: 'none',
                   background: 'white',
                   width: '100%',
