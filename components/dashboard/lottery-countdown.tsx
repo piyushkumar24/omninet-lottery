@@ -125,25 +125,25 @@ export const LotteryCountdown = ({
 
   return (
     <Card className="bg-blue-600 text-white rounded-3xl border-0 overflow-hidden shadow-lg h-full">
-      <CardContent className="p-4 md:p-6 space-y-3 md:space-y-4 flex flex-col h-full">
-        {/* Drawing Header - Styled to match landing page */}
-        <div className="flex items-center justify-center mb-6">
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl px-6 py-3 flex items-center gap-3">
-            <Clock className="h-6 w-6 text-white animate-pulse" />
-            <span className="text-lg font-semibold">Next Lottery Draw</span>
+      <CardContent className="p-3 md:p-4 lg:p-6 space-y-2 md:space-y-3 lg:space-y-4 flex flex-col h-full">
+        {/* Drawing Header - Optimized for desktop */}
+        <div className="flex items-center justify-center mb-2 md:mb-4 lg:mb-6">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl lg:rounded-2xl px-3 md:px-4 lg:px-6 py-2 lg:py-3 flex items-center gap-2 lg:gap-3">
+            <Clock className="h-4 w-4 lg:h-6 lg:w-6 text-white animate-pulse" />
+            <span className="text-sm md:text-base lg:text-lg font-semibold">Next Lottery Draw</span>
           </div>
         </div>
         
-        {/* Main content */}
-        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-3xl p-6 md:p-8">
-          <div className="grid grid-cols-4 gap-3 md:gap-6">
+        {/* Main content - Optimized spacing for desktop grid */}
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl lg:rounded-3xl p-3 md:p-4 lg:p-6">
+          <div className="grid grid-cols-4 gap-1 md:gap-2 lg:gap-4">
             {timeUnits.map((unit, index) => (
               <div key={unit.label} className="flex flex-col items-center group">
-                {/* Number display */}
+                {/* Number display - Responsive sizing for desktop grid */}
                 <div className={`
                   bg-gradient-to-br ${unit.color} 
-                  text-white rounded-2xl w-full
-                  py-2 md:py-4 text-center 
+                  text-white rounded-lg md:rounded-xl lg:rounded-2xl w-full
+                  py-1 md:py-2 lg:py-3 text-center 
                   shadow-lg shadow-black/10
                   transition-all duration-300 
                   group-hover:scale-105 group-hover:shadow-xl
@@ -152,51 +152,51 @@ export const LotteryCountdown = ({
                   {/* Animated background pattern */}
                   <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   
-                  {/* Number */}
-                  <span className="text-2xl md:text-4xl font-bold relative z-10 font-mono">
+                  {/* Number - Optimized for grid constraints */}
+                  <span className="text-lg md:text-xl lg:text-3xl font-bold relative z-10 font-mono leading-none">
                     {formatNumber(unit.value)}
                   </span>
                   
                   {/* Subtle glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg md:rounded-xl lg:rounded-2xl"></div>
                 </div>
                 
-                {/* Label */}
-                <span className="mt-3 text-sm md:text-base font-medium text-white/80 transition-colors duration-300 group-hover:text-opacity-100">
+                {/* Label - Compact for desktop */}
+                <span className="mt-1 md:mt-2 lg:mt-3 text-xs md:text-sm font-medium text-white/80 transition-colors duration-300 group-hover:text-opacity-100">
                   {unit.label}
                 </span>
               </div>
             ))}
           </div>
 
-          {/* Additional info */}
-          <div className="mt-6 pt-6 border-t border-white/20">
+          {/* Additional info - Compact for desktop */}
+          <div className="mt-3 md:mt-4 lg:mt-6 pt-3 md:pt-4 lg:pt-6 border-t border-white/20">
             <div className="text-center">
-              <p className="text-sm text-white/80 font-medium">
-                Next draw: Thursday at 18:30 IST
+              <p className="text-xs md:text-sm text-white/80 font-medium">
+                Thursday at 18:30 IST
               </p>
-              <div className="flex items-center justify-center mt-2 gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-white/80">
-                  Weekly lottery - tickets reset after each draw
+              <div className="flex items-center justify-center mt-1 md:mt-2 gap-2">
+                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-white/80 hidden md:inline">
+                  Weekly lottery
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Prize Amount */}
-        <div className="bg-slate-900 text-white rounded-2xl p-4 md:p-6 flex flex-col items-center">
-          <div className="flex items-center space-x-3 md:space-x-4">
-            <span className="text-3xl md:text-5xl font-bold">${prizeAmount}</span>
-            <div className="flex flex-col">
-              <img src="/amazon-logo.png" alt="Amazon" className="h-6 md:h-8" />
-              <span className="text-xl md:text-2xl">gift card</span>
+        {/* Prize Amount - Compact for desktop grid */}
+        <div className="bg-slate-900 text-white rounded-xl lg:rounded-2xl p-3 md:p-4 lg:p-6 flex flex-col items-center">
+          <div className="flex items-center justify-center space-x-2 md:space-x-3 lg:space-x-4">
+            <span className="text-xl md:text-2xl lg:text-4xl font-bold">${prizeAmount}</span>
+            <div className="flex flex-col items-center">
+              <img src="/amazon-logo.png" alt="Amazon" className="h-4 md:h-5 lg:h-8" />
+              <span className="text-sm md:text-base lg:text-xl">gift card</span>
             </div>
           </div>
         </div>
 
-        {/* Claim Your Ticket Button */}
+        {/* Claim Your Ticket Button - Compact for desktop */}
         <div className="mt-auto">
           <Button 
             onClick={() => {
@@ -247,10 +247,10 @@ export const LotteryCountdown = ({
                 });
               }
             }}
-            className="w-full bg-gradient-to-r from-blue-400 to-blue-300 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-2 md:py-3 px-4 md:px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-blue-400 to-blue-300 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-2 lg:py-3 px-3 lg:px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
           >
-            <ExternalLink className="h-4 w-4 md:h-5 md:w-5" />
-            <span className="text-base md:text-lg">📱 Claim Your Ticket</span>
+            <ExternalLink className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5" />
+            <span className="text-sm md:text-base lg:text-lg">📱 Claim Your Ticket</span>
           </Button>
         </div>
       </CardContent>
