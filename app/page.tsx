@@ -217,7 +217,7 @@ export default function Home() {
               <div className="bg-white/10 backdrop-blur-md rounded-full p-2 mr-3 group-hover:bg-white/20 transition-all duration-300">
                 <Image
                   src="/main-logo.png"
-                  alt="0mninet Logo"
+                  alt="0mninet Lottery Logo - Digital Inclusion Platform"
                   width={32}
                   height={32}
                   className="rounded-lg"
@@ -566,7 +566,7 @@ export default function Home() {
                       <div className="relative w-24 h-16">
                         <Image
                           src="/giftCard.png"
-                          alt="Amazon Gift Card"
+                          alt="$50 Amazon Gift Card Prize - Weekly Lottery Draw Winner Reward"
                           fill
                           className="object-contain"
                         />
@@ -1387,7 +1387,7 @@ export default function Home() {
                   <div className="bg-white/10 backdrop-blur-md rounded-full p-3 mr-4 group-hover:bg-white/20 transition-all duration-300">
                     <Image
                       src="/main-logo.png"
-                      alt="0mninet Logo"
+                      alt="0mninet Lottery Platform - Global Digital Inclusion Initiative"
                       width={32}
                       height={32}
                       className="rounded-lg"

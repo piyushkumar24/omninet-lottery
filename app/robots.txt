@@ -1,0 +1,31 @@
+User-agent: *
+Allow: /
+
+# Allow all search engines to crawl the site
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# Disallow admin and api routes from search engines
+Disallow: /admin
+Disallow: /api/
+Disallow: /auth/
+Disallow: /_next/
+Disallow: /dashboard/
+
+# Allow important pages
+Allow: /
+Allow: /auth/login
+Allow: /auth/register
+Allow: /policies
+
+# Sitemap location
+Sitemap: https://0mninetlottery.com/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1 
