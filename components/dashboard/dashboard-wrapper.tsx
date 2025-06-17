@@ -24,6 +24,10 @@ export const DashboardWrapper = ({ children }: DashboardWrapperProps) => {
     const socialStatus = searchParams.get('social');
     const errorType = searchParams.get('error');
     const newsletterStatus = searchParams.get('newsletter');
+    
+    // Handle new ticket confirmation from email
+    const ticketConfirmed = searchParams.get('ticket_confirmed');
+    const confirmationCode = searchParams.get('confirmation');
 
     // Handle referral success/error
     if (referralStatus === 'success') {
@@ -46,6 +50,44 @@ export const DashboardWrapper = ({ children }: DashboardWrapperProps) => {
           fontSize: '14px',
         },
       });
+    }
+
+    // Handle ticket confirmation from email link
+    if (ticketConfirmed === 'true') {
+      // Show enhanced confirmation message
+      toast.success("✅ Welcome back! Your lottery ticket is confirmed and active.", {
+        duration: 8000,
+        icon: "🎯",
+        style: {
+          border: '2px solid #10b981',
+          padding: '18px',
+          fontSize: '16px',
+          backgroundColor: '#ecfdf5',
+          color: '#064e3b',
+          maxWidth: '400px',
+        },
+      });
+      
+      // Show additional info about the confirmation
+      if (confirmationCode) {
+        setTimeout(() => {
+          toast(`🎫 Confirmation: ${confirmationCode}`, {
+            duration: 6000,
+            icon: "📋",
+            style: {
+              border: '2px solid #3b82f6',
+              padding: '12px',
+              fontSize: '14px',
+              backgroundColor: '#dbeafe',
+              color: '#1e40af',
+            },
+          });
+        }, 1000);
+      }
+      
+      // Clean up URL parameters
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
     }
 
     // Handle social media status
@@ -157,6 +199,57 @@ export const DashboardWrapper = ({ children }: DashboardWrapperProps) => {
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, '', cleanUrl);
     }
+
+    // Enhanced real-time checking for instant ticket notifications
+    const checkForInstantNotifications = async () => {
+      try {
+        const response = await fetch('/api/tickets/instant-verify', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.data.notifications?.length > 0) {
+            // Show notifications for new tickets
+            data.data.notifications.forEach((notification: any) => {
+              if (notification.type === 'TICKET_AWARDED') {
+                toast.success(notification.message, {
+                  duration: 6000,
+                  icon: "🎫",
+                  style: {
+                    border: '2px solid #10b981',
+                    padding: '16px',
+                    fontSize: '16px',
+                    backgroundColor: '#ecfdf5',
+                    maxWidth: '400px',
+                  },
+                });
+              }
+            });
+            
+            // Mark notifications as read
+            fetch('/api/tickets/instant-verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                notificationIds: data.data.notifications.map((n: any) => n.id),
+              }),
+            }).catch(console.error);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for instant notifications:', error);
+      }
+    };
+
+    // Check for instant notifications on mount
+    checkForInstantNotifications();
 
     // Listen for ticket award events from localStorage (for cross-tab communication)
     const handleStorageChange = (e: StorageEvent) => {

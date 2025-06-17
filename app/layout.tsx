@@ -4,6 +4,7 @@ import { SessionProvider } from 'next-auth/react'
 import { auth } from '@/auth'
 import './globals.css'
 import { Toaster } from "@/components/ui/sonner";
+import { MobileReturnButton } from "@/components/survey/mobile-return-button";
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -26,6 +27,7 @@ export default async function RootLayout({
         <body className={inter.className}>
           <Toaster />
           {children}
+          <MobileReturnButton />
         </body>
       </html>
     </SessionProvider>

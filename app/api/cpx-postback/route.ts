@@ -264,6 +264,7 @@ export async function GET(request: NextRequest) {
       // Email notification for survey completion
       try {
         if (user.email) {
+          // Send immediate confirmation email
           await sendTicketApplicationEmail(
             user.email,
             {
@@ -273,10 +274,33 @@ export async function GET(request: NextRequest) {
               confirmationCode: `SURVEY_${surveyAwardResult.ticketIds[0]}`,
             }
           );
-          console.log('📧 Survey completion email sent to:', user.email);
+          console.log('📧 Instant survey completion email sent to:', user.email);
         }
       } catch (emailError) {
         console.error('📧 Failed to send survey completion email (non-critical):', emailError);
+      }
+
+      // Send instant notification to frontend if user is active
+      try {
+        // Create a real-time notification record for instant delivery
+        await tx.settings.create({
+          data: {
+            key: `instant_notification_${user.id}_${Date.now()}`,
+            value: JSON.stringify({
+              userId: user.id,
+              type: 'TICKET_AWARDED',
+              source: 'SURVEY',
+              ticketCount: 1,
+              ticketIds: surveyAwardResult.ticketIds,
+              timestamp: new Date().toISOString(),
+              message: '🎉 Survey completed! Your ticket has been instantly credited.',
+            }),
+            description: 'Instant ticket delivery notification',
+          },
+        });
+        console.log('🔔 Instant notification created for user:', user.id);
+      } catch (notificationError) {
+        console.error('🔔 Failed to create instant notification:', notificationError);
       }
 
       return {

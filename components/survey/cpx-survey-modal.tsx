@@ -101,12 +101,21 @@ export const CPXSurveyModal = ({
     console.log('✅ Survey completion detected - tickets will be awarded via CPX postback');
     
     // Show user that survey is completed and ticket will be processed
-    toast.success("🎉 Survey completed! Your ticket will be awarded shortly.", {
-      duration: 5000,
+    toast.success("🎉 Survey completed! Your ticket has been instantly credited.", {
+      duration: 8000,
+      style: {
+        fontSize: '16px',
+        padding: '16px',
+        maxWidth: '400px',
+        border: '2px solid #22c55e',
+      },
     });
 
     setShowTicketReward(true);
     setTicketAwarded(true);
+    
+    // Start checking for instant ticket delivery
+    checkForInstantTicket();
     
     setTimeout(() => {
       if (onSurveyComplete) {
@@ -114,8 +123,76 @@ export const CPXSurveyModal = ({
       }
       // Refresh to show tickets awarded via CPX postback
       router.refresh();
-    }, 2000);
+    }, 3000); // Increased delay for better UX
   }, [onSurveyComplete, router]);
+
+  // New function to check for instant ticket delivery
+  const checkForInstantTicket = useCallback(async () => {
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    const checkTicket = async () => {
+      try {
+        attempts++;
+        const response = await fetch('/api/tickets/instant-verify', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.data.hasNewTickets) {
+            console.log('✅ Instant ticket delivery confirmed:', data.data);
+            
+            // Show success message
+            toast.success("🎫 Ticket instantly credited to your account!", {
+              duration: 6000,
+              style: {
+                fontSize: '16px',
+                padding: '16px',
+                maxWidth: '400px',
+                border: '2px solid #10b981',
+                backgroundColor: '#ecfdf5',
+              },
+            });
+            
+            // Update local state
+            setTicketAwarded(true);
+            setVerifyingTicket(false);
+            
+            // Close modal after confirmation
+            setTimeout(() => {
+              setIsOpen(false);
+              router.refresh();
+            }, 2000);
+            
+            return true;
+          }
+        }
+        
+        // Retry if not found and haven't exceeded max attempts
+        if (attempts < maxAttempts) {
+          setTimeout(checkTicket, 2000); // Check every 2 seconds
+        } else {
+          console.log('⚠️ Max attempts reached for instant ticket verification');
+          setVerifyingTicket(false);
+        }
+        
+      } catch (error) {
+        console.error('Error checking for instant ticket:', error);
+        if (attempts < maxAttempts) {
+          setTimeout(checkTicket, 2000);
+        }
+      }
+    };
+    
+    // Start checking
+    setVerifyingTicket(true);
+    checkTicket();
+  }, [router]);
 
   // Handler for when no surveys are available - DO NOT award tickets
   const handleNoSurveysAvailable = useCallback(async () => {
@@ -343,12 +420,128 @@ export const CPXSurveyModal = ({
     };
   }, [showTicketReward, verifyingTicket, verifyTicketAwarded]);
 
+  // Enhanced mobile detection
+  const isMobile = () => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  };
+
   const handleOpenInNewTab = () => {
     if (surveyUrl) {
-      window.open(surveyUrl, '_blank', 'noopener,noreferrer');
-      toast.success("Survey opened in new tab!");
+      if (isMobile()) {
+        // Mobile: Open in same window with proper return navigation
+        toast.success("🔄 Opening survey in mobile view...", {
+          duration: 3000,
+          icon: "📱",
+          style: {
+            fontSize: '16px',
+            padding: '16px',
+            maxWidth: '350px',
+            border: '2px solid #3b82f6',
+          },
+        });
+        
+        // Store return information
+        sessionStorage.setItem('survey_return_url', window.location.href);
+        sessionStorage.setItem('survey_mode', 'mobile');
+        
+        // Close the modal first
+        setIsOpen(false);
+        
+        // Navigate to survey in same window
+        setTimeout(() => {
+          window.location.href = surveyUrl;
+        }, 1000);
+        
+      } else {
+        // Desktop: Keep existing behavior
+        window.open(surveyUrl, '_blank', 'noopener,noreferrer');
+        toast.success("Survey opened in new tab!");
+      }
+      
+      // Mark survey as attempted
+      if (onSurveyComplete) {
+        onSurveyComplete(false);
+      }
     }
   };
+
+  // New function to handle mobile survey opening
+  const handleMobileSurveyOpen = () => {
+    // Store current location for return navigation
+    sessionStorage.setItem('survey_return_url', window.location.href);
+    sessionStorage.setItem('survey_mode', 'mobile');
+    
+    // Show mobile-specific loading message
+    toast.loading("🔄 Loading mobile survey...", {
+      duration: 2000,
+      style: {
+        fontSize: '16px',
+        padding: '16px',
+        maxWidth: '300px',
+      },
+    });
+    
+    // Open survey in same window after short delay
+    setTimeout(() => {
+      window.location.href = surveyUrl;
+    }, 1000);
+    
+    // Mark survey as attempted
+    if (onSurveyComplete) {
+      onSurveyComplete(false);
+    }
+  };
+
+  // Enhanced mobile survey completion detection
+  useEffect(() => {
+    // Check if user is returning from mobile survey
+    const surveyMode = sessionStorage.getItem('survey_mode');
+    const returnUrl = sessionStorage.getItem('survey_return_url');
+    
+    if (surveyMode === 'mobile' && returnUrl) {
+      // User is returning from mobile survey
+      sessionStorage.removeItem('survey_mode');
+      sessionStorage.removeItem('survey_return_url');
+      
+      // Start checking for ticket completion
+      checkForInstantTicket();
+      
+      // Show return message
+      toast.success("📱 Welcome back! Checking for survey completion...", {
+        duration: 4000,
+        style: {
+          fontSize: '16px',
+          padding: '16px',
+          maxWidth: '350px',
+          border: '2px solid #10b981',
+        },
+      });
+    }
+  }, []);
+
+  // Add mobile-specific return navigation
+  useEffect(() => {
+    // Listen for mobile back button or survey completion
+    const handleMobileReturn = () => {
+      const surveyMode = sessionStorage.getItem('survey_mode');
+      if (surveyMode === 'mobile') {
+        // User is returning from mobile survey
+        sessionStorage.removeItem('survey_mode');
+        sessionStorage.removeItem('survey_return_url');
+        
+        // Check for completion and show appropriate message
+        checkForInstantTicket();
+      }
+    };
+
+    // Listen for visibility change (when user returns to the app)
+    document.addEventListener('visibilitychange', handleMobileReturn);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleMobileReturn);
+    };
+  }, []);
 
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
@@ -373,14 +566,27 @@ export const CPXSurveyModal = ({
     });
   };
 
+  // Enhanced close handler with better mobile support
   const handleClose = async () => {
     // Ensure we mark this as a survey attempt even if modal is closed
     if (!showTicketReward && onSurveyComplete) {
       onSurveyComplete(false);
     }
     
-    // DO NOT award tickets when modal is closed - tickets should only come from CPX postback for completed surveys
-    console.log('🚫 Modal closed - no participation ticket awarded (tickets only awarded for completed surveys via CPX postback)');
+    // Show confirmation message for mobile users
+    if (window.innerWidth <= 768) {
+      toast("Survey closed. Check your dashboard for any earned tickets.", {
+        duration: 4000,
+        icon: "ℹ️",
+        style: {
+          fontSize: '14px',
+          padding: '12px',
+          maxWidth: '350px',
+        },
+      });
+    }
+    
+    console.log('🚫 Modal closed - tickets only awarded for completed surveys via CPX postback');
     
     // Close the modal immediately
     setIsOpen(false);
@@ -388,9 +594,20 @@ export const CPXSurveyModal = ({
     setSurveyError(null);
     setRetryCount(0);
     setShowTicketReward(false);
+    setVerifyingTicket(false);
     
     // Refresh to show any tickets that may have been awarded through legitimate CPX postback
     router.refresh();
+  };
+
+  // Enhanced mobile-friendly close button handler
+  const handleMobileClose = () => {
+    // Haptic feedback for mobile devices
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50);
+    }
+    
+    handleClose();
   };
 
   const handleIframeLoad = () => {
@@ -514,7 +731,7 @@ export const CPXSurveyModal = ({
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 shadow-2xl overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 shadow-2xl overflow-hidden flex flex-col sm:max-h-[90vh]">
         <DialogHeader className="border-b border-slate-200 pb-4 flex-shrink-0">
           <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div className="flex items-center gap-3">
@@ -531,187 +748,135 @@ export const CPXSurveyModal = ({
               </div>
             </div>
             
-            {/* Mobile Close Button */}
-            <div className="flex justify-center sm:hidden">
+            {/* Mobile-Optimized Close Button - Always Visible */}
+            <div className="flex justify-center sm:justify-end">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleClose}
-                className="flex items-center gap-2 bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300"
+                onClick={handleMobileClose}
+                className="flex items-center gap-2 bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 px-4 py-2 rounded-lg font-medium"
               >
                 <X className="h-4 w-4" />
-                Close
+                <span className="hidden sm:inline">Close</span>
+                <span className="sm:hidden">✕</span>
               </Button>
             </div>
           </div>
           
-          {/* How it Works - Always at top */}
+          {/* How it Works - Mobile Optimized */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 sm:p-4 mt-4">
             <div className="flex items-start gap-3">
               <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
+              <div className="flex-1">
                 <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">📋 How it Works</h3>
                 <ul className="text-blue-800 text-xs sm:text-sm space-y-1">
                   <li>• Complete the survey questions honestly and thoroughly</li>
                   <li>• Survey typically takes 2-5 minutes to complete</li>
                   <li>• You'll earn 1 lottery ticket upon completion</li>
+                  <li className="text-green-700 font-medium">• Tickets are instantly credited to your account</li>
                 </ul>
               </div>
             </div>
           </div>
           
-          {/* Action Buttons - Centered below How it Works */}
+          {/* Action Buttons - Mobile Optimized Layout */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center mt-4">
             <Button
               variant="outline"
               size="sm"
               onClick={handleRetry}
-              className="flex items-center justify-center gap-2 bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 text-sm"
+              className="flex items-center justify-center gap-2 bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 text-sm py-2"
             >
               <RefreshCw className="h-4 w-4" />
-              Retry
+              <span className="hidden sm:inline">Retry</span>
+              <span className="sm:hidden">🔄</span>
             </Button>
             
             <Button
               variant="outline"
               size="sm"
               onClick={handleOpenInNewTab}
-              className="flex items-center justify-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 text-sm"
+              className="flex items-center justify-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 text-sm py-2"
             >
               <ExternalLink className="h-4 w-4" />
-              Open in New Tab
-            </Button>
-            
-            {/* Desktop Close Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClose}
-              className="hidden sm:flex items-center justify-center gap-2 bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 text-sm"
-            >
-              <X className="h-4 w-4" />
-              Close
+              <span className="hidden sm:inline">Open in New Tab</span>
+              <span className="sm:hidden">📱 Start Survey</span>
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Survey Frame Container */}
-          <div className="relative bg-white rounded-xl border-2 border-slate-200 shadow-lg overflow-hidden m-4" style={{ minHeight: 'calc(100vh - 400px)' }}>
+        <div className="flex-1 overflow-hidden">
+          {/* Survey Frame Container - Mobile Optimized */}
+          <div className="relative bg-white rounded-xl border-2 border-slate-200 shadow-lg overflow-hidden m-2 sm:m-4 h-full" style={{ minHeight: 'calc(100vh - 450px)' }}>
+            
+            {/* Loading State - Mobile Optimized */}
             {iframeLoading && (
               <div className="absolute inset-0 bg-white z-10 flex flex-col items-center justify-center p-4">
-                <div className="flex flex-col sm:flex-row items-center gap-3 mb-4">
-                  <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 animate-spin" />
-                  <div className="text-center sm:text-left">
-                    <p className="text-base sm:text-lg font-semibold text-slate-800">Loading Survey...</p>
+                <div className="flex flex-col items-center gap-3 mb-4">
+                  <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600 animate-spin" />
+                  <div className="text-center">
+                    <p className="text-lg sm:text-xl font-semibold text-slate-800">Loading Survey...</p>
                     <p className="text-sm text-slate-600">Please wait while we prepare your survey</p>
                   </div>
                 </div>
                 <div className="w-48 sm:w-64 bg-slate-200 rounded-full h-2 mb-6">
                   <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
                 </div>
+                
+                {/* Mobile-specific loading message */}
+                <div className="sm:hidden text-center">
+                  <p className="text-xs text-slate-500">
+                    📱 Mobile Tip: If the survey doesn't load, try the "New Tab" button above
+                  </p>
+                </div>
               </div>
             )}
 
-            {/* Ticket Reward Success State */}
+            {/* Enhanced Mobile Ticket Reward Success State */}
             {showTicketReward && (
               <div className="absolute inset-0 bg-green-50 z-20 flex flex-col items-center justify-center p-4 sm:p-6">
-                <div className="text-center max-w-md">
-                  <CheckCircle2 className="h-12 w-12 sm:h-16 sm:w-16 text-green-600 mx-auto mb-4 animate-bounce" />
-                  <h3 className="text-xl sm:text-2xl font-bold text-green-800 mb-2">Ticket Awarded!</h3>
-                  <p className="text-green-700 mb-4 text-sm sm:text-base">
-                    🎫 You&apos;ve successfully earned 1 lottery ticket!
+                <div className="text-center max-w-sm sm:max-w-md">
+                  <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-green-600 mx-auto mb-4 animate-bounce" />
+                  <h3 className="text-2xl sm:text-3xl font-bold text-green-800 mb-3">🎉 Success!</h3>
+                  <p className="text-green-700 mb-4 text-base sm:text-lg font-medium">
+                    You've successfully earned 1 lottery ticket!
                   </p>
-                  <div className="bg-white rounded-lg p-3 sm:p-4 border-2 border-green-200">
-                    <p className="text-green-800 font-semibold text-sm sm:text-base">
+                  <div className="bg-white rounded-lg p-4 border-2 border-green-200 mb-4">
+                    <p className="text-green-800 font-semibold text-sm sm:text-base mb-2">
+                      ✅ Ticket Instantly Credited
+                    </p>
+                    <p className="text-green-700 text-sm">
                       Your ticket has been automatically added to the current lottery draw.
                     </p>
                     {verifyingTicket && (
-                      <div className="mt-3 flex items-center justify-center gap-2 text-xs sm:text-sm text-amber-600">
+                      <div className="mt-3 flex items-center justify-center gap-2 text-sm text-amber-600">
                         <RotateCw className="h-4 w-4 animate-spin" />
-                        Verifying ticket was credited...
+                        Confirming instant delivery...
                       </div>
                     )}
                     {ticketAwarded && !verifyingTicket && (
-                      <div className="mt-3 flex items-center justify-center gap-2 text-xs sm:text-sm text-green-600">
+                      <div className="mt-3 flex items-center justify-center gap-2 text-sm text-green-600">
                         <CheckCircle2 className="h-4 w-4" />
-                        Ticket confirmed: {ticketId?.substring(0, 8)}...
+                        Delivery confirmed!
                       </div>
                     )}
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Error States - Mobile Optimized */}
-            {surveyError === "no_surveys" && (
-              <div className="absolute inset-0 bg-amber-50 z-10 flex flex-col items-center justify-center p-4 sm:p-6">
-                <div className="text-center max-w-md">
-                  <Info className="h-10 w-10 sm:h-12 sm:w-12 text-amber-600 mx-auto mb-4" />
-                  <h3 className="text-base sm:text-lg font-semibold text-amber-800 mb-2">No Surveys Available Right Now</h3>
-                  <p className="text-amber-700 mb-4 text-sm sm:text-base">
-                    No worries! Even though there are no surveys available at the moment, 
-                    you&apos;ll still receive a lottery ticket for your participation attempt.
-                  </p>
-                  <div className="space-y-3 w-full">
-                    <Button onClick={handleNoSurveysAvailable} className="w-full bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base">
-                      <Ticket className="h-4 w-4 mr-2" />
-                      Claim Your Ticket
-                    </Button>
-                    <Button onClick={handleRetry} variant="outline" className="w-full border-amber-300 text-amber-700 hover:bg-amber-50 text-sm sm:text-base">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Try Again Later
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {surveyError === "disqualified" && (
-              <div className="absolute inset-0 bg-orange-50 z-10 flex flex-col items-center justify-center p-4 sm:p-6">
-                <div className="text-center max-w-md">
-                  <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-orange-600 mx-auto mb-4" />
-                  <h3 className="text-base sm:text-lg font-semibold text-orange-800 mb-2">Survey Not Completed</h3>
-                  <p className="text-orange-700 mb-4 text-sm sm:text-base">
-                    You didn&apos;t qualify for this survey or were screened out during the process. 
-                    This happens sometimes based on the survey&apos;s specific requirements.
-                  </p>
-                  <div className="space-y-3 w-full">
-                    <Button onClick={handleNoSurveysAvailable} className="w-full bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base">
-                      <Ticket className="h-4 w-4 mr-2" />
-                      Still Want a Ticket? Click Here
-                    </Button>
-                    <Button onClick={handleRetry} variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50 text-sm sm:text-base">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Try a Different Survey
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {surveyError === "loading_failed" && (
-              <div className="absolute inset-0 bg-red-50 z-10 flex flex-col items-center justify-center p-4 sm:p-6">
-                <div className="text-center max-w-md">
-                  <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-red-600 mx-auto mb-4" />
-                  <h3 className="text-base sm:text-lg font-semibold text-red-800 mb-2">Survey Failed to Load</h3>
-                  <p className="text-red-700 mb-4 text-sm sm:text-base">
-                    There was a problem loading the survey. You can try again or claim a ticket anyway.
-                  </p>
-                  <div className="space-y-3 w-full">
-                    <Button onClick={handleNoSurveysAvailable} className="w-full bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base">
-                      <Ticket className="h-4 w-4 mr-2" />
-                      Claim Your Ticket
-                    </Button>
-                    <Button onClick={handleRetry} variant="outline" className="w-full border-red-300 text-red-700 hover:bg-red-50 text-sm sm:text-base">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Retry Loading
-                    </Button>
-                  </div>
+                  
+                  {/* Mobile-specific action button */}
+                  <Button
+                    onClick={() => {
+                      setIsOpen(false);
+                      router.push('/dashboard');
+                    }}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg"
+                  >
+                    🎯 View My Dashboard
+                  </Button>
                 </div>
               </div>
             )}
             
+            {/* Enhanced Mobile-Optimized Survey Iframe */}
             {surveyUrl && !surveyError && !showTicketReward && (
               <iframe
                 src={surveyUrl}
@@ -720,11 +885,16 @@ export const CPXSurveyModal = ({
                 frameBorder="0"
                 onLoad={handleIframeLoad}
                 onError={handleIframeError}
-                className="rounded-lg min-h-[400px] sm:min-h-[600px]"
+                className="rounded-lg w-full h-full"
                 title="CPX Research Survey"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
                 ref={iframeRef}
-                style={{ minHeight: 'calc(100vh - 400px)' }}
+                style={{ 
+                  minHeight: 'calc(100vh - 450px)',
+                  border: 'none',
+                  background: 'white'
+                }}
+                allow="fullscreen"
               />
             )}
           </div>

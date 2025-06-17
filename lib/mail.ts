@@ -254,55 +254,96 @@ export const sendTicketApplicationEmail = async (
     timeZoneName: 'short'
   });
 
+  // Create a direct link to view/redeem tickets
+  const directLink = `${domain}/dashboard?ticket_confirmed=true&confirmation=${data.confirmationCode}`;
+
   try {
     const result = await resend.emails.send({
       from: 'noreply@resend.dev',
       to: email,
-      subject: '🎯 Ticket Earned - 0MNINET Lottery',
+      subject: '🎯 Ticket Earned - Your Entry is Confirmed! - 0MNINET Lottery',
       html: `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #1e293b; margin: 0;">Ticket Earned! 🎯</h1>
-              <p style="color: #64748b;">0MNINET Weekly Lottery</p>
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
+          <div style="background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
+            
+            <!-- Header Section -->
+            <div style="text-align: center; margin-bottom: 30px; background: linear-gradient(135deg, #3b82f6, #10b981); padding: 25px; border-radius: 12px; margin: -30px -30px 30px -30px;">
+              <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">🎯 Ticket Earned!</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px;">0MNINET Weekly Lottery - Entry Confirmed</p>
             </div>
             
-            <p style="font-size: 16px; color: #334155; margin-bottom: 20px;">
+            <div style="text-align: center; margin-bottom: 25px;">
+              <div style="display: inline-block; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 15px 25px; border-radius: 50px; font-size: 18px; font-weight: bold; margin-bottom: 15px;">
+                ✅ ${data.ticketCount} Ticket${data.ticketCount === 1 ? '' : 's'} Confirmed!
+              </div>
+            </div>
+            
+            <p style="font-size: 16px; color: #334155; margin-bottom: 20px; text-align: center;">
               Hi ${firstName},
             </p>
             
-            <p style="font-size: 16px; color: #334155; margin-bottom: 20px;">
-              Great job! You've earned ${data.ticketCount} new lottery ${data.ticketCount === 1 ? 'ticket' : 'tickets'} for completing a survey.
+            <p style="font-size: 16px; color: #334155; margin-bottom: 25px; text-align: center; line-height: 1.6;">
+              <strong>Congratulations!</strong> Your survey has been completed and verified. Your ${data.ticketCount} lottery ${data.ticketCount === 1 ? 'ticket has' : 'tickets have'} been <strong style="color: #16a34a;">instantly credited</strong> to your account and automatically entered into the upcoming draw.
             </p>
             
-            <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #1e293b; margin-top: 0;">Ticket Details:</h3>
-              <p style="margin-bottom: 8px;"><strong>Number of Tickets:</strong> ${data.ticketCount}</p>
-              <p style="margin-bottom: 0;"><strong>Draw Date:</strong> ${formattedDrawDate}</p>
+            <!-- Ticket Details Card -->
+            <div style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); padding: 25px; border-radius: 12px; margin: 25px 0; border: 2px solid #0284c7;">
+              <h3 style="color: #0c4a6e; margin-top: 0; margin-bottom: 15px; font-size: 18px;">📋 Your Ticket Details</h3>
+              <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 5px 0;"><strong style="color: #0c4a6e;">Tickets Earned:</strong> <span style="color: #16a34a; font-weight: bold;">${data.ticketCount}</span></p>
+                <p style="margin: 5px 0;"><strong style="color: #0c4a6e;">Draw Date:</strong> ${formattedDrawDate}</p>
+                ${data.confirmationCode ? `<p style="margin: 5px 0;"><strong style="color: #0c4a6e;">Confirmation:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${data.confirmationCode}</code></p>` : ''}
+                <p style="margin: 5px 0;"><strong style="color: #0c4a6e;">Status:</strong> <span style="color: #16a34a; font-weight: bold;">✅ Active & Entered</span></p>
+              </div>
             </div>
             
-            <p style="font-size: 16px; color: #334155; margin-bottom: 20px;">
-              Your ticket has been automatically applied to the upcoming lottery draw.
-            </p>
-            
+            <!-- Instant Access Button -->
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${domain}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #10b981); color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 16px;">
-                View Your Dashboard
+              <a href="${directLink}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #10b981); color: white; padding: 18px 35px; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); transition: all 0.3s ease;">
+                🎯 View Your Dashboard & Tickets
               </a>
             </div>
             
+            <!-- Quick Actions -->
+            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 25px 0;">
+              <h4 style="color: #1e293b; margin-top: 0; margin-bottom: 15px;">🚀 What's Next?</h4>
+              <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #22c55e;">
+                  <strong style="color: #16a34a;">✅ Your Entry is Confirmed</strong><br>
+                  <span style="color: #64748b; font-size: 14px;">No further action needed - you're automatically entered!</span>
+                </div>
+                <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                  <strong style="color: #1d4ed8;">🎫 Earn More Tickets</strong><br>
+                  <span style="color: #64748b; font-size: 14px;">Take more surveys to increase your winning chances</span>
+                </div>
+                <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                  <strong style="color: #d97706;">👥 Invite Friends</strong><br>
+                  <span style="color: #64748b; font-size: 14px;">Share your referral link to earn bonus tickets</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Emergency Support -->
+            <div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0; color: #92400e; font-size: 14px; text-align: center;">
+                <strong>🆘 Can't see your ticket?</strong> Click the button above or visit your dashboard directly. 
+                If you still don't see your ticket within 2 minutes, please contact support with your confirmation code.
+              </p>
+            </div>
+            
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-              <p style="color: #64748b; font-size: 14px;"><strong>The 0mninet Team</strong></p>
+              <p style="color: #64748b; font-size: 14px; margin: 0;"><strong>The 0mninet Team</strong></p>
+              <p style="color: #94a3b8; font-size: 12px; margin: 5px 0 0 0;">This email confirms your lottery entry. Keep it for your records.</p>
             </div>
           </div>
         </div>
       `,
     });
     
-    console.log("Ticket application email sent successfully:", result.data?.id);
+    console.log("Enhanced ticket application email sent successfully:", result.data?.id);
     return result;
   } catch (error) {
-    console.error("Error sending ticket application email:", error);
+    console.error("Error sending enhanced ticket application email:", error);
     throw error;
   }
 };
