@@ -1264,7 +1264,7 @@ export default function Home() {
                 </div>
                 <div className="mt-4 text-center">
                   <Link 
-                    href="https://www.0mninet.com/terms" 
+                    href="https://www.0mninet.com/privacy" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors text-sm font-medium"
@@ -1364,7 +1364,7 @@ export default function Home() {
                 </div>
                 <div className="mt-4 text-center">
                   <Link 
-                    href="https://www.0mninet.com/cookies" 
+                    href="https://www.0mninet.com/privacy" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors text-sm font-medium"
@@ -1448,9 +1448,9 @@ export default function Home() {
                   {[
                     { label: "Contact Support", href: "mailto:ask@0mninet.info", external: false },
                     { label: "FAQ", href: "#", external: false },
-                    { label: "Terms of Service", href: "https://www.0mninet.com/terms", external: true },
+                    { label: "Terms of Service", href: "https://www.0mninet.com/privacy", external: true },
                     { label: "Privacy Policy", href: "https://www.0mninet.com/privacy", external: true },
-                    { label: "Cookie Policy", href: "https://www.0mninet.com/cookies", external: true },
+                    { label: "Cookie Policy", href: "https://www.0mninet.com/privacy", external: true },
                   ].map((link, index) => (
                     <li key={index}>
                       <Link 

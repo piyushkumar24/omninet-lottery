@@ -92,7 +92,7 @@ export default function PoliciesPage() {
               </div>
               <div className="mt-6">
                 <Link 
-                  href="https://www.0mninet.com/terms" 
+                  href="https://www.0mninet.com/privacy" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors text-sm font-medium"
@@ -170,7 +170,7 @@ export default function PoliciesPage() {
               </div>
               <div className="mt-6">
                 <Link 
-                  href="https://www.0mninet.com/cookies" 
+                  href="https://www.0mninet.com/privacy" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 transition-colors text-sm font-medium"
