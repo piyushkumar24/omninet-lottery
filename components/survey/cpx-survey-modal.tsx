@@ -541,7 +541,86 @@ export const CPXSurveyModal = ({
     // Disabled automatic ticket checking to prevent iframe reloading issues
     // Tickets will be handled via CPX postback or manual completion detection
     console.log('Mobile survey modal loaded - ticket checking disabled for stability');
-  }, []);
+    
+    // For mobile, set up a more reliable ticket verification system
+    if (isMobile() && isOpen) {
+      console.log('📱 Setting up mobile ticket verification system');
+      
+      // Check for tickets periodically after survey is opened
+      let checkCount = 0;
+      const maxChecks = 12; // Check for up to 2 minutes (12 * 10 seconds)
+      
+      const ticketCheckInterval = setInterval(async () => {
+        try {
+          checkCount++;
+          console.log(`🔍 Mobile ticket check attempt ${checkCount}/${maxChecks}`);
+          
+          // Use the dedicated mobile verification endpoint
+          const response = await fetch('/api/tickets/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+            },
+            body: JSON.stringify({
+              mobileSurveyVerification: true
+            }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.success && (data.data.transactionFound || data.data.ticketsFound)) {
+              console.log('✅ Mobile ticket verification successful:', data.data);
+              
+              // Show success message
+              toast.success("🎫 Survey completed! Ticket credited to your account!", {
+                duration: 6000,
+                style: {
+                  fontSize: '16px',
+                  padding: '16px',
+                  maxWidth: '400px',
+                  border: '2px solid #10b981',
+                  backgroundColor: '#ecfdf5',
+                },
+              });
+              
+              // Update local state
+              setTicketAwarded(true);
+              setShowTicketReward(true);
+              
+              // Update parent component
+              if (onSurveyComplete) {
+                onSurveyComplete(true);
+              }
+              
+              // Stop checking
+              clearInterval(ticketCheckInterval);
+              
+              // Refresh the page after a short delay
+              setTimeout(() => {
+                router.refresh();
+              }, 3000);
+            }
+          }
+          
+          // Stop checking after max attempts
+          if (checkCount >= maxChecks) {
+            clearInterval(ticketCheckInterval);
+          }
+        } catch (error) {
+          console.error('Error checking for tickets:', error);
+        }
+      }, 10000); // Check every 10 seconds
+      
+      // Clean up interval when modal closes
+      return () => {
+        if (ticketCheckInterval) {
+          clearInterval(ticketCheckInterval);
+        }
+      };
+    }
+  }, [isOpen, isMobile, onSurveyComplete, router]);
 
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
@@ -602,7 +681,43 @@ export const CPXSurveyModal = ({
       navigator.vibrate(50);
     }
     
-    handleClose();
+    // For mobile, check for tickets one final time before closing
+    if (isMobile()) {
+      // Show loading toast
+      toast("Checking for earned tickets...", {
+        icon: "🔍",
+        duration: 2000,
+      });
+      
+      // Final ticket check
+      fetch('/api/tickets/verify-all', {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log('✅ Final ticket check complete:', data.data);
+          
+          // Show ticket count
+          if (data.data.surveyTickets > 0) {
+            toast.success(`You have ${data.data.surveyTickets} survey tickets!`, {
+              duration: 3000,
+            });
+          }
+        }
+      })
+      .catch(error => console.error('Error in final ticket check:', error))
+      .finally(() => {
+        // Always close the modal after check
+        handleClose();
+      });
+    } else {
+      // For desktop, just close normally
+      handleClose();
+    }
   };
 
   const handleIframeLoad = () => {
@@ -616,6 +731,16 @@ export const CPXSurveyModal = ({
     // For mobile, keep it simple - don't do aggressive checking that can cause instability
     if (isMobile()) {
       console.log('Mobile survey loaded successfully');
+      
+      // Check for completion URL parameters in the parent window
+      if (typeof window !== 'undefined') {
+        const parentUrl = window.location.href;
+        if (parentUrl.includes('survey=completed') || parentUrl.includes('status=complete')) {
+          console.log('Survey completion detected from parent URL parameters');
+          showSurveyCompletionMessage();
+        }
+      }
+      
       return;
     }
     

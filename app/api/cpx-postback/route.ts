@@ -109,6 +109,62 @@ export async function GET(request: NextRequest) {
   console.log(`✅ Survey completed successfully (status=1) for user ${userId}, proceeding with ticket award`);
 
   try {
+    // Check if this transaction was already processed to avoid duplicates
+    const existingTransaction = await db.settings.findUnique({
+      where: { key: `cpx_transaction_${transId}` },
+    });
+
+    if (existingTransaction) {
+      console.log('⚠️ Transaction already processed:', transId);
+      
+      // Check if we need to retry email sending
+      try {
+        const transactionData = JSON.parse(existingTransaction.value);
+        if (transactionData.emailSent === false && transactionData.ticketIds?.length > 0) {
+          console.log('📧 Retrying email for previously processed transaction:', transId);
+          
+          // Find user for email
+          const user = await db.user.findUnique({
+            where: { id: userId },
+            select: { name: true, email: true },
+          });
+          
+          if (user?.email) {
+            const draw = await createOrGetNextDraw();
+            
+            // Send email with retry
+            await sendEmailWithRetry(
+              user.email,
+              {
+                name: user.name || "User",
+                ticketCount: 1,
+                drawDate: draw.drawDate,
+                confirmationCode: `SURVEY_${transactionData.ticketIds[0]}`,
+              }
+            );
+            
+            // Update transaction record to mark email as sent
+            await db.settings.update({
+              where: { key: `cpx_transaction_${transId}` },
+              data: {
+                value: JSON.stringify({
+                  ...transactionData,
+                  emailSent: true,
+                  emailRetryAt: new Date().toISOString(),
+                }),
+              },
+            });
+            
+            console.log('📧 Successfully sent email on retry for transaction:', transId);
+          }
+        }
+      } catch (retryError) {
+        console.error('📧 Failed to retry email sending:', retryError);
+      }
+      
+      return new NextResponse("Transaction already processed", { status: 200 });
+    }
+
     // Find user by ID with more comprehensive selection
     const user = await db.user.findUnique({
       where: { id: userId },
@@ -152,16 +208,6 @@ export async function GET(request: NextRequest) {
 
     const isFirstSurvey = existingSurveyTickets === 0;
     console.log(`📊 Survey status for user ${user.id}: ${isFirstSurvey ? 'First' : 'Additional'} survey (existing: ${existingSurveyTickets})`);
-
-    // Check if this transaction was already processed
-    const existingTransaction = await db.settings.findUnique({
-      where: { key: `cpx_transaction_${transId}` },
-    });
-
-    if (existingTransaction) {
-      console.log('⚠️ Transaction already processed:', transId);
-      return new NextResponse("Transaction already processed", { status: 200 });
-    }
 
     // Get current draw
     const draw = await createOrGetNextDraw();
@@ -270,6 +316,33 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Track email sending status
+      let emailSent = false;
+      let emailError = null;
+
+      // Email notification for survey completion
+      try {
+        if (user.email) {
+          // Send immediate confirmation email
+          await sendEmailWithRetry(
+            user.email,
+            {
+              name: user.name || "User",
+              ticketCount: 1,
+              drawDate: draw.drawDate,
+              confirmationCode: `SURVEY_${surveyAwardResult.ticketIds[0]}`,
+            }
+          );
+          console.log('📧 Instant survey completion email sent to:', user.email);
+          emailSent = true;
+        } else {
+          console.warn('⚠️ User has no email address, skipping email notification:', user.id);
+        }
+      } catch (error) {
+        console.error('📧 Failed to send survey completion email:', error);
+        emailError = error instanceof Error ? error.message : String(error);
+      }
+
       // Record the transaction to prevent duplicate processing
       await tx.settings.create({
         data: {
@@ -285,51 +358,12 @@ export async function GET(request: NextRequest) {
             referralTicketAwarded,
             referralTicketId,
             processedAt: new Date().toISOString(),
+            emailSent,
+            emailError,
           }),
           description: `CPX Research transaction ${transId} processed`,
         },
       });
-
-      // Email notification for survey completion
-      try {
-        if (user.email) {
-          // Send immediate confirmation email
-          await sendTicketApplicationEmail(
-            user.email,
-            {
-              name: user.name || "User",
-              ticketCount: 1,
-              drawDate: draw.drawDate,
-              confirmationCode: `SURVEY_${surveyAwardResult.ticketIds[0]}`,
-            }
-          );
-          console.log('📧 Instant survey completion email sent to:', user.email);
-        } else {
-          console.warn('⚠️ User has no email address, skipping email notification:', user.id);
-        }
-      } catch (emailError) {
-        console.error('📧 Failed to send survey completion email (non-critical):', emailError);
-        
-        // Try to send a backup email after a delay
-        setTimeout(async () => {
-          try {
-            if (user.email) {
-              await sendTicketApplicationEmail(
-                user.email,
-                {
-                  name: user.name || "User",
-                  ticketCount: 1,
-                  drawDate: draw.drawDate,
-                  confirmationCode: `SURVEY_${surveyAwardResult.ticketIds[0]}`,
-                }
-              );
-              console.log('📧 Backup email sent successfully after initial failure');
-            }
-          } catch (backupEmailError) {
-            console.error('📧 Backup email also failed:', backupEmailError);
-          }
-        }, 5000); // Try backup email after 5 seconds
-      }
 
       // Send instant notification to frontend if user is active
       try {
@@ -365,7 +399,9 @@ export async function GET(request: NextRequest) {
         referralTicketAwarded,
         referralTicketId,
         status,
-        completionType: status === '1' ? 'completed' : 'participation'
+        completionType: status === '1' ? 'completed' : 'participation',
+        emailSent,
+        emailError
       };
     }, {
       maxWait: 10000, // 10 seconds
@@ -378,7 +414,17 @@ export async function GET(request: NextRequest) {
       transId,
       status,
       referralTicketAwarded: result.referralTicketAwarded,
+      emailSent: result.emailSent
     });
+
+    // If email failed, schedule a retry
+    if (!result.emailSent && user.email && result.ticketIds?.length > 0) {
+      scheduleEmailRetry({
+        id: user.id,
+        name: user.name,
+        email: user.email as string // Type assertion since we already checked it's not null
+      }, result.ticketIds[0], draw.drawDate, transId);
+    }
 
     return new NextResponse("OK", { status: 200 });
   } catch (error) {
@@ -402,7 +448,7 @@ export async function GET(request: NextRequest) {
           
           if (user?.email) {
             const draw = await createOrGetNextDraw();
-            await sendTicketApplicationEmail(
+            await sendEmailWithRetry(
               user.email,
               {
                 name: user.name || "User",
@@ -477,19 +523,83 @@ export async function PUT(request: NextRequest) {
   });
 }
 
-// Function to award referral ticket
-async function awardReferralTicket(referrerId: string, referredUserId: string, drawId: string) {
-  // This function is now replaced by the new awardTicketsToUser function
-  // Keeping it for backward compatibility if needed
+/**
+ * Send email with retry mechanism
+ */
+async function sendEmailWithRetry(
+  email: string,
+  data: {
+    name: string;
+    ticketCount: number;
+    drawDate: Date;
+    confirmationCode?: string;
+  },
+  maxRetries = 3
+) {
+  let lastError;
   
-  const referralAwardResult = await awardTicketsToUser(referrerId, 1, "REFERRAL");
-  
-  if (referralAwardResult.success) {
-    await applyAllTicketsToLottery(referrerId, drawId);
-    return referralAwardResult.ticketIds[0];
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await sendTicketApplicationEmail(email, data);
+      return true;
+    } catch (error) {
+      console.error(`📧 Email attempt ${attempt} failed:`, error);
+      lastError = error;
+      
+      if (attempt < maxRetries) {
+        // Wait before retrying (exponential backoff)
+        const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
   }
   
-  return null;
+  // If we get here, all attempts failed
+  throw new Error(`Failed to send email after ${maxRetries} attempts: ${lastError}`);
+}
+
+/**
+ * Schedule email retry for failed emails
+ */
+function scheduleEmailRetry(
+  user: { id: string; name?: string | null; email: string },
+  ticketId: string,
+  drawDate: Date,
+  transId: string
+) {
+  setTimeout(async () => {
+    try {
+      console.log(`📧 Attempting scheduled email retry for transaction ${transId}`);
+      
+      await sendEmailWithRetry(
+        user.email,
+        {
+          name: user.name || "User",
+          ticketCount: 1,
+          drawDate: drawDate,
+          confirmationCode: `SURVEY_${ticketId}`,
+        }
+      );
+      
+      // Update transaction record to mark email as sent
+      await db.settings.update({
+        where: { key: `cpx_transaction_${transId}` },
+        data: {
+          value: JSON.stringify({
+            userId: user.id,
+            transId,
+            ticketIds: [ticketId],
+            emailSent: true,
+            emailRetryAt: new Date().toISOString(),
+          }),
+        },
+      });
+      
+      console.log('📧 Successfully sent email on scheduled retry for transaction:', transId);
+    } catch (error) {
+      console.error('📧 Scheduled email retry failed:', error);
+    }
+  }, 30000); // Retry after 30 seconds
 }
 
 // Function to award emergency ticket
@@ -497,54 +607,53 @@ async function awardEmergencyTicket(userId: string, transId: string) {
   try {
     console.log('🚨 Starting emergency ticket award for user:', userId);
     
-    const draw = await createOrGetNextDraw();
-    
-    // Use the same ticket awarding logic as the main flow for consistency
-    const emergencyAwardResult = await awardTicketsToUser(userId, 1, "SURVEY");
-    
-    if (!emergencyAwardResult.success) {
-      console.error('❌ Emergency ticket award failed:', emergencyAwardResult);
-      return null;
-    }
-    
-    // Apply the emergency ticket to the lottery
-    const appliedTickets = await applyAllTicketsToLottery(userId, draw.id);
-    
-    // Update the ticket with emergency confirmation code
-    const emergencyTicket = await db.ticket.update({
-      where: { id: emergencyAwardResult.ticketIds[0] },
+    // Create emergency ticket directly
+    const emergencyTicket = await db.ticket.create({
       data: {
+        userId,
+        source: "SURVEY",
+        isUsed: false,
         confirmationCode: `EMERGENCY_${transId}_${Date.now()}`,
       },
     });
     
-    // Log the emergency award
-    await db.settings.create({
+    // Update user's ticket counts
+    await db.user.update({
+      where: { id: userId },
       data: {
-        key: `emergency_ticket_${emergencyTicket.id}`,
-        value: JSON.stringify({
-          userId,
-          ticketId: emergencyTicket.id,
-          transId,
-          appliedTickets,
-          availableTickets: emergencyAwardResult.availableTickets,
-          totalTickets: emergencyAwardResult.totalTickets,
-          timestamp: new Date().toISOString(),
-        }),
-        description: "Emergency ticket award from failed CPX postback",
+        availableTickets: {
+          increment: 1,
+        },
+        totalTicketsEarned: {
+          increment: 1,
+        },
       },
     });
     
-    console.log('✅ Emergency ticket awarded and applied to lottery:', {
-      ticketId: emergencyTicket.id,
-      userId,
-      drawId: draw.id,
-      appliedTickets,
+    // Get current draw
+    const draw = await createOrGetNextDraw();
+    
+    // Apply ticket to lottery
+    await applyAllTicketsToLottery(userId, draw.id);
+    
+    // Log emergency ticket award
+    await db.settings.create({
+      data: {
+        key: `cpx_emergency_${transId}`,
+        value: JSON.stringify({
+          userId,
+          transId,
+          ticketId: emergencyTicket.id,
+          timestamp: new Date().toISOString(),
+        }),
+        description: "Emergency ticket awarded due to transaction failure",
+      },
     });
     
+    console.log('✅ Emergency ticket awarded and applied to lottery:', emergencyTicket.id);
     return emergencyTicket;
   } catch (error) {
-    console.error('❌ Emergency ticket award function error:', error);
+    console.error('❌ Error awarding emergency ticket:', error);
     return null;
   }
 } 
