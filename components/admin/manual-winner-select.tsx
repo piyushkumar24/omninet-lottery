@@ -76,13 +76,18 @@ export function ManualWinnerSelect({
     setIsSelecting(true);
     
     try {
+      // Ensure we're sending the user ID as a string to avoid type mismatches
+      const userId = typeof selectedUser.id === 'string' ? selectedUser.id : String(selectedUser.id);
+      
+      console.log(`Selecting winner with user ID: ${userId}`);
+      
       const response = await fetch("/api/admin/draws/select-winner", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: selectedUser.id
+          userId: userId
         }),
       });
 

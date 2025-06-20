@@ -118,14 +118,17 @@ export async function POST() {
       const winner = await tx.winner.create({
         data: {
           userId: winnerId,
-          ticketCount: activeDraw.participants.find(p => p.userId === winnerId)?.ticketsUsed || 1,
+          ticketCount: activeDraw.participants.find(p => 
+            p.userId === winnerId || 
+            p.userId.toString() === winnerId.toString()
+          )?.ticketsUsed || 1,
           prizeAmount: activeDraw.prizeAmount,
           drawDate: new Date(),
           claimed: false,
         },
       });
 
-      // Update the winner's participation record
+      // Update the winner's participation record - ensure we handle string/object ID matching
       await tx.drawParticipation.updateMany({
         where: {
           userId: winnerId,
