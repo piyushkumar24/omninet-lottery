@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DrawStatus } from "@prisma/client";
-import { sendNonWinnerEmail } from "@/lib/mail";
+import { sendNonWinnerEmail, sendWinnerNotificationEmail } from "@/lib/mail";
 import { resetAllAvailableTickets } from "@/lib/ticket-utils";
 
 export async function POST() {
@@ -180,6 +180,29 @@ export async function POST() {
       console.error(`Failed to reset available tickets:`, resetError);
     }
 
+    // Send winner notification email
+    try {
+      if (result.winnerUser?.email) {
+        console.log(`Sending winner notification email to ${result.winnerUser.email}`);
+        
+        // Send initial winner notification without coupon code
+        await sendWinnerNotificationEmail(
+          result.winnerUser.email,
+          result.winnerUser.name || "User",
+          result.winner.prizeAmount,
+          "PENDING - ADMIN WILL ISSUE SOON",
+          result.winner.drawDate
+        );
+        
+        console.log(`Winner notification email sent to ${result.winnerUser.email}`);
+      } else {
+        console.warn("Winner has no email address, skipping notification");
+      }
+    } catch (emailError) {
+      console.error("Failed to send winner notification email:", emailError);
+      // Don't fail the entire operation if email fails
+    }
+
     // Send non-winner emails to all participants who didn't win
     try {
       const nonWinners = activeDraw.participants.filter(
@@ -214,11 +237,13 @@ export async function POST() {
       success: true,
       message: "Lottery draw completed successfully!",
       winner: {
+        id: result.winnerUser?.id || "",
         name: result.winnerUser?.name || "Unknown",
         email: result.winnerUser?.email || "",
         image: result.winnerUser?.image || "",
         ticketCount: result.winner.ticketCount,
         prizeAmount: result.winner.prizeAmount,
+        winnerId: result.winner.id
       },
       drawStats: {
         participantCount: result.participantCount,

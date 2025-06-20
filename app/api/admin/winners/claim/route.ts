@@ -75,11 +75,29 @@ export async function POST(req: Request) {
           lastWinDate: winner.drawDate,
         },
       });
+      
+      // Log the claim action
+      await tx.settings.create({
+        data: {
+          key: `prize_claimed_${winnerId}_${Date.now()}`,
+          value: JSON.stringify({
+            winnerId,
+            userId: winner.userId,
+            couponCode,
+            prizeAmount: winner.prizeAmount,
+            claimedAt: new Date().toISOString(),
+          }),
+          description: "Prize claimed and gift card code issued by admin",
+        },
+      });
     });
 
-    // Send notification email to the winner
+    // Send notification email to the winner with retry mechanism
     if (winner.user.email) {
       try {
+        console.log(`Sending gift card email to winner: ${winner.user.email}`);
+        
+        // First attempt
         await sendWinnerNotificationEmail(
           winner.user.email,
           winner.user.name || "User",
@@ -87,15 +105,79 @@ export async function POST(req: Request) {
           couponCode,
           winner.drawDate
         );
+        
+        console.log(`Gift card email sent successfully to ${winner.user.email}`);
       } catch (emailError) {
-        console.error("Failed to send winner notification email:", emailError);
-        // Continue even if email fails
+        console.error("Failed to send winner notification email on first attempt:", emailError);
+        
+        // Retry after a short delay
+        try {
+          console.log(`Retrying gift card email to ${winner.user.email}...`);
+          
+          // Wait 2 seconds before retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          await sendWinnerNotificationEmail(
+            winner.user.email,
+            winner.user.name || "User",
+            winner.prizeAmount,
+            couponCode,
+            winner.drawDate
+          );
+          
+          console.log(`Gift card email sent successfully on retry to ${winner.user.email}`);
+        } catch (retryError) {
+          console.error("Failed to send winner notification email on retry:", retryError);
+          
+          // Log the failure for manual follow-up
+          await db.settings.create({
+            data: {
+              key: `failed_winner_email_${winnerId}_${Date.now()}`,
+              value: JSON.stringify({
+                winnerId,
+                userId: winner.userId,
+                email: winner.user.email,
+                couponCode,
+                prizeAmount: winner.prizeAmount,
+                error: retryError instanceof Error ? retryError.message : String(retryError),
+                timestamp: new Date().toISOString(),
+              }),
+              description: "Failed to send winner gift card email after retry",
+            },
+          });
+        }
       }
+    } else {
+      console.warn(`Winner ${winner.userId} has no email address, cannot send notification`);
+      
+      // Log this issue for manual follow-up
+      await db.settings.create({
+        data: {
+          key: `winner_no_email_${winnerId}_${Date.now()}`,
+          value: JSON.stringify({
+            winnerId,
+            userId: winner.userId,
+            couponCode,
+            prizeAmount: winner.prizeAmount,
+            timestamp: new Date().toISOString(),
+          }),
+          description: "Winner has no email address for gift card notification",
+        },
+      });
     }
 
     return NextResponse.json({
       success: true,
       message: "Prize claimed successfully! Winner has been notified via email.",
+      data: {
+        winnerId,
+        userId: winner.userId,
+        userName: winner.user.name,
+        userEmail: winner.user.email,
+        prizeAmount: winner.prizeAmount,
+        couponCode,
+        claimedAt: new Date().toISOString(),
+      }
     });
   } catch (error) {
     console.error("Error processing winner claim:", error);

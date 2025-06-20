@@ -10,6 +10,9 @@ import { LotteryResetCard } from "@/components/admin/lottery-reset-card";
 import { Gift, Users, AlertTriangle, Calendar, Ticket, Info } from "lucide-react";
 import { DrawStatus } from "@prisma/client";
 import { toast } from "react-hot-toast";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
 
 interface DrawData {
   id: string;
@@ -235,6 +238,64 @@ export default function DrawsPage() {
                 </div>
               </div>
             </div>
+            
+            {/* Active Participants List */}
+            {activeDraw.participants.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  Active Participants
+                </h3>
+                <div className="border rounded-md overflow-hidden">
+                  <div className="grid grid-cols-12 bg-slate-50 p-3 text-sm font-medium text-slate-600">
+                    <div className="col-span-5">User</div>
+                    <div className="col-span-3">Participation Date</div>
+                    <div className="col-span-2">Tickets</div>
+                    <div className="col-span-2 text-right">Odds</div>
+                  </div>
+                  <div className="max-h-96 overflow-auto">
+                    {activeDraw.participants.map((participant) => (
+                      <div 
+                        key={participant.userId}
+                        className="grid grid-cols-12 p-3 items-center border-t hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="col-span-5">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              {participant.user.image ? (
+                                <AvatarImage src={participant.user.image} />
+                              ) : (
+                                <AvatarFallback className="bg-indigo-100 text-indigo-800">
+                                  {participant.user.name?.charAt(0).toUpperCase() || "U"}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-slate-800">
+                                {participant.user.name || "Anonymous User"}
+                              </p>
+                              <p className="text-xs text-slate-500">{participant.user.email || "No email"}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-span-3 text-sm text-slate-600">
+                          {formatDate(new Date(participant.createdAt), 'short')}
+                        </div>
+                        <div className="col-span-2">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            <Ticket className="h-3 w-3 mr-1" />
+                            {participant.ticketsUsed}
+                          </Badge>
+                        </div>
+                        <div className="col-span-2 text-right text-sm text-slate-600">
+                          {((participant.ticketsUsed / activeDraw.totalTickets) * 100).toFixed(1)}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
