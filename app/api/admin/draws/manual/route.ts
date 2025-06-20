@@ -54,11 +54,14 @@ export async function POST() {
       });
     }
 
-    // Check if anyone has actually participated
-    if (activeDraw.participants.length === 0) {
+    // Filter out participants with 0 tickets
+    const activeParticipants = activeDraw.participants.filter(p => p.ticketsUsed > 0);
+
+    // Check if anyone has actually participated with tickets
+    if (activeParticipants.length === 0) {
       return NextResponse.json({
         success: false,
-        message: "Cannot run lottery draw: No users have participated in this lottery. At least 1 user must manually participate to run the draw.",
+        message: "Cannot run lottery draw: No users have active tickets in this lottery. At least 1 user must have active tickets to run the draw.",
       });
     }
 
@@ -85,8 +88,8 @@ export async function POST() {
     let allEligibleTickets = [];
     
     if (participationTickets.length === 0) {
-      // Create virtual tickets based on draw participation
-      for (const participant of activeDraw.participants) {
+      // Create virtual tickets based on draw participation - only for active participants
+      for (const participant of activeParticipants) {
         for (let i = 0; i < participant.ticketsUsed; i++) {
           allEligibleTickets.push({
             userId: participant.userId,
@@ -94,7 +97,7 @@ export async function POST() {
           });
         }
       }
-      console.log(`Using ${allEligibleTickets.length} virtual tickets from ${activeDraw.participants.length} participants`);
+      console.log(`Using ${allEligibleTickets.length} virtual tickets from ${activeParticipants.length} participants`);
     } else {
       allEligibleTickets = participationTickets;
       console.log(`Using ${allEligibleTickets.length} actual tickets from database`);
@@ -118,7 +121,7 @@ export async function POST() {
       const winner = await tx.winner.create({
         data: {
           userId: winnerId,
-          ticketCount: activeDraw.participants.find(p => 
+          ticketCount: activeParticipants.find(p => 
             p.userId === winnerId || 
             p.userId.toString() === winnerId.toString()
           )?.ticketsUsed || 1,
@@ -168,7 +171,7 @@ export async function POST() {
       return {
         winner,
         winnerUser,
-        participantCount: activeDraw.participants.length,
+        participantCount: activeParticipants.length,
         totalTicketsInDraw: activeDraw.totalTickets,
         winnerId: winnerId,
       };
@@ -208,7 +211,7 @@ export async function POST() {
 
     // Send non-winner emails to all participants who didn't win
     try {
-      const nonWinners = activeDraw.participants.filter(
+      const nonWinners = activeParticipants.filter(
         p => p.userId !== result.winnerId && p.user.email
       );
       

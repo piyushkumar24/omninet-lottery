@@ -10,6 +10,9 @@ import { resetAllAvailableTickets } from "@/lib/ticket-utils";
  * 1. Reset all users' available tickets to 0
  * 2. Mark the draw as completed
  * 3. Prepare for the next lottery
+ * 
+ * If no drawId is provided, it will only reset all users' available tickets
+ * without marking any draw as completed.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -26,17 +29,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const requestData = await request.json();
+    const requestData = await request.json().catch(() => ({}));
     const { drawId } = requestData;
 
-    if (!drawId) {
-      return NextResponse.json({
-        success: false,
-        message: "Draw ID is required",
-      }, { status: 400 });
-    }
+    // If drawId is provided, do a full lottery reset
+    // Otherwise, just reset all tickets
+    const isFullReset = !!drawId;
 
-    console.log(`🔄 Starting lottery reset for draw ${drawId}`);
+    console.log(`🔄 ${isFullReset ? 'Starting lottery reset for draw ' + drawId : 'Resetting all active tickets'}`);
 
     const result = await withTransaction(async (tx) => {
       // Get count of users that will be reset
@@ -56,30 +56,63 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      // Mark the draw as completed
-      await tx.draw.update({
-        where: { id: drawId },
-        data: { 
-          status: DrawStatus.COMPLETED,
-          updatedAt: new Date()
-        }
+      // If doing a full reset, mark the draw as completed
+      if (isFullReset && drawId) {
+        await tx.draw.update({
+          where: { id: drawId },
+          data: { 
+            status: DrawStatus.COMPLETED,
+            updatedAt: new Date()
+          }
+        });
+        console.log(`✅ Draw ${drawId} marked as COMPLETED`);
+      }
+
+      // Get the active draw (whether doing full reset or ticket-only reset)
+      const activeDraw = await tx.draw.findFirst({
+        where: { 
+          status: isFullReset ? { not: DrawStatus.COMPLETED } : DrawStatus.PENDING 
+        },
+        orderBy: { createdAt: 'desc' }
       });
 
-      // 3. Get stats for response
+      // If we have an active draw, reset all participation records for it
+      if (activeDraw) {
+        console.log(`🔄 Resetting participation records for active draw ${activeDraw.id}`);
+        
+        // Update all participation records to have 0 tickets
+        await tx.drawParticipation.updateMany({
+          where: { 
+            drawId: activeDraw.id,
+            ticketsUsed: { gt: 0 }
+          },
+          data: {
+            ticketsUsed: 0
+          }
+        });
+        
+        // Count how many participation records were reset
+        const participationResetCount = await tx.drawParticipation.count({
+          where: { drawId: activeDraw.id }
+        });
+        
+        console.log(`✅ Reset ${participationResetCount} participation records to 0 tickets`);
+      }
+
+      // Get stats for response
       const totalUsers = await tx.user.count();
       const totalTicketsEarnedAllTime = await tx.user.aggregate({
         _sum: { totalTicketsEarned: true }
       });
 
-      console.log(`✅ Lottery reset completed:`);
-      console.log(`   - Draw ${drawId} marked as COMPLETED`);
+      console.log(`✅ ${isFullReset ? 'Lottery reset' : 'Ticket reset'} completed:`);
       console.log(`   - Reset available tickets for ${usersToReset} users`);
       console.log(`   - Total users: ${totalUsers}`);
       console.log(`   - Total tickets earned all time: ${totalTicketsEarnedAllTime._sum.totalTicketsEarned || 0}`);
 
       return {
-        drawId: drawId,
-        drawStatus: DrawStatus.COMPLETED,
+        drawId: isFullReset ? drawId : null,
+        drawStatus: isFullReset ? DrawStatus.COMPLETED : null,
         usersReset: usersToReset,
         totalUsers,
         totalTicketsEarnedAllTime: totalTicketsEarnedAllTime._sum.totalTicketsEarned || 0,
@@ -91,7 +124,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully reset lottery after draw completion`,
+      message: isFullReset 
+        ? `Successfully reset lottery after draw completion`
+        : `Successfully reset all active tickets`,
       data: result
     });
 

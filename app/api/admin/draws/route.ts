@@ -17,6 +17,8 @@ export async function GET() {
       );
     }
     
+    console.log(`[ADMIN_DRAWS] Fetching draws data`);
+    
     // Fetch all draws with participants and winners
     const draws = await db.draw.findMany({
       orderBy: {
@@ -41,6 +43,8 @@ export async function GET() {
         // Include winners through a separate query since it's not directly related
       }
     });
+
+    console.log(`[ADMIN_DRAWS] Found ${draws.length} draws`);
 
     // Get winners for each draw
     const drawsWithWinners = await Promise.all(
@@ -85,6 +89,9 @@ export async function GET() {
       },
       include: {
         participants: {
+          where: {
+            ticketsUsed: { gt: 0 } // Only include participants with tickets > 0
+          },
           include: {
             user: {
               select: {
@@ -103,25 +110,27 @@ export async function GET() {
       }
     });
 
+    console.log(`[ADMIN_DRAWS] Found active draw: ${activeDraw?.id || 'none'}`);
+
     // Calculate total tickets from all participations for active draw
     let activeDrawTotalTickets = 0;
     if (activeDraw) {
-      const totalParticipations = await db.drawParticipation.aggregate({
-        where: {
-          drawId: activeDraw.id,
-        },
-        _sum: {
-          ticketsUsed: true,
-        },
-      });
-      activeDrawTotalTickets = totalParticipations._sum.ticketsUsed || 0;
+      // Calculate total tickets from participants (already filtered to have tickets > 0)
+      activeDrawTotalTickets = activeDraw.participants.reduce((sum, p) => sum + p.ticketsUsed, 0);
+      
+      console.log(`[ADMIN_DRAWS] Total active participants: ${activeDraw.participants.length}`);
+      console.log(`[ADMIN_DRAWS] Total active tickets: ${activeDrawTotalTickets}`);
       
       // Update the draw with accurate total
       activeDraw.totalTickets = activeDrawTotalTickets;
     }
 
+    // Force clear any cached data by adding a timestamp
+    const timestamp = Date.now();
+
     return NextResponse.json({
       success: true,
+      timestamp,
       data: {
         draws: drawsWithWinners,
         activeDraw: activeDraw ? {
@@ -131,7 +140,7 @@ export async function GET() {
       }
     });
   } catch (error) {
-    console.error("Error fetching draws:", error);
+    console.error("[ADMIN_DRAWS] Error fetching draws:", error);
     
     return new NextResponse(
       JSON.stringify({

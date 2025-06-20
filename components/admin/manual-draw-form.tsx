@@ -12,7 +12,8 @@ import {
   Loader2,
   X,
   Check,
-  PartyPopper
+  PartyPopper,
+  AlertTriangle
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -44,8 +45,14 @@ export const ManualDrawForm = ({
   const [winner, setWinner] = useState<Winner | null>(null);
   const router = useRouter();
 
+  // Check if we have valid participants with tickets
+  const hasActiveParticipants = canRunDraw && participantCount > 0 && totalTicketsInDraw > 0;
+
   const handleSubmit = async () => {
-    if (!canRunDraw) return;
+    if (!hasActiveParticipants) {
+      toast.error("Cannot run draw: No active participants with tickets");
+      return;
+    }
 
     setIsLoading(true);
     setIsAnimating(true);
@@ -92,21 +99,26 @@ export const ManualDrawForm = ({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-lg">Ready to Run Draw?</h3>
-          {canRunDraw ? (
+          {hasActiveParticipants ? (
             <p className="text-sm text-green-600 mt-1">
               ✅ {participantCount} user{participantCount !== 1 ? 's have' : ' has'} participated with {totalTicketsInDraw} ticket{totalTicketsInDraw !== 1 ? 's' : ''} total
             </p>
+          ) : canRunDraw && participantCount > 0 && totalTicketsInDraw === 0 ? (
+            <div className="flex items-center gap-1 text-sm text-amber-600 mt-1">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Users have participated but have 0 active tickets</span>
+            </div>
           ) : (
             <p className="text-sm text-red-600 mt-1">
-              ❌ No users have participated yet. Minimum 1 participant required.
+              ❌ No users with active tickets have participated yet. Minimum 1 participant with tickets required.
             </p>
           )}
         </div>
         <Button 
           onClick={handleSubmit}
-          disabled={!canRunDraw || isLoading}
+          disabled={!hasActiveParticipants || isLoading}
           className={`flex items-center ${
-            canRunDraw 
+            hasActiveParticipants 
               ? 'bg-green-600 hover:bg-green-700' 
               : 'bg-gray-400 cursor-not-allowed'
           }`}
@@ -118,7 +130,7 @@ export const ManualDrawForm = ({
           )}
           {isLoading 
             ? 'Running Draw...' 
-            : canRunDraw 
+            : hasActiveParticipants 
               ? 'Run Draw Now' 
               : 'Waiting for Participants'
           }

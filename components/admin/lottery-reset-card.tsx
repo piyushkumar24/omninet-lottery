@@ -1,15 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertTriangle, Info } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw, Ticket, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface LotteryResetCardProps {
-  activeDraw?: {
-    id: string;
-    totalTickets: number;
-  } | null;
+  activeDraw: any;
   totalTicketsInSystem: number;
   totalParticipants: number;
 }
@@ -19,31 +25,37 @@ export const LotteryResetCard = ({
   totalTicketsInSystem, 
   totalParticipants 
 }: LotteryResetCardProps) => {
-  const [isResetting, setIsResetting] = useState(false);
-
-  const handleLotteryReset = async () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [resetType, setResetType] = useState<'draw' | 'tickets'>('draw');
+  
+  const handleReset = async () => {
     if (!activeDraw) return;
-
+    
+    setIsLoading(true);
+    
     try {
-      setIsResetting(true);
+      let endpoint = '/api/admin/reset-lottery';
+      let body = resetType === 'draw' ? { drawId: activeDraw.id } : {};
       
-      const response = await fetch('/api/admin/reset-lottery', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ drawId: activeDraw.id }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        toast.success(`Lottery reset successful! Reset tickets for ${data.data.usersReset} users.`);
+        toast.success(resetType === 'draw' 
+          ? `Lottery reset successful! Reset tickets for ${data.data.usersReset} users.`
+          : `Successfully reset all active tickets for ${data.data.usersReset} users.`
+        );
         
-        // Refresh the page to show updated data
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        // Force a hard refresh to ensure all data is updated
+        window.location.reload();
       } else {
         toast.error(data.message || 'Failed to reset lottery');
       }
@@ -51,57 +63,131 @@ export const LotteryResetCard = ({
       console.error('Error resetting lottery:', error);
       toast.error('Failed to reset lottery');
     } finally {
-      setIsResetting(false);
+      setIsLoading(false);
+      setShowConfirmDialog(false);
     }
   };
+  
+  const openConfirmDialog = (type: 'draw' | 'tickets') => {
+    setResetType(type);
+    setShowConfirmDialog(true);
+  };
 
-  // Only show if there's an active draw with participants
-  if (!activeDraw || totalTicketsInSystem === 0) {
-    return null;
-  }
+  if (!activeDraw) return null;
 
   return (
-    <Card className="bg-gradient-to-r from-red-50 to-orange-50 border-red-200">
-      <CardHeader>
-        <CardTitle className="text-red-800 flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5" />
-          Lottery Reset Controls
-        </CardTitle>
-        <CardDescription className="text-red-700">
-          Use this after announcing lottery results to reset all available tickets to 0 and prepare for the next lottery.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="bg-white p-4 rounded-lg border border-red-200 mb-4">
-          <h4 className="font-semibold text-red-800 mb-2">Current Status:</h4>
-          <ul className="text-sm text-red-700 space-y-1">
-            <li>• {totalParticipants} users have tickets in the current lottery</li>
-            <li>• {totalTicketsInSystem} total available tickets will be reset to 0</li>
-            <li>• Users&apos; lifetime earned tickets will be preserved</li>
-            <li>• Draw will be marked as COMPLETED</li>
-          </ul>
-        </div>
-        
-        <div className="flex gap-4">
-          <button
-            onClick={() => {
-              if (confirm(`Are you sure you want to reset the lottery? This will:\n\n• Reset ${totalTicketsInSystem} available tickets to 0\n• Mark the current draw as COMPLETED\n• Prepare for the next lottery\n\nThis action cannot be undone.`)) {
-                handleLotteryReset();
-              }
-            }}
-            disabled={isResetting}
-            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2"
-          >
-            <AlertTriangle className="w-4 h-4" />
-            {isResetting ? 'Resetting...' : 'Reset Lottery After Results'}
-          </button>
-          
-          <div className="text-sm text-red-600 flex items-center">
-            <Info className="w-4 h-4 mr-1" />
-            Only use this AFTER announcing the lottery winner
+    <>
+      <Card className="border-2 border-amber-200 bg-amber-50">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-amber-800">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            Lottery Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-amber-700 mb-2">
+                There are currently <strong>{totalTicketsInSystem}</strong> active tickets in the system
+                from <strong>{totalParticipants}</strong> users.
+              </p>
+              <p className="text-sm text-amber-600">
+                Use these options to manage the lottery tickets and draws.
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => openConfirmDialog('tickets')}
+                disabled={isLoading || totalTicketsInSystem === 0}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                <Ticket className="h-4 w-4 mr-2" />
+                Reset All Active Tickets
+              </Button>
+              
+              <Button
+                onClick={() => openConfirmDialog('draw')}
+                disabled={isLoading}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Reset Lottery Draw
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-800">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              {resetType === 'draw' ? 'Confirm Lottery Reset' : 'Confirm Ticket Reset'}
+            </DialogTitle>
+            <DialogDescription className="text-amber-700 pt-2">
+              {resetType === 'draw' ? (
+                <>
+                  This will reset the current lottery draw and clear all users' active tickets.
+                  This action is typically performed after completing a draw and selecting a winner.
+                </>
+              ) : (
+                <>
+                  This will clear all users' active tickets without completing the current draw.
+                  Use this option to manually reset all tickets between draws.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-amber-50 p-3 rounded-md border border-amber-200 my-2">
+            <p className="text-amber-800 font-medium">Warning:</p>
+            <p className="text-sm text-amber-700">
+              {resetType === 'draw' 
+                ? 'This action will mark the current draw as completed and reset all tickets.' 
+                : 'This action will reset all users\' active tickets to zero. Users will need to earn new tickets for the current draw.'}
+            </p>
+            <p className="text-sm text-amber-700 mt-1">
+              This action cannot be undone.
+            </p>
+          </div>
+          
+          <DialogFooter className="flex space-x-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              onClick={handleReset}
+              disabled={isLoading}
+              className={resetType === 'draw' ? "bg-red-600 hover:bg-red-700 text-white" : "bg-amber-600 hover:bg-amber-700 text-white"}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  {resetType === 'draw' ? 'Reset Lottery Draw' : 'Reset All Tickets'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }; 

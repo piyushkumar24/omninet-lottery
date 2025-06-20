@@ -13,6 +13,7 @@ import { toast } from "react-hot-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
+import { db } from "@/lib/db";
 
 interface DrawData {
   id: string;
@@ -157,15 +158,22 @@ export default function DrawsPage() {
     }))
   );
 
+  // Filter out participants with 0 tickets before transforming
+  const activeParticipants = activeDraw ? 
+    activeDraw.participants.filter(participant => participant.ticketsUsed > 0) : [];
+
   // Transform participants data for ManualWinnerSelect
-  const transformedParticipants = activeDraw ? activeDraw.participants.map(participant => ({
+  const transformedParticipants = activeParticipants.map(participant => ({
     id: participant.userId,
     name: participant.user.name || "Anonymous",
     email: participant.user.email || "Unknown",
     image: participant.user.image || null,
     ticketsUsed: participant.ticketsUsed,
     participatedAt: new Date(participant.createdAt),
-  })) : [];
+  }));
+
+  // Calculate total active tickets
+  const totalActiveTickets = activeParticipants.reduce((sum, p) => sum + p.ticketsUsed, 0);
 
   return (
     <div className="p-6 space-y-6">
@@ -198,7 +206,12 @@ export default function DrawsPage() {
                 <Users className="h-8 w-8 text-blue-600" />
                 <div>
                   <p className="text-sm font-medium text-blue-700">Participants</p>
-                  <p className="text-2xl font-bold text-blue-900">{activeDraw.participants.length}</p>
+                  <p className="text-2xl font-bold text-blue-900">{activeParticipants.length}</p>
+                  {activeParticipants.length !== activeDraw.participants.length && (
+                    <p className="text-xs text-blue-500">
+                      {activeParticipants.length} active of {activeDraw.participants.length} total
+                    </p>
+                  )}
                 </div>
               </div>
               
@@ -206,7 +219,7 @@ export default function DrawsPage() {
                 <Ticket className="h-8 w-8 text-purple-600" />
                 <div>
                   <p className="text-sm font-medium text-purple-700">Tickets in Draw</p>
-                  <p className="text-2xl font-bold text-purple-900">{activeDraw.totalTickets}</p>
+                  <p className="text-2xl font-bold text-purple-900">{totalActiveTickets}</p>
                 </div>
               </div>
               
@@ -240,7 +253,7 @@ export default function DrawsPage() {
             </div>
             
             {/* Active Participants List */}
-            {activeDraw.participants.length > 0 && (
+            {activeParticipants.length > 0 && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                   <Users className="h-5 w-5 text-blue-600" />
@@ -254,7 +267,7 @@ export default function DrawsPage() {
                     <div className="col-span-2 text-right">Odds</div>
                   </div>
                   <div className="max-h-96 overflow-auto">
-                    {activeDraw.participants.map((participant) => (
+                    {activeParticipants.map((participant) => (
                       <div 
                         key={participant.userId}
                         className="grid grid-cols-12 p-3 items-center border-t hover:bg-slate-50 transition-colors"
@@ -288,7 +301,7 @@ export default function DrawsPage() {
                           </Badge>
                         </div>
                         <div className="col-span-2 text-right text-sm text-slate-600">
-                          {((participant.ticketsUsed / activeDraw.totalTickets) * 100).toFixed(1)}%
+                          {((participant.ticketsUsed / totalActiveTickets) * 100).toFixed(1)}%
                         </div>
                       </div>
                     ))}
@@ -313,9 +326,9 @@ export default function DrawsPage() {
         </CardHeader>
         <CardContent>
           <ManualDrawForm 
-            canRunDraw={!!activeDraw && activeDraw.participants.length > 0}
-            participantCount={activeDraw ? activeDraw.participants.length : 0}
-            totalTicketsInDraw={activeDraw ? activeDraw.totalTickets : 0}
+            canRunDraw={!!activeDraw && activeParticipants.length > 0}
+            participantCount={activeParticipants.length}
+            totalTicketsInDraw={totalActiveTickets}
           />
         </CardContent>
       </Card>
@@ -323,7 +336,7 @@ export default function DrawsPage() {
       {/* Manual Winner Selection */}
       {activeDraw && (
         <ManualWinnerSelect 
-          canRunDraw={activeDraw.participants.length > 0}
+          canRunDraw={activeParticipants.length > 0}
           participants={transformedParticipants}
           drawDate={new Date(activeDraw.drawDate)}
           prizeAmount={activeDraw.prizeAmount}
