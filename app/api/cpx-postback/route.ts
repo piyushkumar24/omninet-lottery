@@ -52,36 +52,90 @@ export async function GET(request: NextRequest) {
     timestamp: new Date().toISOString(),
   });
 
-  // Validate required parameters
+  // Enhanced parameter validation with detailed logging
   if (!userId || !transId || !status) {
-    console.error('❌ Missing required parameters in CPX postback:', {
-      userId: !!userId,
-      transId: !!transId,
-      status: !!status,
-    });
+    const missingParams = {
+      userId: !userId ? 'MISSING' : 'OK',
+      transId: !transId ? 'MISSING' : 'OK',
+      status: !status ? 'MISSING' : 'OK',
+    };
+    
+    console.error('❌ CRITICAL: Missing required parameters in CPX postback:', missingParams);
+    
+    // Log to database for debugging
+    try {
+      await db.settings.create({
+        data: {
+          key: `cpx_missing_params_${Date.now()}`,
+          value: JSON.stringify({
+            missingParams,
+            allParams: {
+              userId,
+              transId,
+              status,
+              currencyName,
+              currencyAmount,
+              ip,
+              receivedHash: receivedHash ? '***' + receivedHash.slice(-4) : 'none',
+            },
+            url: request.url,
+            timestamp: new Date().toISOString(),
+          }),
+          description: `CPX postback missing parameters`,
+        },
+      });
+    } catch (logError) {
+      console.error('❌ Failed to log missing parameters:', logError);
+    }
     
     return new NextResponse("Missing required parameters", { status: 400 });
   }
 
-  // Validate hash for security (unless in test mode)
+  // Enhanced hash validation with detailed debugging
   if (!testMode && receivedHash) {
-    const isValidHash = validateCPXPostbackHash(userId, receivedHash);
+    const expectedHash = generateCPXSecureHash(userId);
+    const isValidHash = receivedHash === expectedHash;
+    
     if (!isValidHash) {
-      console.error('❌ Invalid hash in CPX postback:', {
+      console.error('❌ CRITICAL: Hash validation failed in CPX postback:', {
         userId,
         receivedHash: receivedHash ? '***' + receivedHash.slice(-4) : 'none',
-        expectedHash: '***' + generateCPXSecureHash(userId).slice(-4),
+        expectedHash: '***' + expectedHash.slice(-4),
+        hashInput: `${userId}-[SECURE_KEY]`,
+        isValidHash,
       });
+      
+      // Log hash validation failure
+      try {
+        await db.settings.create({
+          data: {
+            key: `cpx_hash_failure_${transId}`,
+            value: JSON.stringify({
+              userId,
+              transId,
+              receivedHash: receivedHash ? '***' + receivedHash.slice(-4) : 'none',
+              expectedHash: '***' + expectedHash.slice(-4),
+              timestamp: new Date().toISOString(),
+            }),
+            description: `CPX hash validation failure for transaction ${transId}`,
+          },
+        });
+      } catch (logError) {
+        console.error('❌ Failed to log hash failure:', logError);
+      }
+      
       return new NextResponse("Invalid hash", { status: 403 });
     }
     console.log('✅ Hash validation passed for user:', userId);
+  } else if (!testMode && !receivedHash) {
+    console.warn('⚠️ No hash provided in non-test mode - this should not happen in production');
   }
 
   // CRITICAL CHECK: Only award tickets for completed surveys (status=1)
   if (status !== '1') {
     console.log(`⚠️ Survey not completed (status=${status}), no ticket will be awarded for user ${userId}, transaction ${transId}`);
     
-    // Log the incomplete survey attempt for tracking
+    // Enhanced logging for incomplete surveys
     try {
       await db.settings.create({
         data: {
@@ -94,6 +148,7 @@ export async function GET(request: NextRequest) {
             currencyAmount,
             ip,
             reason: status === '0' ? 'disqualified' : 'incomplete',
+            statusDescription: status === '0' ? 'User was disqualified during survey' : `Survey incomplete (status: ${status})`,
             processedAt: new Date().toISOString(),
           }),
           description: `CPX Research incomplete survey ${transId} - no ticket awarded`,
@@ -109,7 +164,7 @@ export async function GET(request: NextRequest) {
   console.log(`✅ Survey completed successfully (status=1) for user ${userId}, proceeding with ticket award`);
 
   try {
-    // Check if this transaction was already processed to avoid duplicates
+    // Enhanced duplicate transaction check
     const existingTransaction = await db.settings.findUnique({
       where: { key: `cpx_transaction_${transId}` },
     });
@@ -117,9 +172,16 @@ export async function GET(request: NextRequest) {
     if (existingTransaction) {
       console.log('⚠️ Transaction already processed:', transId);
       
+      const transactionData = JSON.parse(existingTransaction.value);
+      console.log('📋 Existing transaction details:', {
+        userId: transactionData.userId,
+        ticketIds: transactionData.ticketIds,
+        emailSent: transactionData.emailSent,
+        processedAt: transactionData.processedAt,
+      });
+      
       // Check if we need to retry email sending
       try {
-        const transactionData = JSON.parse(existingTransaction.value);
         if (transactionData.emailSent === false && transactionData.ticketIds?.length > 0) {
           console.log('📧 Retrying email for previously processed transaction:', transId);
           
@@ -165,7 +227,7 @@ export async function GET(request: NextRequest) {
       return new NextResponse("Transaction already processed", { status: 200 });
     }
 
-    // Find user by ID with more comprehensive selection
+    // Enhanced user lookup with detailed validation
     const user = await db.user.findUnique({
       where: { id: userId },
       select: {
@@ -180,12 +242,52 @@ export async function GET(request: NextRequest) {
     });
 
     if (!user) {
-      console.error('❌ User not found for CPX postback:', userId);
+      console.error('❌ CRITICAL: User not found for CPX postback:', userId);
+      
+      // Log user not found error
+      try {
+        await db.settings.create({
+          data: {
+            key: `cpx_user_not_found_${transId}`,
+            value: JSON.stringify({
+              userId,
+              transId,
+              status,
+              timestamp: new Date().toISOString(),
+              error: 'User not found in database',
+            }),
+            description: `CPX postback error: User ${userId} not found`,
+          },
+        });
+      } catch (logError) {
+        console.error('❌ Failed to log user not found error:', logError);
+      }
+      
       return new NextResponse("User not found", { status: 404 });
     }
 
     if (user.isBlocked) {
-      console.error('❌ User is blocked, cannot award ticket:', userId);
+      console.error('❌ CRITICAL: User is blocked, cannot award ticket:', userId);
+      
+      // Log blocked user attempt
+      try {
+        await db.settings.create({
+          data: {
+            key: `cpx_blocked_user_${transId}`,
+            value: JSON.stringify({
+              userId,
+              transId,
+              status,
+              timestamp: new Date().toISOString(),
+              error: 'User is blocked',
+            }),
+            description: `CPX postback error: User ${userId} is blocked`,
+          },
+        });
+      } catch (logError) {
+        console.error('❌ Failed to log blocked user error:', logError);
+      }
+      
       return new NextResponse("User is blocked", { status: 403 });
     }
 
@@ -196,6 +298,7 @@ export async function GET(request: NextRequest) {
       referredBy: user.referredBy,
       currentAvailableTickets: user.availableTickets,
       totalTicketsEarned: user.totalTicketsEarned,
+      isBlocked: user.isBlocked,
     });
 
     // Check if this is the user's first survey
@@ -219,30 +322,128 @@ export async function GET(request: NextRequest) {
       
       console.log(`🎫 CPX Postback: Awarding EXACTLY ${SURVEY_TICKETS_TO_AWARD} ticket for COMPLETED survey (status=1, ignoring currencyAmount: ${currencyAmount})`);
       
-      // Award survey ticket to the user
-      const surveyAwardResult = await awardTicketsToUser(user.id, SURVEY_TICKETS_TO_AWARD, "SURVEY");
+      // Enhanced ticket awarding with detailed error handling
+      let surveyAwardResult;
+      try {
+        surveyAwardResult = await awardTicketsToUser(user.id, SURVEY_TICKETS_TO_AWARD, "SURVEY");
+        
+        console.log('🎯 Ticket award result:', {
+          success: surveyAwardResult.success,
+          ticketIds: surveyAwardResult.ticketIds,
+          availableTickets: surveyAwardResult.availableTickets,
+          totalTickets: surveyAwardResult.totalTickets,
+          ticketCount: surveyAwardResult.ticketIds.length,
+        });
+        
+      } catch (awardError) {
+        console.error('❌ CRITICAL: Exception during ticket awarding:', awardError);
+        
+        // Log ticket awarding failure
+        await tx.settings.create({
+          data: {
+            key: `cpx_award_error_${transId}`,
+            value: JSON.stringify({
+              userId: user.id,
+              transId,
+              status,
+              error: awardError instanceof Error ? awardError.message : String(awardError),
+              stack: awardError instanceof Error ? awardError.stack : undefined,
+              timestamp: new Date().toISOString(),
+            }),
+            description: `CPX ticket awarding error for transaction ${transId}`,
+          },
+        });
+        
+        throw new Error(`Ticket awarding failed: ${awardError instanceof Error ? awardError.message : String(awardError)}`);
+      }
       
       if (!surveyAwardResult.success) {
+        console.error('❌ CRITICAL: Failed to award survey ticket:', {
+          userId: user.id,
+          transId,
+          result: surveyAwardResult,
+        });
+        
+        // Log ticket awarding failure
+        await tx.settings.create({
+          data: {
+            key: `cpx_award_failed_${transId}`,
+            value: JSON.stringify({
+              userId: user.id,
+              transId,
+              status,
+              awardResult: surveyAwardResult,
+              timestamp: new Date().toISOString(),
+            }),
+            description: `CPX ticket awarding failed for transaction ${transId}`,
+          },
+        });
+        
         throw new Error("Failed to award survey ticket");
       }
       
       // VERIFICATION: Confirm exact ticket count was awarded
       if (surveyAwardResult.ticketIds.length !== SURVEY_TICKETS_TO_AWARD) {
-        throw new Error(`TICKET COUNT MISMATCH: Expected ${SURVEY_TICKETS_TO_AWARD}, but awarded ${surveyAwardResult.ticketIds.length}`);
+        const errorMsg = `TICKET COUNT MISMATCH: Expected ${SURVEY_TICKETS_TO_AWARD}, but awarded ${surveyAwardResult.ticketIds.length}`;
+        console.error('❌ CRITICAL:', errorMsg);
+        
+        // Log ticket count mismatch
+        await tx.settings.create({
+          data: {
+            key: `cpx_count_mismatch_${transId}`,
+            value: JSON.stringify({
+              userId: user.id,
+              transId,
+              expected: SURVEY_TICKETS_TO_AWARD,
+              actual: surveyAwardResult.ticketIds.length,
+              ticketIds: surveyAwardResult.ticketIds,
+              timestamp: new Date().toISOString(),
+            }),
+            description: `CPX ticket count mismatch for transaction ${transId}`,
+          },
+        });
+        
+        throw new Error(errorMsg);
       }
 
-      // Apply all available tickets to the current lottery
-      const appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);
-
-      console.log('🎯 Survey ticket awarded and applied for COMPLETED survey:', {
-        userId: user.id,
-        ticketIds: surveyAwardResult.ticketIds,
-        availableTickets: surveyAwardResult.availableTickets,
-        totalTickets: surveyAwardResult.totalTickets,
-        appliedTickets,
-        drawId: draw.id,
-        status: 'completed'
-      });
+      // Enhanced lottery application with detailed logging
+      let appliedTickets = 0;
+      try {
+        console.log('🎯 Applying tickets to lottery for user:', user.id);
+        appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);
+        
+        console.log('🎯 Survey ticket awarded and applied for COMPLETED survey:', {
+          userId: user.id,
+          ticketIds: surveyAwardResult.ticketIds,
+          availableTickets: surveyAwardResult.availableTickets,
+          totalTickets: surveyAwardResult.totalTickets,
+          appliedTickets,
+          drawId: draw.id,
+          status: 'completed',
+          transactionId: transId,
+        });
+        
+      } catch (applyError) {
+        console.error('❌ Warning: Failed to apply tickets to lottery (continuing with ticket award):', applyError);
+        
+        // Log lottery application failure (non-critical)
+        await tx.settings.create({
+          data: {
+            key: `cpx_apply_error_${transId}`,
+            value: JSON.stringify({
+              userId: user.id,
+              transId,
+              ticketIds: surveyAwardResult.ticketIds,
+              error: applyError instanceof Error ? applyError.message : String(applyError),
+              timestamp: new Date().toISOString(),
+            }),
+            description: `CPX lottery application error for transaction ${transId}`,
+          },
+        });
+        
+        // Don't throw here - tickets are still awarded
+        appliedTickets = 0;
+      }
 
       let referralTicketAwarded = false;
       let referralTicketId = null;
@@ -316,14 +517,15 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Track email sending status
+      // Enhanced email notification with detailed error handling
       let emailSent = false;
       let emailError = null;
 
-      // Email notification for survey completion
       try {
         if (user.email) {
-          // Send immediate confirmation email
+          console.log('📧 Attempting to send survey completion email to:', user.email);
+          
+          // Send immediate confirmation email with enhanced retry
           await sendEmailWithRetry(
             user.email,
             {
@@ -333,41 +535,68 @@ export async function GET(request: NextRequest) {
               confirmationCode: `SURVEY_${surveyAwardResult.ticketIds[0]}`,
             }
           );
-          console.log('📧 Instant survey completion email sent to:', user.email);
+          
           emailSent = true;
+          console.log('📧 ✅ Survey completion email sent successfully to:', user.email);
         } else {
-          console.warn('⚠️ User has no email address, skipping email notification:', user.id);
+          const warningMsg = `User ${user.id} has no email address, skipping email notification`;
+          console.warn('⚠️', warningMsg);
+          emailError = warningMsg;
         }
       } catch (error) {
-        console.error('📧 Failed to send survey completion email:', error);
-        emailError = error instanceof Error ? error.message : String(error);
+        const errorMsg = `Failed to send survey completion email: ${error instanceof Error ? error.message : String(error)}`;
+        console.error('📧 ❌', errorMsg);
+        emailError = errorMsg;
+        
+        // Log email failure (non-critical)
+        await tx.settings.create({
+          data: {
+            key: `cpx_email_error_${transId}`,
+            value: JSON.stringify({
+              userId: user.id,
+              userEmail: user.email,
+              transId,
+              error: errorMsg,
+              timestamp: new Date().toISOString(),
+            }),
+            description: `CPX email error for transaction ${transId}`,
+          },
+        });
       }
 
-      // Record the transaction to prevent duplicate processing
+      // Enhanced transaction recording with comprehensive data
       await tx.settings.create({
         data: {
           key: `cpx_transaction_${transId}`,
           value: JSON.stringify({
             userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
             transId,
             status,
             currencyName,
             currencyAmount,
             ip,
             ticketIds: surveyAwardResult.ticketIds,
+            ticketsAwarded: surveyAwardResult.ticketIds.length,
+            availableTicketsAfter: surveyAwardResult.availableTickets,
+            totalTicketsAfter: surveyAwardResult.totalTickets,
+            appliedTickets,
+            drawId: draw.id,
+            isFirstSurvey,
             referralTicketAwarded,
             referralTicketId,
             processedAt: new Date().toISOString(),
             emailSent,
             emailError,
+            processingSuccess: true,
           }),
-          description: `CPX Research transaction ${transId} processed`,
+          description: `CPX Research transaction ${transId} processed successfully`,
         },
       });
 
-      // Send instant notification to frontend if user is active
+      // Create instant notification for frontend with enhanced data
       try {
-        // Create a real-time notification record for instant delivery
         await tx.settings.create({
           data: {
             key: `instant_notification_${user.id}_${Date.now()}`,
@@ -377,6 +606,11 @@ export async function GET(request: NextRequest) {
               source: 'SURVEY',
               ticketCount: 1,
               ticketIds: surveyAwardResult.ticketIds,
+              transactionId: transId,
+              availableTicketsAfter: surveyAwardResult.availableTickets,
+              totalTicketsAfter: surveyAwardResult.totalTickets,
+              appliedTickets,
+              drawId: draw.id,
               timestamp: new Date().toISOString(),
               message: '🎉 Survey completed! Your ticket has been instantly credited.',
             }),
@@ -385,7 +619,7 @@ export async function GET(request: NextRequest) {
         });
         console.log('🔔 Instant notification created for user:', user.id);
       } catch (notificationError) {
-        console.error('🔔 Failed to create instant notification:', notificationError);
+        console.error('🔔 Failed to create instant notification (non-critical):', notificationError);
       }
 
       return {
@@ -401,24 +635,32 @@ export async function GET(request: NextRequest) {
         status,
         completionType: status === '1' ? 'completed' : 'participation',
         emailSent,
-        emailError
+        emailError,
+        processingSuccess: true,
       };
     }, {
       maxWait: 10000, // 10 seconds
       timeout: 15000, // 15 seconds
     });
 
-    console.log('✅ Transaction completed successfully:', {
-      ticketIds: result.ticketIds,
+    console.log('✅ ✅ ✅ CPX TRANSACTION COMPLETED SUCCESSFULLY ✅ ✅ ✅');
+    console.log('📊 Final Results:', {
+      transactionId: transId,
       userId: result.userId,
-      transId,
-      status,
+      ticketIds: result.ticketIds,
+      ticketsAwarded: result.ticketIds.length,
+      availableTicketsAfter: result.availableTickets,
+      totalTicketsAfter: result.totalTickets,
+      appliedToLottery: result.appliedTickets,
+      drawId: result.drawId,
+      emailSent: result.emailSent,
       referralTicketAwarded: result.referralTicketAwarded,
-      emailSent: result.emailSent
+      processingSuccess: result.processingSuccess,
     });
 
     // If email failed, schedule a retry
     if (!result.emailSent && user.email && result.ticketIds?.length > 0) {
+      console.log('📧 Scheduling email retry for failed email delivery');
       scheduleEmailRetry({
         id: user.id,
         name: user.name,
@@ -428,7 +670,15 @@ export async function GET(request: NextRequest) {
 
     return new NextResponse("OK", { status: 200 });
   } catch (error) {
-    console.error('❌ Error processing CPX postback:', error);
+    console.error('❌ ❌ ❌ CRITICAL ERROR processing CPX postback ❌ ❌ ❌');
+    console.error('💥 Error details:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      userId,
+      transId,
+      status,
+      timestamp: new Date().toISOString(),
+    });
     
     // EMERGENCY MECHANISM: Award emergency ticket if main transaction fails
     console.log('🚨 Attempting emergency ticket award due to transaction failure...');
@@ -471,24 +721,28 @@ export async function GET(request: NextRequest) {
       console.error('❌ Emergency ticket award failed:', emergencyError);
     }
     
-    // Log the error for debugging
+    // Enhanced error logging
     try {
       await db.settings.create({
         data: {
-          key: `cpx_error_${transId}_${Date.now()}`,
+          key: `cpx_critical_error_${transId}_${Date.now()}`,
           value: JSON.stringify({
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
             userId,
             transId,
             status,
+            currencyAmount,
+            currencyName,
+            ip,
             timestamp: new Date().toISOString(),
+            processingFailed: true,
           }),
-          description: `CPX Research transaction error ${transId}`,
+          description: `CPX Research critical error ${transId}`,
         },
       });
     } catch (logError) {
-      console.error('❌ Failed to log error:', logError);
+      console.error('❌ Failed to log critical error:', logError);
     }
 
     return new NextResponse("Internal Server Error", { status: 500 });
