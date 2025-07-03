@@ -9,17 +9,52 @@ const getBaseUrl = () => {
   return process.env.NEXT_PUBLIC_APP_URL || 'https://0mninetlottery.com';
 };
 
+// Enhanced debugging function to track configuration
+const logCPXConfig = (message: string, data?: any) => {
+  console.log(`[CPX-DEBUG] ${message}`, data || '');
+  
+  // Log to database for debugging
+  try {
+    const { db } = require('./db');
+    db?.settings?.create({
+      data: {
+        key: `cpx_debug_${Date.now()}`,
+        value: JSON.stringify({
+          message,
+          data,
+          timestamp: new Date().toISOString(),
+        }),
+        description: 'CPX configuration debugging',
+      },
+    }).catch((err: Error) => console.error('Failed to log CPX debug info:', err));
+  } catch (error) {
+    console.error('Failed to initialize db for CPX logging:', error);
+  }
+};
+
+// Log the base URL for debugging
+const baseUrl = getBaseUrl();
+logCPXConfig('Base URL detected', baseUrl);
+
 const CPX_CONFIG = {
   APP_ID: '27172',
   SECURE_HASH_KEY: 'mZ6JNyV7SeZh9CMPwU9mKe24A0IyfAxC',
   BASE_URL: 'https://offers.cpx-research.com/index.php',
-  POSTBACK_BASE_URL: 'https://0mninetlottery.com',
-  REDIRECT_URL: 'https://0mninetlottery.com/dashboard?survey=completed',
+  // CRITICAL: Ensure postback URL is absolute and correct
+  POSTBACK_BASE_URL: baseUrl || 'https://0mninetlottery.com',
+  REDIRECT_URL: (baseUrl || 'https://0mninetlottery.com') + '/dashboard?survey=completed',
   // 0mninet brand colors
   BRAND_BLUE: '#3b82f6',
   BRAND_DARK_BLUE: '#1d4ed8',
   TEXT_COLOR: '#ffffff',
 };
+
+// Log configuration for debugging
+logCPXConfig('CPX Configuration', {
+  APP_ID: CPX_CONFIG.APP_ID,
+  POSTBACK_URL: `${CPX_CONFIG.POSTBACK_BASE_URL}/api/cpx-postback`,
+  REDIRECT_URL: CPX_CONFIG.REDIRECT_URL,
+});
 
 /**
  * Generate secure hash for CPX Research API

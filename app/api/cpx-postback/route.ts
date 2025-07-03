@@ -23,6 +23,34 @@ import { awardTicketsToUser, applyAllTicketsToLottery } from "@/lib/ticket-utils
  * CRITICAL: Only status=1 (completed) surveys should receive tickets!
  */
 export async function GET(request: NextRequest) {
+  // Log every incoming request for debugging
+  console.log('🚨🚨🚨 CPX POSTBACK RECEIVED 🚨🚨🚨');
+  console.log('⏰ Timestamp:', new Date().toISOString());
+  console.log('📌 Request URL:', request.url);
+  console.log('📌 User Agent:', request.headers.get('user-agent'));
+  console.log('📌 IP Address:', request.headers.get('x-forwarded-for') || 'unknown');
+
+  // Log request to database immediately to capture all incoming requests
+  try {
+    await db.settings.create({
+      data: {
+        key: `cpx_raw_request_${Date.now()}`,
+        value: JSON.stringify({
+          url: request.url,
+          timestamp: new Date().toISOString(),
+          headers: {
+            userAgent: request.headers.get('user-agent'),
+            ip: request.headers.get('x-forwarded-for') || 'unknown',
+            referer: request.headers.get('referer') || 'none',
+          },
+        }),
+        description: 'Raw CPX postback request received',
+      },
+    });
+  } catch (logError) {
+    console.error('❌ Failed to log raw request:', logError);
+  }
+
   const searchParams = request.nextUrl.searchParams;
   
   // CPX sends these parameters
@@ -335,6 +363,20 @@ export async function GET(request: NextRequest) {
           ticketCount: surveyAwardResult.ticketIds.length,
         });
         
+        // CRITICAL: Verify ticket was actually created in database
+        const ticketVerification = await db.ticket.findFirst({
+          where: {
+            id: surveyAwardResult.ticketIds[0],
+            userId: user.id,
+          },
+        });
+        
+        if (!ticketVerification) {
+          throw new Error(`Ticket with ID ${surveyAwardResult.ticketIds[0]} not found in database despite successful award result`);
+        }
+        
+        console.log('✅ Ticket creation verified in database:', ticketVerification.id);
+        
       } catch (awardError) {
         console.error('❌ CRITICAL: Exception during ticket awarding:', awardError);
         
@@ -411,6 +453,51 @@ export async function GET(request: NextRequest) {
       try {
         console.log('🎯 Applying tickets to lottery for user:', user.id);
         appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);
+        
+        // CRITICAL: Verify tickets were actually applied to lottery
+        const drawVerification = await db.drawParticipation.findUnique({
+          where: {
+            userId_drawId: {
+              userId: user.id,
+              drawId: draw.id,
+            },
+          },
+        });
+        
+        if (!drawVerification || drawVerification.ticketsUsed < 1) {
+          console.error('⚠️ Draw participation verification failed:', {
+            userId: user.id,
+            drawId: draw.id,
+            foundParticipation: !!drawVerification,
+            ticketsUsed: drawVerification?.ticketsUsed || 0,
+          });
+          
+          // Retry applying tickets once more
+          console.log('🔄 Retrying ticket application to lottery...');
+          appliedTickets = await applyAllTicketsToLottery(user.id, draw.id);
+          
+          // Re-verify after retry
+          const retryVerification = await db.drawParticipation.findUnique({
+            where: {
+              userId_drawId: {
+                userId: user.id,
+                drawId: draw.id,
+              },
+            },
+          });
+          
+          if (!retryVerification || retryVerification.ticketsUsed < 1) {
+            throw new Error(`Failed to apply tickets to lottery for user ${user.id} even after retry`);
+          } else {
+            console.log('✅ Ticket application successful on retry:', retryVerification.ticketsUsed);
+          }
+        } else {
+          console.log('✅ Draw participation verified:', {
+            userId: user.id,
+            drawId: draw.id,
+            ticketsApplied: drawVerification.ticketsUsed,
+          });
+        }
         
         console.log('🎯 Survey ticket awarded and applied for COMPLETED survey:', {
           userId: user.id,
@@ -492,12 +579,15 @@ export async function GET(request: NextRequest) {
                 });
 
                 if (referrer?.email) {
-                  await sendTicketApplicationEmail(referrer.email, {
-                    name: referrer.name || "User",
-                    ticketCount: 1,
-                    drawDate: draw.drawDate,
-                    confirmationCode: `REFERRAL_${referralTicketId}`,
-                  });
+                  await sendEmailWithRetry(
+                    referrer.email,
+                    {
+                      name: referrer.name || "User",
+                      ticketCount: 1,
+                      drawDate: draw.drawDate,
+                      confirmationCode: `REFERRAL_${referralTicketId}`,
+                    }
+                  );
                   console.log('📧 Referral ticket email sent to referrer:', referrer.email);
                 }
               } catch (emailError) {
@@ -517,7 +607,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Enhanced email notification with detailed error handling
+      // Enhanced email notification with detailed error handling and retry mechanism
       let emailSent = false;
       let emailError = null;
 
@@ -533,11 +623,27 @@ export async function GET(request: NextRequest) {
               ticketCount: 1,
               drawDate: draw.drawDate,
               confirmationCode: `SURVEY_${surveyAwardResult.ticketIds[0]}`,
-            }
+            },
+            5 // Increased retries for reliability
           );
           
           emailSent = true;
           console.log('📧 ✅ Survey completion email sent successfully to:', user.email);
+          
+          // Add record of email being sent to database for verification
+          await tx.settings.create({
+            data: {
+              key: `email_sent_${transId}_${Date.now()}`,
+              value: JSON.stringify({
+                userId: user.id,
+                email: user.email,
+                ticketId: surveyAwardResult.ticketIds[0],
+                drawId: draw.id,
+                sentAt: new Date().toISOString(),
+              }),
+              description: `CPX survey completion email sent successfully`,
+            },
+          });
         } else {
           const warningMsg = `User ${user.id} has no email address, skipping email notification`;
           console.warn('⚠️', warningMsg);
@@ -778,7 +884,7 @@ export async function PUT(request: NextRequest) {
 }
 
 /**
- * Send email with retry mechanism
+ * Send email with improved retry mechanism
  */
 async function sendEmailWithRetry(
   email: string,
@@ -794,21 +900,55 @@ async function sendEmailWithRetry(
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      await sendTicketApplicationEmail(email, data);
+      console.log(`📧 Email attempt ${attempt}/${maxRetries} to ${email}...`);
+      
+      // Add additional flags to email to make it more visible and avoid spam filters
+      const enhancedData = {
+        ...data,
+        name: data.name || "User",
+        isUrgent: true,
+        isPriority: true,
+        isTicketConfirmation: true,
+        attemptNumber: attempt
+      };
+      
+      await sendTicketApplicationEmail(email, enhancedData);
+      console.log(`📧 Email attempt ${attempt} succeeded`);
       return true;
     } catch (error) {
-      console.error(`📧 Email attempt ${attempt} failed:`, error);
+      console.error(`📧 Email attempt ${attempt}/${maxRetries} failed:`, error);
       lastError = error;
+      
+      // Log email failure to database for monitoring
+      try {
+        await db.settings.create({
+          data: {
+            key: `email_retry_${Date.now()}_attempt_${attempt}`,
+            value: JSON.stringify({
+              email,
+              data,
+              attemptNumber: attempt,
+              error: error instanceof Error ? error.message : String(error),
+              timestamp: new Date().toISOString()
+            }),
+            description: `Email retry attempt ${attempt} failed`
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log email retry:', logError);
+      }
       
       if (attempt < maxRetries) {
         // Wait before retrying (exponential backoff)
         const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
+        console.log(`📧 Waiting ${delay}ms before next attempt...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
   
   // If we get here, all attempts failed
+  console.error(`📧 All ${maxRetries} email attempts failed`);
   throw new Error(`Failed to send email after ${maxRetries} attempts: ${lastError}`);
 }
 
