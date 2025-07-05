@@ -1,84 +1,141 @@
-<<<<<<< HEAD
-# Auth V5 - Social Lottery
+# 0mninet Lottery Platform
 
-> Next Auth V5 Advanced guide with Social Lottery implementation
+<div align="center">
+  <img src="public/main-logo.png" alt="0mninet Lottery Logo" width="250" />
+  <br />
+  <p><em>A modern web platform connecting digital inclusion with lottery rewards</em></p>
+</div>
 
-## Built With
+## 📋 Project Overview
 
-- Major languages: TypeScript
-- Framework: Next.js
-- Libraries: Prisma, Auth.js, React, Framer Motion
-- Storage: Cloudflare R2 for profile images
+The 0mninet Lottery platform is a next-generation web application designed to encourage participation in digital inclusion initiatives through a reward-based lottery system. Users can earn lottery tickets by completing surveys, referring friends, and engaging with social media content. The platform features a transparent draw mechanism with Amazon gift cards as prizes, creating a sustainable ecosystem that benefits users while promoting digital inclusion goals.
 
-## Environment Variables
+The core value proposition centers around a seamless experience where users complete activities (primarily surveys) and instantly receive lottery tickets in their dashboard, along with email confirmations. This creates an engaging reward loop that drives continued participation.
 
-You will need to create a `.env` file in the root of the project and add the following environment variables:
+## ✨ Features
 
-DATABASE_URL=""
+### User-Facing Features
+- **Authentication System**: Secure login/registration with email verification
+- **Ticket Earning System**: Multiple ways to earn tickets
+  - Survey completion via CPX integration
+  - Social media engagement
+  - Referral program
+- **Dashboard**: Real-time ticket tracking and lottery participation status
+- **Instant Notifications**: Real-time feedback when tickets are earned
+- **Email Confirmations**: Automated email confirmations for all ticket awards
+- **Weekly Lottery Draws**: Automated and manual draw options with fair winner selection
+- **Referral System**: Generate and share unique referral codes to earn additional tickets
 
-DIRECT_URL=http://localhost:3000
+### Administrative Features
+- **Admin Dashboard**: Comprehensive management interface
+- **User Management**: View, block, and manage user accounts
+- **Draw Management**: Schedule, monitor, and execute lottery draws
+- **Statistics & Analytics**: Track platform usage and engagement metrics
+- **Prize Management**: Configure prize amounts and types
+- **Newsletter System**: Manage subscriber communications
+- **Ticket Verification**: Tools to verify ticket allocation accuracy
+
+## 🛠️ Technology Stack
+
+The platform leverages modern web technologies for performance, security, and scalability:
+
+- **Frontend**:
+  - Next.js 14 (App Router)
+  - React with TypeScript
+  - Tailwind CSS
+  - shadcn/ui Component Library
+  - Framer Motion for animations
+
+- **Backend**:
+  - Next.js API Routes
+  - Prisma ORM
+  - MySQL / PostgreSQL Database
+  - NextAuth.js for authentication
+  - Edge Runtime support
+
+- **Infrastructure**:
+  - Vercel for hosting and deployment
+  - Cloudflare R2 for file storage
+  - Resend for email delivery
+  - Cron jobs for automated tasks
+
+- **Integrations**:
+  - CPX Research for survey monetization
+  - Social media APIs
+
+## 📁 Project Structure
+
+```
+/
+├── actions/             # Server actions for data mutations
+├── app/                 # Next.js 14 app directory
+│   ├── (protected)/     # Routes requiring authentication
+│   ├── admin/           # Admin dashboard routes
+│   ├── api/             # API endpoints
+│   ├── auth/            # Authentication pages
+│   ├── dashboard/       # User dashboard
+├── components/          # Reusable UI components
+│   ├── admin/           # Admin-specific components
+│   ├── auth/            # Authentication components
+│   ├── dashboard/       # Dashboard components
+│   ├── ui/              # Base UI components
+├── data/                # Database models and operations
+├── hooks/               # Custom React hooks
+├── lib/                 # Utility functions and shared logic
+│   ├── auth.ts          # Authentication utilities
+│   ├── mail.ts          # Email sending functions
+│   ├── ticket-utils.ts  # Ticket management utilities
+├── prisma/              # Prisma schema and migrations
+├── public/              # Static assets
+└── scripts/             # Utility and maintenance scripts
+```
+
+## 🔐 Environment Variables
+
+To run this project, you'll need to set up the following environment variables:
+
+```env
+# Database
+DATABASE_URL="mysql://user:password@localhost:3306/lottery"
+
+# Authentication
+AUTH_SECRET="your-auth-secret"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Email (Resend)
+RESEND_API_KEY="re_123456789"
+EMAIL_FROM="noreply@0mninetlottery.com"
+
+# Application
+APP_URL="http://localhost:3000"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
-RESEND_API_KEY=""
 
-# Cloudflare R2 Storage (added automatically by setup script)
-R2_ACCESS_KEY_ID=""
-R2_SECRET_ACCESS_KEY=""
-R2_ENDPOINT=""
-R2_BUCKET_NAME="profile-pictures"
-R2_PUBLIC_URL=""
+# CPX Research Integration
+CPX_APP_ID="12345"
+CPX_SECRET_KEY="your-cpx-secret-key"
 
-## Cloudflare R2 Setup
+# Storage (Cloudflare R2)
+R2_ACCOUNT_ID="your-account-id"
+R2_ACCESS_KEY="your-access-key"
+R2_SECRET_KEY="your-secret-key"
+R2_BUCKET_NAME="your-bucket-name"
+```
 
-The application uses Cloudflare R2 for storing profile images. To set up:
+## 🚀 Getting Started
 
-1. Run the R2 setup script:
-   ```
-   npm run setup:r2
-   ```
+1. Clone the repository
+2. Install dependencies with `npm install`
+3. Set up environment variables in `.env`
+4. Run database migrations with `npx prisma migrate dev`
+5. Start the development server with `npm run dev`
 
-2. This will automatically:
-   - Add R2 credentials to your `.env.local` file
-   - Create the bucket if it doesn't exist on first upload
-   - Configure CORS for the bucket
+## 📝 License
 
-3. To migrate from local uploads to R2:
-   ```
-   npm run cleanup:uploads
-   ```
+This project is proprietary and confidential. Unauthorized copying, distribution, or use is strictly prohibited.
 
-4. For more details, see the [Cloudflare R2 Setup Guide](docs/cloudflare-r2-setup.md)
+---
 
-## Homepage Implementation
-
-The homepage has been redesigned with a modern, professional look focused on the "Free Internet Revolution" theme. Key features include:
-
-- Video background (place a `network.mp4` file in `public/videos/` directory)
-- Countdown timer for the weekly lottery draws (every Thursday at 18:30 IST)
-- Interactive elements highlighting the mission
-- Comprehensive lottery statistics and information
-- Clear call-to-action buttons for new and returning users
-
-### Background Video
-
-For optimal user experience, add a video file:
-1. Create a video file named `network.mp4`
-2. Place it in the `public/videos/` directory
-3. The video should be compressed and optimized for web
-4. If no video is present, a fallback image will be used
-
-### Customization
-
-- The countdown timer automatically calculates the next Thursday draw date
-- User statistics are fetched from the database
-- Visual elements can be customized in the respective components
-
-### Implemented Features
-
-- Account access button for returning users
-- Interactive visual elements illustrating the mission
-- Motivational section explaining why users should join
-- Clear CTA buttons throughout the page
-- Responsive design for all device sizes
-
-=======
->>>>>>> c2fed4e (Add Docker support and enhance deployment configurations)
+<div align="center">
+  <p>Built with ❤️ by the 0mninet team</p>
+  <p>Helping bring internet access to everyone</p>
+</div>
