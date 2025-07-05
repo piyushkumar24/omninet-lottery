@@ -169,7 +169,7 @@ export const DashboardWrapper = ({ children }: DashboardWrapperProps) => {
       });
     }
 
-    // Check for ticket award notifications from URL parameters
+    // Check URL for ticket related query parameters
     const ticketAwarded = searchParams.get('ticket_awarded');
     const ticketSource = searchParams.get('ticket_source') as "SURVEY" | "SOCIAL" | "REFERRAL" | null;
     const ticketCount = parseInt(searchParams.get('ticket_count') || '1');
@@ -200,13 +200,16 @@ export const DashboardWrapper = ({ children }: DashboardWrapperProps) => {
       window.history.replaceState({}, '', cleanUrl);
     }
 
-    // Enhanced real-time checking for instant ticket notifications
-    const checkForInstantNotifications = async () => {
+    // Enhanced real-time checking for instant ticket notifications with retry logic
+    const checkForInstantNotifications = async (retryCount = 0) => {
       try {
+        console.log('Checking for instant ticket notifications...');
         const response = await fetch('/api/tickets/instant-verify', {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
           },
         });
         
@@ -214,11 +217,20 @@ export const DashboardWrapper = ({ children }: DashboardWrapperProps) => {
           const data = await response.json();
           
           if (data.success && data.data.notifications?.length > 0) {
+            console.log('Found notifications:', data.data.notifications.length);
             // Show notifications for new tickets
             data.data.notifications.forEach((notification: any) => {
               if (notification.type === 'TICKET_AWARDED') {
+                // Set notification data for popup display
+                setNotificationData({
+                  source: notification.source || "SURVEY",
+                  count: notification.ticketCount || 1,
+                });
+                setShowNotification(true);
+                
+                // Also show toast notification for immediate feedback
                 toast.success(notification.message, {
-                  duration: 6000,
+                  duration: 8000, // Extended duration for better visibility
                   icon: "🎫",
                   style: {
                     border: '2px solid #10b981',
@@ -240,16 +252,40 @@ export const DashboardWrapper = ({ children }: DashboardWrapperProps) => {
               body: JSON.stringify({
                 notificationIds: data.data.notifications.map((n: any) => n.id),
               }),
-            }).catch(console.error);
+            }).catch(err => {
+              console.error('Error marking notifications as read:', err);
+            });
+            
+            // Refresh the page to update ticket counts
+            setTimeout(() => {
+              router.refresh();
+            }, 1000);
           }
+        } else if (retryCount < 3) {
+          // Retry up to 3 times with exponential backoff
+          const delay = Math.pow(2, retryCount) * 1000;
+          console.log(`Retrying notification check in ${delay}ms (attempt ${retryCount + 1}/3)`);
+          setTimeout(() => checkForInstantNotifications(retryCount + 1), delay);
         }
       } catch (error) {
         console.error('Error checking for instant notifications:', error);
+        
+        // Retry on failure
+        if (retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          console.log(`Retrying notification check after error in ${delay}ms (attempt ${retryCount + 1}/3)`);
+          setTimeout(() => checkForInstantNotifications(retryCount + 1), delay);
+        }
       }
     };
 
-    // Check for instant notifications on mount
+    // Check for instant notifications on mount and set up periodic checks
     checkForInstantNotifications();
+    
+    // Set up polling for notifications every 15 seconds
+    const pollingInterval = setInterval(() => {
+      checkForInstantNotifications();
+    }, 15000);
 
     // Listen for ticket award events from localStorage (for cross-tab communication)
     const handleStorageChange = (e: StorageEvent) => {
@@ -282,8 +318,9 @@ export const DashboardWrapper = ({ children }: DashboardWrapperProps) => {
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      clearInterval(pollingInterval);
     };
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const handleNotificationClose = () => {
     setShowNotification(false);

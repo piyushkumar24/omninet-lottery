@@ -610,25 +610,51 @@ export async function GET(request: NextRequest) {
       // Enhanced email notification with detailed error handling and retry mechanism
       let emailSent = false;
       let emailError = null;
+      let ticketConfirmationCode = `SURVEY_${surveyAwardResult.ticketIds[0]}`;
 
       try {
         if (user.email) {
           console.log('📧 Attempting to send survey completion email to:', user.email);
+          console.log('📧 Email data:', {
+            name: user.name || "User",
+            ticketCount: 1,
+            drawDate: draw.drawDate,
+            confirmationCode: ticketConfirmationCode,
+          });
           
+          // Store email intent BEFORE sending to track attempted sends
+          await tx.settings.create({
+            data: {
+              key: `email_intent_${transId}_${Date.now()}`,
+              value: JSON.stringify({
+                userId: user.id,
+                email: user.email,
+                ticketId: surveyAwardResult.ticketIds[0],
+                drawId: draw.id,
+                attemptedAt: new Date().toISOString(),
+              }),
+              description: `CPX survey completion email intent (pre-send)`,
+            },
+          });
+
           // Send immediate confirmation email with enhanced retry
-          await sendEmailWithRetry(
+          const emailResult = await sendEmailWithRetry(
             user.email,
             {
               name: user.name || "User",
               ticketCount: 1,
               drawDate: draw.drawDate,
-              confirmationCode: `SURVEY_${surveyAwardResult.ticketIds[0]}`,
+              confirmationCode: ticketConfirmationCode,
+              isUrgent: true,
+              isPriority: true,
+              isTicketConfirmation: true,
             },
             5 // Increased retries for reliability
           );
           
           emailSent = true;
           console.log('📧 ✅ Survey completion email sent successfully to:', user.email);
+          console.log('📧 Email result:', emailResult?.data?.id || 'No ID returned');
           
           // Add record of email being sent to database for verification
           await tx.settings.create({
@@ -640,6 +666,7 @@ export async function GET(request: NextRequest) {
                 ticketId: surveyAwardResult.ticketIds[0],
                 drawId: draw.id,
                 sentAt: new Date().toISOString(),
+                emailId: emailResult?.data?.id,
               }),
               description: `CPX survey completion email sent successfully`,
             },
@@ -654,20 +681,61 @@ export async function GET(request: NextRequest) {
         console.error('📧 ❌', errorMsg);
         emailError = errorMsg;
         
+        // Capture detailed error info
+        console.error('📧 ❌ Email error details:', error);
+        
         // Log email failure (non-critical)
         await tx.settings.create({
           data: {
-            key: `cpx_email_error_${transId}`,
+            key: `cpx_email_error_${transId}_${Date.now()}`,
             value: JSON.stringify({
               userId: user.id,
               userEmail: user.email,
               transId,
               error: errorMsg,
+              errorDetails: error instanceof Error ? error.stack : null,
               timestamp: new Date().toISOString(),
             }),
             description: `CPX email error for transaction ${transId}`,
           },
         });
+        
+        // Schedule backup email attempt outside of transaction
+        setTimeout(() => {
+          try {
+            console.log('📧 Scheduling backup email attempt after 5 seconds...');
+            sendEmailWithRetry(
+              user.email as string,
+              {
+                name: user.name || "User",
+                ticketCount: 1,
+                drawDate: draw.drawDate,
+                confirmationCode: ticketConfirmationCode,
+                isUrgent: true,
+                isPriority: true,
+                isTicketConfirmation: true,
+                attemptNumber: 99, // Indicate this is a backup attempt
+              },
+              10 // Even more retries for backup attempt
+            ).then(() => {
+              console.log('📧 ✅ Backup email sent successfully!');
+              // Update transaction record
+              db.settings.update({
+                where: { key: `cpx_transaction_${transId}` },
+                data: { 
+                  value: JSON.stringify({
+                    userId: user.id,
+                    transId,
+                    emailSent: true,
+                    emailBackupSentAt: new Date().toISOString(),
+                  })
+                }
+              }).catch(e => console.error('Error updating transaction after backup email:', e));
+            }).catch(e => console.error('Backup email also failed:', e));
+          } catch (backupError) {
+            console.error('Failed to schedule backup email:', backupError);
+          }
+        }, 5000);
       }
 
       // Enhanced transaction recording with comprehensive data
@@ -893,6 +961,10 @@ async function sendEmailWithRetry(
     ticketCount: number;
     drawDate: Date;
     confirmationCode?: string;
+    isUrgent?: boolean;
+    isPriority?: boolean;
+    isTicketConfirmation?: boolean;
+    attemptNumber?: number;
   },
   maxRetries = 3
 ) {
@@ -909,12 +981,41 @@ async function sendEmailWithRetry(
         isUrgent: true,
         isPriority: true,
         isTicketConfirmation: true,
-        attemptNumber: attempt
+        attemptNumber: data.attemptNumber || attempt
       };
       
-      await sendTicketApplicationEmail(email, enhancedData);
-      console.log(`📧 Email attempt ${attempt} succeeded`);
-      return true;
+      // Log email attempt
+      console.log(`📧 Sending with data:`, JSON.stringify(enhancedData));
+      
+      // Add a small delay between attempts to avoid rate limiting
+      if (attempt > 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      const result = await sendTicketApplicationEmail(email, enhancedData);
+      console.log(`📧 Email attempt ${attempt} succeeded with ID:`, result?.data?.id);
+      
+      // Log successful send to database
+      try {
+        await db.settings.create({
+          data: {
+            key: `email_success_${Date.now()}_attempt_${attempt}`,
+            value: JSON.stringify({
+              email,
+              confirmationCode: data.confirmationCode,
+              attemptNumber: attempt,
+              emailId: result?.data?.id,
+              timestamp: new Date().toISOString()
+            }),
+            description: `Email send succeeded on attempt ${attempt}`
+          }
+        });
+      } catch (logError) {
+        // Don't fail if logging fails
+        console.error('Failed to log email success:', logError);
+      }
+      
+      return result;
     } catch (error) {
       console.error(`📧 Email attempt ${attempt}/${maxRetries} failed:`, error);
       lastError = error;
@@ -926,9 +1027,10 @@ async function sendEmailWithRetry(
             key: `email_retry_${Date.now()}_attempt_${attempt}`,
             value: JSON.stringify({
               email,
-              data,
+              confirmationCode: data.confirmationCode,
               attemptNumber: attempt,
               error: error instanceof Error ? error.message : String(error),
+              errorStack: error instanceof Error ? error.stack : null,
               timestamp: new Date().toISOString()
             }),
             description: `Email retry attempt ${attempt} failed`
